@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: reactor_timeseries_clean
+    description: "Cleaned reactor time-series data with standardized columns"
+    columns:
+      - name: timestamp
+        description: "Measurement timestamp"
+        tests:
+          - not_null
+      - name: linear_power_kw
+        description: "Reactor linear power in kW"
+        tests:
+          - not_null
+      - name: fuel_temp_c
+        description: "Fuel temperature in Celsius (average of sensors)"
+      - name: water_temp_c
+        description: "Pool water temperature in Celsius"
+      - name: tran_position
+        description: "Transient rod position (steps)"
+      - name: shim1_position
+        description: "Shim 1 rod position (steps)"
+      - name: shim2_position
+        description: "Shim 2 rod position (steps)"
+      - name: reg_position
+        description: "Regulating rod position (steps)"
+      - name: source_file
+        description: "Original source file name"
+      - name: is_outlier
+        description: "Flag indicating potential outlier data point"
+
+  - name: xenon_dynamics_clean
+    description: "Cleaned xenon/iodine dynamics data resampled to hourly"
+    columns:
+      - name: timestamp
+        description: "Measurement timestamp (hourly)"
+        tests:
+          - not_null
+      - name: xe_concentration
+        description: "Xenon-135 concentration"
+        tests:
+          - not_null
+      - name: i_concentration
+        description: "Iodine-135 concentration"
+        tests:
+          - not_null
+      - name: cumulative_burnup_mwh
+        description: "Cumulative burnup in MWh"
+        tests:
+          - not_null
+
+  - name: core_configs_clean
+    description: "Cleaned core configuration data with calculated fields"
+    columns:
+      - name: position
+        description: "Core position"
+        tests:
+          - not_null
+      - name: ring
+        description: "Core ring (A-H)"
+      - name: element_id
+        description: "Element identifier"
+      - name: element_type
+        description: "Element type"
+      - name: u235_initial_g
+        description: "Initial U-235 loading"
+      - name: u235_burned_g
+        description: "U-235 burned"
+      - name: config_date
+        description: "Configuration date"
+        tests:
+          - not_null
+      - name: config_type
+        description: "BOC/EOC/INTERIM"

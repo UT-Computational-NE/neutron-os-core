@@ -1,0 +1,26 @@
+name: 'neutron_os'
+version: '0.1.0'
+config-version: 2
+
+profile: 'neutron_os'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Data quality thresholds
+  max_power_kw: 1500  # TRIGA max power
+  max_fuel_temp_c: 1000  # Safety limit
+  max_u235_per_element_g: 40  # Typical element loading
+  
+  # Recency checks (hours)
+  reactor_data_max_age_hours: 4
+  xenon_data_max_age_hours: 24

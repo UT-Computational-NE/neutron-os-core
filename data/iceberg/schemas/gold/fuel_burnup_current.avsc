@@ -1,0 +1,60 @@
+{
+  "type": "record",
+  "name": "FuelBurnupCurrent",
+  "namespace": "neutron.gold",
+  "doc": "Current fuel element burnup state for core visualization",
+  "fields": [
+    {
+      "name": "position",
+      "type": "string",
+      "doc": "Core position identifier (e.g., B1, C3, D5)"
+    },
+    {
+      "name": "ring",
+      "type": "string",
+      "doc": "Core ring (A-H, A is center)"
+    },
+    {
+      "name": "element_id",
+      "type": "string",
+      "doc": "Unique fuel element identifier"
+    },
+    {
+      "name": "element_type",
+      "type": "string",
+      "doc": "Element type (fuel, graphite, control, etc.)"
+    },
+    {
+      "name": "u235_initial_g",
+      "type": "double",
+      "doc": "Initial U-235 loading in grams"
+    },
+    {
+      "name": "u235_burned_g",
+      "type": "double",
+      "doc": "U-235 burned in grams"
+    },
+    {
+      "name": "burnup_pct",
+      "type": "double",
+      "doc": "Burnup percentage (burned / initial * 100)"
+    },
+    {
+      "name": "config_date",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      },
+      "doc": "Date of core configuration this data is from"
+    },
+    {
+      "name": "config_type",
+      "type": {
+        "type": "enum",
+        "name": "ConfigType",
+        "symbols": ["BOC", "EOC", "INTERIM"]
+      },
+      "doc": "Configuration type (Beginning/End of Cycle)"
+    }
+  ]
+}

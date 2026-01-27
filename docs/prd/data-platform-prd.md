@@ -1,0 +1,293 @@
+# Data Platform PRD
+
+**Product:** Neutron OS Data Platform  
+**Status:** Draft  
+**Last Updated:** 2026-01-21  
+**Parent:** [Executive PRD](neutron-os-executive-prd.md)
+
+---
+
+## Overview
+
+The Neutron OS Data Platform provides a unified data foundation for nuclear research and operations, replacing fragmented CSV/JSON files with a modern lakehouse architecture.
+
+---
+
+## User Journey Map
+
+### Data Engineer: Pipeline Development
+
+```mermaid
+flowchart TD
+    A["Setup"] --> B["Configure Iceberg catalog"]
+    A --> C["Define Bronze schemas"]
+    A --> D["Set up Dagster jobs"]
+    
+    B --> E["Ingestion"]
+    C --> E
+    D --> E
+    
+    E --> F["Ingest CSV/JSON files"]
+    E --> G["Validate Bronze data"]
+    E --> H["Monitor pipeline health"]
+    
+    F --> I["Transformation"]
+    G --> I
+    H --> I
+    
+    I --> J["Write dbt Silver models"]
+    I --> K["Add data quality tests"]
+    I --> L["Create Gold aggregates"]
+    
+    J --> M["Serving"]
+    K --> M
+    L --> M
+    
+    M --> N["Connect Superset"]
+    M --> O["Configure row-level security"]
+    M --> P["Monitor query performance"]
+    
+    style A fill:#e3f2fd,color:#000000
+    style E fill:#fff3e0,color:#000000
+    style I fill:#f3e5f5,color:#000000
+    style M fill:#e8f5e9,color:#000000
+    linkStyle default stroke:#777777,stroke-width:3px
+```
+
+### Data Flow Architecture
+
+```mermaid
+flowchart TB
+    subgraph Ingestion["Data Sources"]
+        CSV[CSV Files]
+        JSON[JSON Logs]
+        API[External APIs]
+        Stream[Streaming Data]
+    end
+    
+    subgraph Bronze["Bronze Layer (Raw)"]
+        B1[(reactor_timeseries_raw)]
+        B2[(elog_entries_raw)]
+        B3[(simulation_outputs_raw)]
+    end
+    
+    subgraph Silver["Silver Layer (Cleaned)"]
+        S1[(reactor_readings)]
+        S2[(elog_entries_validated)]
+        S3[(xenon_dynamics)]
+    end
+    
+    subgraph Gold["Gold Layer (Analytics)"]
+        G1[(reactor_hourly_metrics)]
+        G2[(fuel_burnup_current)]
+        G3[(compliance_summary)]
+    end
+    
+    subgraph Consumers["Consumers"]
+        Superset[Superset Dashboards]
+        ML[ML Training]
+        Export[Data Export]
+    end
+    
+    CSV --> B1
+    JSON --> B2
+    API --> B3
+    Stream -.-> B1
+    
+    B1 --> S1
+    B2 --> S2
+    B3 --> S3
+    
+    S1 --> G1
+    S1 --> G2
+    S2 --> G3
+    
+    G1 --> Superset
+    G2 --> Superset
+    G3 --> Superset
+    S1 --> ML
+    G1 --> Export
+    
+    style Ingestion fill:#424242,color:#fff
+    style Bronze fill:#bf360c,color:#fff
+    style Silver fill:#455a64,color:#fff
+    style Gold fill:#f9a825,color:#000
+    style Consumers fill:#2e7d32,color:#fff
+    linkStyle default stroke:#777777,stroke-width:3px
+```
+
+### Query Access Patterns
+
+```mermaid
+mindmap
+  root((Data Access))
+    Superset
+      Dashboards
+      Ad-hoc Queries
+      Scheduled Reports
+    DuckDB
+      Interactive SQL
+      Local Analysis
+      Notebook Integration
+    API
+      REST Endpoints
+      GraphQL
+      Streaming
+    Export
+      CSV Download
+      Parquet Files
+      Evidence Packages
+```
+
+---
+
+## User Personas
+
+| Persona | Description | Primary Needs |
+|---------|-------------|---------------|
+| **Reactor Operator** | Monitors reactor state | Real-time dashboards, historical lookback |
+| **Researcher** | Analyzes experimental data | Self-service queries, data export |
+| **Data Engineer** | Builds pipelines | Reliable ingestion, transformation tools |
+| **Regulatory Inspector** | Reviews records | Immutable history, time-travel queries |
+| **Facility Manager** | Oversees operations | KPI dashboards, anomaly alerts |
+
+---
+
+## Problem Statement
+
+### Current State
+- CSV files in various directories
+- JSON for logs and metadata
+- PostgreSQL/TimescaleDB for some time-series
+- No unified query layer
+- No data versioning
+- Manual data preparation for analysis
+
+### Future State
+- Bronze/Silver/Gold data tiers (Iceberg)
+- Time-travel queries for any historical state
+- Self-service analytics (Superset)
+- Automated pipelines (Dagster + dbt)
+- Immutable audit trail for all data changes
+
+---
+
+## Requirements
+
+### Epic: Data Lake Foundation
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| DL-001 | Ingest reactor time-series to Bronze tier | P0 |
+| DL-002 | S3-compatible object storage | P0 |
+| DL-003 | 7-year retention policy | P1 |
+| DL-004 | Automated daily ingestion from Box | P0 |
+| DL-005 | Manual upload capability for legacy data | P1 |
+
+### Epic: Lakehouse (Iceberg + DuckDB)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| LH-001 | Iceberg tables for Silver/Gold tiers | P0 |
+| LH-002 | Time-travel queries | P0 |
+| LH-003 | Schema evolution without downtime | P1 |
+| LH-004 | DuckDB for embedded analytics | P0 |
+| LH-005 | Trino for distributed queries | P2 |
+
+### Epic: Transformations (dbt)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| TR-001 | Bronze → Silver cleaning transforms | P0 |
+| TR-002 | Silver → Gold aggregation transforms | P0 |
+| TR-003 | dbt tests for data quality | P0 |
+| TR-004 | Incremental model updates | P1 |
+| TR-005 | Data lineage documentation | P1 |
+
+### Epic: Orchestration (Dagster)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| OR-001 | Scheduled daily ingestion | P0 |
+| OR-002 | Sensor-triggered pipelines | P1 |
+| OR-003 | Pipeline monitoring and alerting | P1 |
+| OR-004 | Backfill capability | P1 |
+| OR-005 | Dagster UI for pipeline visibility | P0 |
+
+### Epic: Analytics (Superset)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| AN-001 | Reactor Operations Dashboard | P0 |
+| AN-002 | Self-service SQL queries | P0 |
+| AN-003 | Dashboard export (PDF, PNG) | P1 |
+| AN-004 | Dashboard version control (JSON in Git) | P0 |
+| AN-005 | Role-based dashboard access | P1 |
+
+### Epic: Audit & Compliance
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| AU-001 | All data mutations logged to audit trail | P0 |
+| AU-002 | Merkle proof verification API | P0 |
+| AU-003 | Evidence package generation | P1 |
+| AU-004 | Data access logging | P1 |
+
+---
+
+## Test-Driven Approach
+
+Superset scenarios drive data model design:
+1. Define Superset dashboard requirements
+2. Derive Gold table schemas
+3. Write dbt tests (must pass)
+4. Implement Bronze → Silver → Gold pipeline
+5. Build dashboard, export JSON to Git
+6. Stakeholder review and approval
+
+See: [Superset Scenarios](../specs/superset-scenarios/)
+
+---
+
+## Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Dashboard load time (7-day view) | < 3 seconds |
+| Dashboard load time (30-day view) | < 10 seconds |
+| Ingestion latency (new data available) | < 1 hour |
+| dbt test pass rate | 100% |
+| Time-travel query support | Any point in 7-year window |
+
+---
+
+## Data Sources
+
+| Source | Location | Format | Refresh |
+|--------|----------|--------|---------|
+| Reactor time-series | `serial_data/*.csv` | CSV | Daily |
+| Core configurations | `static/core/*.csv` | CSV | Event-driven |
+| Xenon dynamics | `Xe_burnup_2025.csv` | CSV | Simulation |
+| Rod calibration | `CRH_*.csv`, `rho_vs_T.csv` | CSV | Event-driven |
+| Elog entries | Elog service | JSON/API | Real-time |
+
+---
+
+## Technical Dependencies
+
+- Apache Iceberg (table format)
+- DuckDB (embedded query)
+- Apache Superset (BI)
+- dbt-core (transforms)
+- Dagster (orchestration)
+- PostgreSQL + pgvector (metadata, vectors)
+- Object storage (pending hosting decision)
+
+---
+
+## Open Questions
+
+1. Where will the data lake be hosted? (TACC, cloud, hybrid)
+2. What time resolution for Gold tables? (hourly, daily)
+3. How much historical data to backfill?
+4. Should MPACT shadow predictions be included in dashboards?

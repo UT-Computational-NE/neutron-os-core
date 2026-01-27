@@ -1,0 +1,50 @@
+{
+  "type": "record",
+  "name": "RodPositionsHourly",
+  "namespace": "neutron.gold",
+  "doc": "Hourly control rod position statistics",
+  "fields": [
+    {
+      "name": "hour",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Hour timestamp (start of hour)"
+    },
+    {
+      "name": "rod_name",
+      "type": {
+        "type": "enum",
+        "name": "RodName",
+        "symbols": ["TRAN", "SHIM1", "SHIM2", "REG"]
+      },
+      "doc": "Control rod identifier"
+    },
+    {
+      "name": "avg_position",
+      "type": "double",
+      "doc": "Average rod position (steps or percentage)"
+    },
+    {
+      "name": "min_position",
+      "type": "double",
+      "doc": "Minimum rod position during hour"
+    },
+    {
+      "name": "max_position",
+      "type": "double",
+      "doc": "Maximum rod position during hour"
+    },
+    {
+      "name": "movement_count",
+      "type": "int",
+      "doc": "Number of rod movements during hour"
+    },
+    {
+      "name": "total_travel",
+      "type": "double",
+      "doc": "Total distance traveled (sum of absolute movements)"
+    }
+  ]
+}

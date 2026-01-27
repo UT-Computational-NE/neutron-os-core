@@ -1,0 +1,138 @@
+version: 2
+
+models:
+  - name: reactor_hourly_metrics
+    description: "Hourly aggregated reactor metrics for operations dashboard"
+    columns:
+      - name: hour
+        description: "Hour timestamp (start of hour)"
+        tests:
+          - not_null
+          - unique
+      - name: avg_power_kw
+        description: "Average linear power in kW"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: "{{ var('max_power_kw') }}"
+      - name: max_power_kw
+        description: "Maximum linear power in kW"
+        tests:
+          - not_null
+      - name: avg_fuel_temp_c
+        description: "Average fuel temperature in Celsius"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: "{{ var('max_fuel_temp_c') }}"
+      - name: energy_kwh
+        description: "Total energy produced in kWh"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: sample_count
+        description: "Number of samples in this hour"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+    tests:
+      - dbt_utils.recency:
+          datepart: hour
+          field: hour
+          interval: "{{ var('reactor_data_max_age_hours') }}"
+          config:
+            severity: warn  # Warn if no data in 4 hours during ops
+
+  - name: xenon_state_hourly
+    description: "Hourly xenon and iodine concentrations"
+    columns:
+      - name: hour
+        description: "Hour timestamp"
+        tests:
+          - not_null
+          - unique
+      - name: xe_concentration
+        description: "Xenon-135 concentration"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: i_concentration
+        description: "Iodine-135 concentration"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: cumulative_burnup_mwh
+        description: "Cumulative burnup since BOC"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: fuel_burnup_current
+    description: "Current fuel element burnup state"
+    columns:
+      - name: position
+        description: "Core position identifier"
+        tests:
+          - not_null
+      - name: element_id
+        description: "Unique element identifier"
+        tests:
+          - not_null
+      - name: u235_burned_g
+        description: "U-235 burned in grams"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: "{{ var('max_u235_per_element_g') }}"
+      - name: burnup_pct
+        description: "Burnup percentage"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: config_date
+        description: "Date of core configuration"
+        tests:
+          - not_null
+    tests:
+      - unique:
+          column_name: "position || '-' || config_date"
+
+  - name: rod_positions_hourly
+    description: "Hourly control rod position statistics"
+    columns:
+      - name: hour
+        description: "Hour timestamp"
+        tests:
+          - not_null
+      - name: rod_name
+        description: "Control rod identifier"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['TRAN', 'SHIM1', 'SHIM2', 'REG']
+      - name: avg_position
+        description: "Average rod position"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1000  # Max steps
+      - name: movement_count
+        description: "Number of rod movements"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+    tests:
+      - unique:
+          column_name: "hour || '-' || rod_name"

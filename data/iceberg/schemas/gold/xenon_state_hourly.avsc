@@ -1,0 +1,37 @@
+{
+  "type": "record",
+  "name": "XenonStateHourly",
+  "namespace": "neutron.gold",
+  "doc": "Hourly xenon and iodine concentrations with cumulative burnup",
+  "fields": [
+    {
+      "name": "hour",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Hour timestamp (start of hour)"
+    },
+    {
+      "name": "xe_concentration",
+      "type": "double",
+      "doc": "Xenon-135 concentration (atoms/cm³ or equivalent)"
+    },
+    {
+      "name": "i_concentration",
+      "type": "double",
+      "doc": "Iodine-135 concentration (atoms/cm³ or equivalent)"
+    },
+    {
+      "name": "cumulative_burnup_mwh",
+      "type": "double",
+      "doc": "Cumulative burnup since beginning of cycle (MWh)"
+    },
+    {
+      "name": "xe_reactivity_worth_dollars",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "Calculated xenon reactivity worth in dollars (optional)"
+    }
+  ]
+}

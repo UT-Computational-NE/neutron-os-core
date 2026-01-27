@@ -1,0 +1,66 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw data ingested from various sources"
+    schema: bronze
+    tables:
+      - name: serial_data_raw
+        description: "Raw reactor time-series CSV data from ZOC terminal"
+        columns:
+          - name: timestamp
+            description: "Original timestamp string"
+          - name: Tran
+            description: "Transient rod position"
+          - name: Shim1
+            description: "Shim 1 rod position"
+          - name: Shim2
+            description: "Shim 2 rod position"
+          - name: Reg
+            description: "Regulating rod position"
+          - name: FuelTemp1
+            description: "Fuel temperature sensor 1"
+          - name: FuelTemp2
+            description: "Fuel temperature sensor 2"
+          - name: WaterTemp
+            description: "Pool water temperature"
+          - name: NM
+            description: "Neutron monitor signal"
+          - name: NPP
+            description: "NPP detector signal"
+          - name: NP
+            description: "NP detector signal"
+          - name: LinearPower
+            description: "Linear power reading (kW)"
+          - name: source_file
+            description: "Original CSV file name"
+          - name: ingested_at
+            description: "Timestamp when data was ingested"
+
+      - name: xenon_burnup_raw
+        description: "Raw xenon/iodine simulation output"
+        columns:
+          - name: Time
+            description: "Simulation time"
+          - name: Xe
+            description: "Xenon-135 concentration"
+          - name: I
+            description: "Iodine-135 concentration"
+          - name: "BU (MWh)"
+            description: "Cumulative burnup in MWh"
+
+      - name: core_config_raw
+        description: "Raw core configuration CSV files"
+        columns:
+          - name: Position
+            description: "Core position identifier"
+          - name: Type
+            description: "Element type"
+          - name: Element
+            description: "Element identifier"
+          - name: "U235 Burned (g)"
+            description: "U-235 burned in grams"
+          - name: config_date
+            description: "Date of configuration"
+          - name: config_type
+            description: "BOC or EOC"

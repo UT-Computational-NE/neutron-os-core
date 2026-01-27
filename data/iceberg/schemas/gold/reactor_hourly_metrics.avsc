@@ -1,0 +1,65 @@
+{
+  "type": "record",
+  "name": "ReactorHourlyMetrics",
+  "namespace": "neutron.gold",
+  "doc": "Hourly aggregated reactor metrics for operations dashboard",
+  "fields": [
+    {
+      "name": "hour",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Hour timestamp (start of hour)"
+    },
+    {
+      "name": "avg_power_kw",
+      "type": "double",
+      "doc": "Average linear power in kW"
+    },
+    {
+      "name": "max_power_kw",
+      "type": "double",
+      "doc": "Maximum linear power in kW"
+    },
+    {
+      "name": "min_power_kw",
+      "type": "double",
+      "doc": "Minimum linear power in kW"
+    },
+    {
+      "name": "avg_fuel_temp_c",
+      "type": "double",
+      "doc": "Average fuel temperature in Celsius"
+    },
+    {
+      "name": "max_fuel_temp_c",
+      "type": "double",
+      "doc": "Maximum fuel temperature in Celsius"
+    },
+    {
+      "name": "avg_water_temp_c",
+      "type": "double",
+      "doc": "Average pool water temperature in Celsius"
+    },
+    {
+      "name": "energy_kwh",
+      "type": "double",
+      "doc": "Total energy produced in kWh (integrated power)"
+    },
+    {
+      "name": "sample_count",
+      "type": "int",
+      "doc": "Number of samples in this hour"
+    },
+    {
+      "name": "data_quality_flag",
+      "type": {
+        "type": "enum",
+        "name": "DataQuality",
+        "symbols": ["GOOD", "PARTIAL", "INTERPOLATED", "MISSING"]
+      },
+      "doc": "Data quality indicator for this hour"
+    }
+  ]
+}
