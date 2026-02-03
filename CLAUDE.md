@@ -1,5 +1,28 @@
 # Neutron OS - Project Memory
 
+## Documentation Strategy
+
+### How to Avoid Duplication
+
+**Each document owns ONE vertical:**
+- **CONTRIBUTING.md** — Git workflow, branching, .gitignore maintenance
+- **CLAUDE.md** (this file) — Terminology, tech choices, project memory
+- **docs/README.md** — Documentation folder structure (ADR/PRD/specs)
+- **PUBLISHER_USAGE.md** — OneDrive publishing workflow
+
+**Golden Rule:** Link, don't duplicate. If you're repeating information, move it to the appropriate doc and link from others.
+
+**Example:** Don't repeat terminology in CONTRIBUTING.md. Instead, write "See CLAUDE.md terminology standards" with a link.
+
+### When to Update Documentation
+
+1. **Add a new tool/language?** → Update .gitignore + add pattern reference to CONTRIBUTING.md
+2. **New architectural decision?** → Create ADR in docs/adr/ + link from docs/README.md
+3. **New terminology or naming convention?** → Add to CLAUDE.md → link from CONTRIBUTING.md if relevant
+4. **New publishing workflow?** → Update PUBLISHER_USAGE.md → link from CONTRIBUTING.md
+
+---
+
 ## Git & Repository Standards
 
 ### .gitignore Philosophy

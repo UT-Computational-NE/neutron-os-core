@@ -1,11 +1,27 @@
 # Contributing to Neutron OS
 
+**Sections:**
+- [Development Setup](#development-setup)
+- [Git Workflow](#git-workflow)
+- [Code Conventions](#code-conventions)
+- [Documentation](#documentation)
+- [Standards & References](#standards--references)
+
 ## Development Setup
 
 ```bash
 git clone https://rsicc-gitlab.tacc.utexas.edu/neutron-os/neutron-os-core.git
 cd neutron_os
 # Your IDE will auto-detect .gitignore patterns
+```
+
+**Local Testing**
+```bash
+# Validate .gitignore patterns before committing
+git check-ignore -v your_file_pattern
+
+# Run full test suite before pushing
+bazel test //...
 ```
 
 ## Git Workflow
@@ -67,8 +83,41 @@ __pycache__/
 
 **Golden Rule:** If it's a file you don't want 100 copies of in git history, add it to `.gitignore`.
 
+## Code Conventions
+
+For naming, terminology, and architectural patterns, see [CLAUDE.md](CLAUDE.md).
+
+**Examples:**
+- Use `DataTransformer` not `Transformer` (see terminology standards in CLAUDE.md)
+- Use `Provider` not `Plugin` for extension system
+- PostgreSQL everywhere, no SQLite (see CLAUDE.md tech stack section)
+
+## Documentation
+
+### Writing Documentation
+
+See [docs/README.md](docs/README.md) for folder structure and conventions:
+- **ADR/** — Architecture Decision Records (technical decisions, immutable)
+- **PRD/** — Product Requirements (what we're building, user journeys)
+- **specs/** — Technical Specifications (how to build it)
+
+### Publishing Documentation
+
+When your docs are ready, see [PUBLISHER_USAGE.md](PUBLISHER_USAGE.md) for publishing to OneDrive.
+
+First-time publishers? Start with [PUBLISH_CHECKLIST.md](PUBLISH_CHECKLIST.md) to set up Azure credentials (one-time setup).
+
+### Generated Outputs
+
+- Generated Word docs go to `docs/_tools/generated/` (not alongside source markdown)
+- Mermaid diagrams for Word export: see `CLAUDE.md` → Mermaid Diagrams section
+
 ## Standards & References
 
-See [CLAUDE.md](CLAUDE.md) for documentation and terminology conventions.
+**Project Standards:**
+- [CLAUDE.md](CLAUDE.md) — Terminology, tech stack, project memory
+- [docs/README.md](docs/README.md) — Documentation structure & conventions
 
-Standard practices follow GitHub's [Python .gitignore template](https://github.com/github/gitignore/blob/main/Python.gitignore).
+**External References:**
+- [GitHub Python .gitignore](https://github.com/github/gitignore/blob/main/Python.gitignore) — Base patterns
+- [Bazel Documentation](https://bazel.build/docs) — Build system reference
