@@ -949,6 +949,7 @@ idaholab/DeepLynx/
 | 0.1 | 2026-01-15 | UT Team | Initial assessment |
 | 0.2 | 2026-01-15 | UT Team | **Major revision**: Added timeseries capabilities, INL TRIGA context |
 | 0.3 | 2026-01-28 | Ben Booth | **Architectural refactor**: Shifted from tight coupling to plugin architecture |
+| 0.4 | 2026-02-05 | Ben Booth | **Verification**: Confirmed assessment accuracy against Ryan Stewart's AGN-201 DT paper (Annals of Nuclear Energy, 2025) and DeepLynx Nexus v2 codebase. Key confirmation: DeepLynx uses DuckDB for timeseries (batch SQL), SignalR for events—validates "near real time" characterization from the paper. |
 
 ---
 

@@ -1,0 +1,38 @@
+DocFlow has been deployed successfully!
+
+{{- if .Values.ingress.enabled }}
+1. Access the API at:
+{{- range $host := .Values.ingress.hosts }}
+   https://{{ $host.host }}
+{{- end }}
+{{- else }}
+1. Forward the port to access the API locally:
+   kubectl port-forward svc/{{ include "docflow.fullname" . }}-api {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+   Then access: http://localhost:{{ .Values.service.port }}
+{{- end }}
+
+2. Check deployment status:
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "docflow.name" . }}
+
+3. View API logs:
+   kubectl logs -f deploy/{{ include "docflow.fullname" . }}-api -n {{ .Release.Namespace }}
+
+4. View Agent logs:
+   kubectl logs -f deploy/{{ include "docflow.fullname" . }}-agent -n {{ .Release.Namespace }}
+
+{{- if .Values.blueGreen.enabled }}
+
+Blue/Green Deployment:
+  Active color: {{ .Values.blueGreen.activeColor }}
+  
+  To switch traffic to a different color:
+    kubectl patch service {{ include "docflow.fullname" . }}-api \
+      -n {{ .Release.Namespace }} \
+      -p '{"spec":{"selector":{"docflow.io/color":"NEW_COLOR"}}}'
+{{- end }}
+
+5. Health check:
+   curl http://{{ include "docflow.fullname" . }}-api.{{ .Release.Namespace }}.svc.cluster.local/health
+
+Environment: {{ .Values.environment }}
+Version: {{ .Chart.AppVersion }}

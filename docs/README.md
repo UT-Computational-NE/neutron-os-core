@@ -11,6 +11,10 @@ docs/
 ├── prd/                      # Product Requirements Documents
 ├── specs/                    # Technical Specifications
 ├── scenarios/                # Analytics & use case scenarios
+├── strategy/                 # Business strategy & commercialization
+├── standards/                # Reusable frameworks & guides
+├── program/                  # Project-specific planning (OKRs, milestones)
+├── research/                 # Analysis, assessments, user research
 └── _tools/                   # Documentation generator scripts
 ```
 
@@ -87,6 +91,39 @@ Dashboard and analytics scenarios organized by tool:
 - ✅ "Inspector generates audit evidence package" - user story with steps
 - ❌ Generic requirements (→ prd/)
 - ❌ Implementation (→ specs/)
+
+### [`strategy/`](strategy/) - Business Strategy
+
+**What goes here:** Commercialization roadmaps, market positioning, business model documents.
+
+**Contents:**
+- [commercialization-roadmap.md](strategy/commercialization-roadmap.md) - Neutron OS vision, market opportunity, revenue models
+
+### [`standards/`](standards/) - Reusable Frameworks & Guides
+
+**What goes here:** Templates and methodologies applicable across projects.
+
+**Contents:**
+- [metrics-framework.md](standards/metrics-framework.md) - Platform success metrics by category
+- [stakeholder-interview-guide.md](standards/stakeholder-interview-guide.md) - How to conduct user research interviews
+- [mermaid-diagram-best-practices.md](standards/mermaid-diagram-best-practices.md) - Diagram conventions
+
+### [`program/`](program/) - Project-Specific Planning
+
+**What goes here:** Per-project OKRs, milestones, and roadmaps. Organized by project subfolder.
+
+**Structure:**
+- `program/triga/` - TRIGA Digital Twin planning
+  - [okrs-2026.md](program/triga/okrs-2026.md) - 2026 Objectives & Key Results
+
+### [`research/`](research/) - Analysis & User Research
+
+**What goes here:** Assessments, comparisons, user personas, grant applications.
+
+**Key documents:**
+- [user-personas.md](research/user-personas.md) - Target user "Why Chain" analysis
+- [deeplynx-assessment.md](research/deeplynx-assessment.md) - INL DeepLynx evaluation
+- [CINR_PreApp_Concept_Draft.md](research/CINR_PreApp_Concept_Draft.md) - CINR grant application
 
 ### [`_tools/`](_tools/) - Generator Scripts
 

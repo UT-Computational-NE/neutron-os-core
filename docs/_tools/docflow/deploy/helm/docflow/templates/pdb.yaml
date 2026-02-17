@@ -1,0 +1,39 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "docflow.fullname" . }}-api
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  {{- if .Values.podDisruptionBudget.api.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.api.minAvailable }}
+  {{- else if .Values.podDisruptionBudget.api.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.api.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "docflow.apiSelectorLabels" . | nindent 6 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "docflow.fullname" . }}-agent
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  {{- if .Values.podDisruptionBudget.agent.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.agent.minAvailable }}
+  {{- else if .Values.podDisruptionBudget.agent.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.agent.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "docflow.agentSelectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,366 @@
+# DocFlow Helm Chart - Default Values
+# Override these for specific environments (local, stage, prod)
+
+# =============================================================================
+# Global Configuration
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Environment: local, stage, prod
+environment: production
+
+# =============================================================================
+# Image Configuration
+# =============================================================================
+
+# Shared image settings
+image:
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# API Server image
+api:
+  image:
+    repository: ghcr.io/neutron-os/docflow-api
+    tag: ""  # Defaults to Chart appVersion
+
+# Agent Server image  
+agent:
+  image:
+    repository: ghcr.io/neutron-os/docflow-agent
+    tag: ""  # Defaults to Chart appVersion
+
+# =============================================================================
+# Replica Configuration
+# =============================================================================
+
+replicaCount:
+  api: 2
+  agent: 2
+
+# =============================================================================
+# API Server Configuration
+# =============================================================================
+
+api:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  env: {}
+  
+  # Additional environment from secrets/configmaps
+  envFrom: []
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Pod-level settings
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  # Pod annotations
+  podAnnotations: {}
+  
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # Container security context
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# =============================================================================
+# Agent Server Configuration
+# =============================================================================
+
+agent:
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 200m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+
+  env: {}
+  envFrom: []
+
+  # GPU support for local LLM inference
+  gpu:
+    enabled: false
+    count: 1
+    # Node selector for GPU nodes
+    nodeSelector:
+      nvidia.com/gpu: "true"
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+  livenessProbe:
+    tcpSocket:
+      port: ws
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    
+  readinessProbe:
+    tcpSocket:
+      port: ws
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+
+database:
+  # External database (recommended for stage/prod)
+  external:
+    enabled: true
+    host: ""
+    port: 5432
+    name: docflow
+    username: docflow
+    password: ""
+    # Use existing secret instead of password
+    existingSecret: ""
+    existingSecretKey: "password"
+    # SSL mode
+    sslMode: require
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+
+redis:
+  external:
+    enabled: true
+    host: ""
+    port: 6379
+    password: ""
+    existingSecret: ""
+    existingSecretKey: "password"
+
+# =============================================================================
+# LLM Configuration
+# =============================================================================
+
+llm:
+  # Provider: local, anthropic, openai
+  provider: local
+  
+  # Local LLM settings
+  endpoint: http://ollama:11434
+  model: llama3.2:8b
+  
+  # Embedding configuration
+  embedding:
+    model: nomic-embed-text-v1.5
+    endpoint: http://ollama:11434
+    # Cloud fallback
+    fallbackProvider: ""
+    fallbackApiKey: ""
+  
+  # Cloud fallback for when local is unavailable
+  fallback:
+    enabled: false
+    provider: anthropic  # anthropic, openai
+    existingSecret: ""
+    apiKeySecretKey: "api-key"
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+
+service:
+  api:
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+  agent:
+    type: ClusterIP
+    port: 8765
+    targetPort: 8765
+
+# =============================================================================
+# Ingress Configuration
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
+  hosts:
+    - host: docflow.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+        - path: /ws
+          pathType: Prefix
+          service: agent
+  tls:
+    - secretName: docflow-tls
+      hosts:
+        - docflow.example.com
+
+# =============================================================================
+# Autoscaling
+# =============================================================================
+
+autoscaling:
+  enabled: true
+  
+  api:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    
+  agent:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# =============================================================================
+# Pod Disruption Budget
+# =============================================================================
+
+podDisruptionBudget:
+  enabled: true
+  api:
+    minAvailable: 1
+  agent:
+    minAvailable: 1
+
+# =============================================================================
+# Service Account
+# =============================================================================
+
+serviceAccount:
+  create: true
+  annotations: {}
+  # AWS IRSA
+  # eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/docflow-role
+  name: ""
+
+# =============================================================================
+# Blue/Green Deployment
+# =============================================================================
+
+blueGreen:
+  enabled: false
+  # Active color (blue or green)
+  activeColor: blue
+  # Keep inactive deployment for quick rollback
+  keepInactive: true
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+
+monitoring:
+  enabled: true
+  
+  # Prometheus ServiceMonitor
+  serviceMonitor:
+    enabled: true
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+  # Grafana dashboards ConfigMap
+  dashboards:
+    enabled: true
+    
+  # Prometheus rules (alerts)
+  prometheusRules:
+    enabled: true
+
+# =============================================================================
+# Migrations
+# =============================================================================
+
+migrations:
+  enabled: true
+  # Run on Helm install/upgrade
+  runOnStartup: true
+  # Job settings
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+
+# =============================================================================
+# Extra Configuration
+# =============================================================================
+
+# Additional ConfigMap data
+extraConfigMap: {}
+
+# Additional Secret data  
+extraSecrets: {}
+
+# Additional volumes
+extraVolumes: []
+
+# Additional volume mounts
+extraVolumeMounts: []
+
+# Additional init containers
+extraInitContainers: []
+
+# Additional sidecar containers
+extraContainers: []

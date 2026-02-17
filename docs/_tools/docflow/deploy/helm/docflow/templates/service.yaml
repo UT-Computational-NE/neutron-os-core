@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docflow.fullname" . }}-api
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "docflow.apiSelectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docflow.fullname" . }}-agent
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 8765
+      targetPort: ws
+      protocol: TCP
+      name: ws
+  selector:
+    {{- include "docflow.agentSelectorLabels" . | nindent 4 }}
+{{- if .Values.blueGreen.enabled }}
+---
+# Blue/Green specific services for traffic switching
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docflow.fullname" . }}-api-{{ .Values.blueGreen.activeColor }}
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+    docflow.io/color: {{ .Values.blueGreen.activeColor }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "docflow.apiSelectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docflow.fullname" . }}-agent-{{ .Values.blueGreen.activeColor }}
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+    docflow.io/color: {{ .Values.blueGreen.activeColor }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8765
+      targetPort: ws
+      protocol: TCP
+      name: ws
+  selector:
+    {{- include "docflow.agentSelectorLabels" . | nindent 4 }}
+{{- end }}

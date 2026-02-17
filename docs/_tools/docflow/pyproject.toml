@@ -1,0 +1,144 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docflow"
+version = "0.1.0a1"
+description = "Document Lifecycle Management System - treats markdown files as source code"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Ben Booth", email = "bbooth@utexas.edu"},
+]
+keywords = [
+    "documentation",
+    "markdown",
+    "docx",
+    "workflow",
+    "publishing",
+    "review",
+    "rag",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Documentation",
+    "Topic :: Office/Business",
+    "Topic :: Software Development :: Libraries",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "python-docx>=0.8.11",
+    "typer>=0.9.0",
+    "rich>=13.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+# OneDrive/SharePoint integration
+onedrive = [
+    "msgraph-core>=0.2.2",
+    "azure-identity>=1.14.0",
+]
+
+# Google Drive integration
+google = [
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.100.0",
+]
+
+# Embedding and RAG
+embedding = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "langchain>=0.1.0",
+]
+
+# LLM providers
+llm = [
+    "anthropic>=0.7.0",
+    "openai>=1.0.0",
+]
+
+# Workflow orchestration
+langgraph = [
+    "langgraph>=0.0.1",
+    "langchain>=0.1.0",
+]
+
+# Development and testing
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.5.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.3.0",
+]
+
+# All optional dependencies
+all = [
+    "docflow[onedrive,google,embedding,llm,langgraph,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/UT-Neutron-OS/docflow"
+Documentation = "https://github.com/UT-Neutron-OS/docflow"
+Repository = "https://github.com/UT-Neutron-OS/docflow.git"
+Issues = "https://github.com/UT-Neutron-OS/docflow/issues"
+
+[project.scripts]
+docflow = "docflow.cli.main:app"
+
+[tool.setuptools]
+packages = ["docflow"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+docflow = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "-v --cov=docflow --cov-report=html --cov-report=term-missing"

@@ -1,0 +1,150 @@
+# DocFlow Helm values for local K3D development
+# Mirrors stage/prod configuration with minimal resources
+
+# Environment
+environment: local
+
+# Replica counts (minimal for local)
+replicaCount:
+  api: 1
+  agent: 1
+
+# API Server
+api:
+  image:
+    repository: registry.localhost:5111/docflow-api
+    tag: local
+    pullPolicy: Always
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  env:
+    DOCFLOW_ENV: local
+    LOG_LEVEL: debug
+    CORS_ORIGINS: "*"
+
+# Agent Server
+agent:
+  image:
+    repository: registry.localhost:5111/docflow-agent
+    tag: local
+    pullPolicy: Always
+
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 200m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+
+  env:
+    DOCFLOW_ENV: local
+    LOG_LEVEL: debug
+
+# Database configuration
+database:
+  external:
+    enabled: true
+    host: postgresql
+    port: 5432
+    name: docflow
+    username: docflow
+    existingSecret: ""
+    password: localdev
+
+# Redis configuration
+redis:
+  external:
+    enabled: true
+    host: redis-master
+    port: 6379
+
+# LLM Configuration
+llm:
+  provider: local
+  endpoint: http://ollama:11434
+  model: llama3.2:8b
+  
+  # Embedding model
+  embedding:
+    model: nomic-embed-text
+    endpoint: http://ollama:11434
+
+  # Fallback disabled for local
+  fallback:
+    enabled: false
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: docflow.localhost
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+        - path: /ws
+          pathType: Prefix
+          service: agent
+  tls: []
+
+# Service configuration
+service:
+  api:
+    type: ClusterIP
+    port: 80
+  agent:
+    type: ClusterIP
+    port: 8765
+
+# Autoscaling disabled for local
+autoscaling:
+  enabled: false
+
+# Pod Disruption Budget disabled for local
+podDisruptionBudget:
+  enabled: false
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+
+# Blue/Green disabled for local
+blueGreen:
+  enabled: false
+
+# Monitoring
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+
+# Init containers for migrations
+migrations:
+  enabled: true
+  runOnStartup: true
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5

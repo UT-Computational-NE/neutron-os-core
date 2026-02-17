@@ -1,0 +1,158 @@
+# Staging environment values
+# Optimized for testing with moderate resources
+
+environment: staging
+logLevel: debug
+logFormat: json
+
+# Image configuration
+api:
+  image:
+    repository: registry.gitlab.example.com/neutron-os/docflow/api
+    pullPolicy: Always
+    tag: ""  # Set by CI
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  workers: 2
+
+agent:
+  image:
+    repository: registry.gitlab.example.com/neutron-os/docflow/agent
+    pullPolicy: Always
+    tag: ""  # Set by CI
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+  gpu:
+    enabled: false
+
+# Replica counts (before autoscaling)
+replicaCount:
+  api: 2
+  agent: 1
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: docflow-stage.example.com
+      path: /
+      pathType: Prefix
+  tls:
+    - secretName: docflow-stage-tls
+      hosts:
+        - docflow-stage.example.com
+  exposeAgent: true
+
+# External database (managed by Terraform)
+externalDatabase:
+  enabled: true
+  host: ""  # Set by CI from Terraform output
+  port: 5432
+  database: docflow
+  user: docflow
+  # Password from secret
+
+# External Redis (managed by Terraform)
+externalRedis:
+  enabled: true
+  host: ""  # Set by CI from Terraform output
+  port: 6379
+
+# LLM configuration for staging
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  endpoint: https://api.openai.com/v1
+  embeddingModel: text-embedding-3-small
+  maxTokens: 4096
+  temperature: 0.7
+  # API key from secret
+  fallback:
+    enabled: false
+
+# RAG configuration
+rag:
+  chunkSize: 1000
+  chunkOverlap: 200
+  topK: 5
+  similarityThreshold: 0.7
+
+# Embedding cache
+embeddingCache:
+  enabled: true
+  ttl: 86400
+
+# Autoscaling - moderate for staging
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  agent:
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 70
+
+# PDB - relaxed for staging
+podDisruptionBudget:
+  enabled: true
+  api:
+    minAvailable: 1
+  agent:
+    minAvailable: 0
+
+# Service account
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: ""  # Set for IAM roles for service accounts
+
+# Pod security
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+# Metrics
+metrics:
+  enabled: true
+
+# Tracing
+tracing:
+  enabled: false
+
+# Secrets (names of k8s secrets)
+secrets:
+  database: docflow-db-credentials
+  redis: docflow-redis-credentials
+  llm: docflow-llm-credentials
+
+# Image pull secrets for private registry
+imagePullSecrets:
+  - name: gitlab-registry-credentials

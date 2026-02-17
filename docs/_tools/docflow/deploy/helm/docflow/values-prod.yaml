@@ -1,0 +1,201 @@
+# Production environment values
+# Optimized for reliability, performance, and high availability
+
+environment: production
+logLevel: info
+logFormat: json
+
+# Image configuration
+api:
+  image:
+    repository: registry.gitlab.example.com/neutron-os/docflow/api
+    pullPolicy: IfNotPresent
+    tag: ""  # Set by CI
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+  workers: 4
+
+agent:
+  image:
+    repository: registry.gitlab.example.com/neutron-os/docflow/agent
+    pullPolicy: IfNotPresent
+    tag: ""  # Set by CI
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 2000m
+  gpu:
+    enabled: false  # Set to true if using GPU instances
+
+# Replica counts (before autoscaling)
+replicaCount:
+  api: 3
+  agent: 2
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+
+# Blue/Green deployment
+blueGreen:
+  enabled: true
+  activeColor: blue  # or green
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1s"
+  hosts:
+    - host: docflow.example.com
+      path: /
+      pathType: Prefix
+  tls:
+    - secretName: docflow-prod-tls
+      hosts:
+        - docflow.example.com
+  exposeAgent: true
+
+# External database (managed by Terraform)
+externalDatabase:
+  enabled: true
+  host: ""  # Set by CI from Terraform output
+  port: 5432
+  database: docflow
+  user: docflow
+  # Password from secret
+
+# External Redis (managed by Terraform)
+externalRedis:
+  enabled: true
+  host: ""  # Set by CI from Terraform output
+  port: 6379
+
+# LLM configuration for production
+llm:
+  provider: openai
+  model: gpt-4o
+  endpoint: https://api.openai.com/v1
+  embeddingModel: text-embedding-3-large
+  maxTokens: 8192
+  temperature: 0.5
+  # API key from secret
+  fallback:
+    enabled: true
+    provider: anthropic
+    model: claude-3-sonnet
+    endpoint: https://api.anthropic.com/v1
+
+# RAG configuration - tuned for production
+rag:
+  chunkSize: 1000
+  chunkOverlap: 200
+  topK: 7
+  similarityThreshold: 0.75
+
+# Embedding cache
+embeddingCache:
+  enabled: true
+  ttl: 604800  # 7 days
+
+# Autoscaling - aggressive for production
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+  agent:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+# PDB - strict for production
+podDisruptionBudget:
+  enabled: true
+  api:
+    minAvailable: 2
+  agent:
+    minAvailable: 1
+
+# Service account with IAM role
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: ""  # Set for IAM roles for service accounts
+
+# Pod security
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Affinity for spreading across AZs
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - docflow
+          topologyKey: topology.kubernetes.io/zone
+
+# Node selector for production node group
+nodeSelector:
+  node.kubernetes.io/environment: production
+
+# Metrics
+metrics:
+  enabled: true
+
+# Tracing
+tracing:
+  enabled: true
+
+# Secrets (names of k8s secrets)
+secrets:
+  database: docflow-db-credentials
+  redis: docflow-redis-credentials
+  llm: docflow-llm-credentials
+
+# Image pull secrets for private registry
+imagePullSecrets:
+  - name: gitlab-registry-credentials
+
+# Extra environment variables
+extraConfig:
+  CORS_ORIGINS: "https://docflow.example.com,https://docs.example.com"
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_REQUESTS: "100"
+  RATE_LIMIT_WINDOW: "60"

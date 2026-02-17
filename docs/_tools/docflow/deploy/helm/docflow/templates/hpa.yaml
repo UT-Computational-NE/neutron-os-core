@@ -1,0 +1,65 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "docflow.fullname" . }}-api
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docflow.fullname" . }}-api
+  minReplicas: {{ .Values.autoscaling.api.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.api.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.api.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetMemoryUtilizationPercentage }}
+    {{- end }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "docflow.fullname" . }}-agent
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docflow.fullname" . }}-agent
+  minReplicas: {{ .Values.autoscaling.agent.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.agent.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.agent.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.agent.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.agent.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.agent.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

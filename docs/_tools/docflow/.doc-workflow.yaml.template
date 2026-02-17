@@ -1,0 +1,163 @@
+# DocFlow Configuration Template
+# Copy to .doc-workflow.yaml in your repository root and customize
+
+# Git branch configuration
+git:
+  # Branches that trigger publishing to canonical URLs
+  publish_branches:
+    - main
+    - release/*
+  
+  # Branches that generate local drafts only
+  draft_branches:
+    - feature/*
+    - dev
+  
+  # Require clean working directory before publishing
+  require_clean: true
+  
+  # Require all commits to be pushed before publishing
+  require_pushed: true
+
+
+# Document storage configuration
+storage:
+  # Provider: onedrive, google, local
+  provider: onedrive
+  
+  # OneDrive/SharePoint configuration
+  onedrive:
+    # MS Graph API credentials (use environment variables for secrets)
+    client_id: ${MS_GRAPH_CLIENT_ID}
+    client_secret: ${MS_GRAPH_CLIENT_SECRET}
+    tenant_id: ${MS_GRAPH_TENANT_ID}
+    
+    # Folder paths where documents are stored
+    draft_folder: /Documents/Drafts/
+    published_folder: /Documents/Published/
+    archive_folder: /Documents/Published/Archive/
+  
+  # Local filesystem (for testing/development)
+  # local:
+  #   root: ./generated
+
+
+# Notification configuration
+notifications:
+  # Provider: smtp, sendgrid, teams
+  provider: smtp
+  
+  # SMTP configuration
+  smtp:
+    host: smtp.utexas.edu
+    port: 587
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    from_address: docflow@utexas.edu
+
+
+# Review period configuration
+review:
+  # Default review duration (days)
+  default_review_days: 7
+  
+  # Auto-extend review if requested
+  auto_extend_on_request: true
+  
+  # Days before deadline to send reminders
+  remind_days_before:
+    - 3
+    - 1
+
+
+# Embedding and RAG configuration
+embedding:
+  enabled: true
+  
+  # Provider: chromadb, pinecone, pgvector
+  provider: chromadb
+  
+  # ChromaDB (simple, local)
+  # chromadb:
+  #   path: ./.docflow/embeddings
+  
+  # Pinecone (cloud, production)
+  # pinecone:
+  #   api_key: ${PINECONE_API_KEY}
+  #   environment: production
+  
+  # pgvector (PostgreSQL)
+  # pgvector:
+  #   connection_string: postgresql://user:password@localhost/docflow
+  
+  # Collection name
+  collection_name: neutron_os_docs
+  
+  # Embedding model (HuggingFace identifier)
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  
+  # Batch size for embedding
+  batch_size: 10
+
+
+# LLM configuration
+llm:
+  # Provider: anthropic, openai
+  provider: anthropic
+  
+  # Model selection
+  model: claude-3-5-haiku-20241022  # Cheapest Claude model
+  
+  # API keys (use environment variables)
+  anthropic_api_key: ${ANTHROPIC_API_KEY}
+  
+  # Model parameters
+  temperature: 0.3  # More deterministic (0.0-1.0)
+  max_tokens: 2048
+
+
+# Autonomy configuration (RACI-based approval gating)
+autonomy:
+  # Default autonomy level for all actions
+  # Levels: manual, suggest, confirm, notify, autonomous
+  default_level: suggest
+  
+  # Per-action overrides
+  actions:
+    # Poll for new/updated documents (safe, read-only)
+    poll_for_comments: autonomous
+    
+    # Fetch comments from cloud storage (safe, read-only)
+    fetch_comments: autonomous
+    
+    # Analyze comments with LLM (low risk)
+    analyze_feedback: notify
+    
+    # Update source .md files with feedback (CRITICAL)
+    update_source_file: suggest
+    
+    # Republish already-approved documents (safe)
+    republish_approved_doc: confirm
+    
+    # Publish new documents (important first-time decision)
+    republish_new_doc: suggest
+    
+    # Promote draft to published (important decision)
+    promote_draft: suggest
+    
+    # Archive old versions (safe)
+    archive_version: notify
+
+
+# Polling and scheduling
+poll_interval_seconds: 900  # 15 minutes
+
+# Document root directory
+docs_root: docs
+
+# State and registry files
+state_file: .docflow/state.db
+registry_file: .doc-registry.json
+
+# Logging
+log_level: INFO

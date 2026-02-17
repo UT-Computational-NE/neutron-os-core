@@ -83,9 +83,63 @@ def add_bookmark(paragraph, bookmark_name, bookmark_id=0):
     return bookmark_name
 
 
+def add_word_toc_field(doc, toc_depth=3):
+    r"""
+    Add a proper Word field TOC that Office 365 recognizes and allows refreshing.
+    
+    This creates the standard Word TOC field code \o "1-3" \h \z \u
+    which generates from actual heading styles in the document.
+    
+    Args:
+        doc: The Word document
+        toc_depth: Maximum heading level to include (default 3)
+    """
+    # Add TOC heading
+    toc_heading = doc.add_heading('Table of Contents', level=1)
+    set_paragraph_spacing(toc_heading, before=0, after=12)
+    
+    # Add TOC paragraph with field code
+    toc_paragraph = doc.add_paragraph()
+    
+    # Create the field code XML
+    # \o "1-3" = outline levels 1-3, \h = hyperlinks, \z = hide page numbers in web view, \u = use outline level
+    field_xml = (
+        f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f'<w:fldChar w:fldCharType="begin"/>'
+        f'</w:r>'
+        f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f'<w:instrText xml:space="preserve"> TOC \\o "1-{toc_depth}" \\h \\z \\u </w:instrText>'
+        f'</w:r>'
+        f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f'<w:fldChar w:fldCharType="separate"/>'
+        f'</w:r>'
+        f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f'<w:fldChar w:fldCharType="end"/>'
+        f'</w:r>'
+    )
+    
+    # Insert field XML directly into paragraph
+    for field_element_xml in field_xml.split('</w:r>')[:-1]:
+        if field_element_xml.strip():
+            field_element_xml += '</w:r>'
+            try:
+                field_element = parse_xml(field_element_xml)
+                toc_paragraph._p.append(field_element)
+            except Exception as e:
+                print(f"Warning: Could not insert TOC field: {e}")
+    
+    set_paragraph_spacing(toc_paragraph, after=12)
+    
+    # Add a page break after TOC
+    doc.add_page_break()
+
+
 def add_table_of_contents(doc, headings, bookmarks, toc_depth=3):
     """
     Add a static Table of Contents with hyperlinks to the document.
+    
+    This is the legacy implementation that creates a manually-formatted TOC.
+    For Office 365 refreshable TOC, use add_word_toc_field() instead.
     
     Args:
         doc: The Word document
@@ -781,8 +835,18 @@ def add_mermaid_to_doc(doc, mermaid_code: str):
         set_paragraph_spacing(p, after=12)
 
 
-def markdown_to_docx(input_file: str, output_file: str, pregenerated_images: dict = None, verbose: bool = True):
-    """Convert markdown file to Word document."""
+def markdown_to_docx(input_file: str, output_file: str, pregenerated_images: dict = None, verbose: bool = True, generate_bookmarks: bool = False, generate_toc: bool = False):
+    """Convert markdown file to Word document.
+    
+    Args:
+        input_file: Path to markdown file
+        output_file: Path to output Word document
+        pregenerated_images: Dict of pregenerated mermaid images
+        verbose: Print progress messages
+        generate_bookmarks: Whether to create Word bookmarks for headings (default: False)
+        generate_toc: Whether to generate Table of Contents (default: False)
+                     When True, uses proper Word field code that Office 365 recognizes as refreshable
+    """
     # Read markdown content
     with open(input_file, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -816,14 +880,17 @@ def markdown_to_docx(input_file: str, output_file: str, pregenerated_images: dic
             # Bookmark pre-registered
             
             # Add to TOC entries
-            toc_entries.append({
-                'level': block['level'],
-                'text': plain_text,
-                'bookmark': bookmark_name
-            })
+            if generate_toc:
+                toc_entries.append({
+                    'level': block['level'],
+                    'text': plain_text,
+                    'bookmark': bookmark_name
+                })
     
-    # Add Table of Contents with hyperlinks
-    add_table_of_contents(doc, toc_entries, bookmarks, toc_depth=3)
+    # Generate Table of Contents if requested
+    if generate_toc:
+        # Use proper Word field code TOC that Office 365 recognizes and can refresh
+        add_word_toc_field(doc, toc_depth=3)
     
     # Second pass: process blocks with bookmarks available
     diagram_count = 0
@@ -876,10 +943,10 @@ def markdown_to_docx(input_file: str, output_file: str, pregenerated_images: dic
                 else:
                     bookmark_name = bookmarks.get(plain_text.lower(), None)
                 
-                if bookmark_name:
+                if generate_bookmarks and bookmark_name:
                     # Actually create the bookmark in the document
                     add_bookmark(p, bookmark_name, bookmark_id)
-                bookmark_id += 1
+                    bookmark_id += 1
         
         elif block_type == 'paragraph':
             p = doc.add_paragraph()
@@ -900,6 +967,7 @@ def markdown_to_docx(input_file: str, output_file: str, pregenerated_images: dic
         
         elif block_type == 'list':
             list_type = block.get('list_type', 'bullet')
+            
             for idx, item in enumerate(block['content']):
                 # Handle both old format (string) and new format (dict with text/level)
                 if isinstance(item, dict):
@@ -909,25 +977,40 @@ def markdown_to_docx(input_file: str, output_file: str, pregenerated_images: dic
                     item_text = item
                     item_level = 0
                 
-                # Choose style based on item type
-                if item_level == 0:
-                    p = doc.add_paragraph(style=f'List {"Bullet" if list_type == "bullet" else "Number"}')
-                    apply_inline_formatting(p, item_text, bookmarks)
-                else:
-                    # Use normal paragraph with hanging indent for nested items
-                    p = doc.add_paragraph()
-                    # Hanging indent: left_indent for overall indent, first_line_indent negative to pull bullet back
-                    base_indent = Inches(0.5)  # Standard list indent
-                    level_indent = Inches(0.5 * item_level)  # Additional indent per nesting level
-                    p.paragraph_format.left_indent = base_indent + level_indent
-                    p.paragraph_format.first_line_indent = Inches(-0.25)  # Hanging indent for bullet
-                    # Add bullet character and space
-                    bullet_run = p.add_run('○ ')  # White circle bullet for nested items
-                    bullet_run.font.name = 'Calibri'
-                    # Add the item text
-                    apply_inline_formatting(p, item_text, bookmarks)
+                # Create paragraph without Word list styles (which have unpredictable indent)
+                p = doc.add_paragraph()
                 
-                set_paragraph_spacing(p, after=2)
+                # Consistent hanging indent for all list items
+                base_indent = Inches(0.25)      # Overall list indent
+                level_indent = Inches(0.25 * item_level)  # Additional indent per nesting level (reduced from 0.5)
+                p.paragraph_format.left_indent = base_indent + level_indent
+                p.paragraph_format.first_line_indent = Inches(-0.25)  # Negative hangindent pulls bullet back
+                
+                # Add bullet or number
+                if list_type == 'bullet':
+                    if item_level == 0:
+                        bullet_char = '• '  # Standard bullet
+                    else:
+                        bullet_char = '◦ '  # Nested bullet (hollow circle)
+                else:  # Numbered list
+                    # For simplicity, use dashes for nested numbered items
+                    if item_level == 0:
+                        bullet_char = f'{item.get("number", "•")} '  # Would need to track number in parser
+                    else:
+                        bullet_char = '- '  # Nested item under numbered
+                
+                bullet_run = p.add_run(bullet_char)
+                bullet_run.font.name = 'Calibri'
+                bullet_run.font.size = Pt(11)
+                
+                # Add the item text
+                apply_inline_formatting(p, item_text, bookmarks)
+                
+                # Spacing: more before first item, less between items
+                if idx == 0:
+                    set_paragraph_spacing(p, before=6, after=3)  # Space before list
+                else:
+                    set_paragraph_spacing(p, before=0, after=3)  # Space between items
         
         elif block_type == 'table':
             table_data = block['content']
@@ -970,6 +1053,8 @@ def main():
     parser.add_argument('source', help='Input markdown file')
     parser.add_argument('output', nargs='?', help='Output Word document')
     parser.add_argument('--pregenerate', action='store_true', help='Pre-generate all diagrams')
+    parser.add_argument('--bookmarks', action='store_true', help='Generate Word bookmarks for headings (default: disabled)')
+    parser.add_argument('--toc', action='store_true', help='Generate Table of Contents using Word field code (default: disabled)')
     
     args = parser.parse_args()
     
@@ -1028,7 +1113,7 @@ def main():
             print(f"Pregeneration complete: {success_count} rendered, {fail_count} failed\n", flush=True)
     
     # Convert markdown to Word
-    markdown_to_docx(args.source, str(output_file), pregenerated)
+    markdown_to_docx(args.source, str(output_file), pregenerated, generate_bookmarks=args.bookmarks, generate_toc=args.toc)
     
     # Save cache
     save_diagram_cache()

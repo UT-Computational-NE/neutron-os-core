@@ -1,0 +1,66 @@
+# PostgreSQL with pgvector for local development
+# Matches stage/prod schema but with minimal resources
+
+auth:
+  postgresPassword: localdev
+  username: docflow
+  password: localdev
+  database: docflow
+
+primary:
+  # Initialize pgvector extension
+  initdb:
+    scripts:
+      init-extensions.sql: |
+        -- Enable required extensions
+        CREATE EXTENSION IF NOT EXISTS vector;
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        
+        -- Create schema for DocFlow
+        CREATE SCHEMA IF NOT EXISTS docflow;
+        
+        -- Grant permissions
+        GRANT ALL ON SCHEMA docflow TO docflow;
+        GRANT ALL ON ALL TABLES IN SCHEMA docflow TO docflow;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA docflow TO docflow;
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  # PostgreSQL configuration
+  configuration: |
+    # Memory settings for local dev
+    shared_buffers = 128MB
+    work_mem = 16MB
+    maintenance_work_mem = 64MB
+    
+    # Enable extensions
+    shared_preload_libraries = 'vector'
+    
+    # Logging
+    log_statement = 'all'
+    log_duration = on
+    
+    # Performance
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+
+# Disable read replicas for local
+architecture: standalone
+
+# Metrics for debugging
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false

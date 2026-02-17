@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docflow.fullname" . }}-config
+  labels:
+    {{- include "docflow.labels" . | nindent 4 }}
+data:
+  # Application configuration
+  ENVIRONMENT: {{ .Values.environment | quote }}
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.logFormat | quote }}
+  
+  # API configuration
+  API_HOST: "0.0.0.0"
+  API_PORT: "8080"
+  API_WORKERS: {{ .Values.api.workers | default 4 | quote }}
+  
+  # Agent configuration
+  AGENT_HOST: "0.0.0.0"
+  AGENT_PORT: "8765"
+  
+  # LLM configuration
+  LLM_PROVIDER: {{ .Values.llm.provider | quote }}
+  LLM_MODEL: {{ .Values.llm.model | quote }}
+  LLM_ENDPOINT: {{ .Values.llm.endpoint | quote }}
+  LLM_EMBEDDING_MODEL: {{ .Values.llm.embeddingModel | quote }}
+  LLM_MAX_TOKENS: {{ .Values.llm.maxTokens | default 4096 | quote }}
+  LLM_TEMPERATURE: {{ .Values.llm.temperature | default 0.7 | quote }}
+  
+  # RAG configuration
+  RAG_CHUNK_SIZE: {{ .Values.rag.chunkSize | default 1000 | quote }}
+  RAG_CHUNK_OVERLAP: {{ .Values.rag.chunkOverlap | default 200 | quote }}
+  RAG_TOP_K: {{ .Values.rag.topK | default 5 | quote }}
+  RAG_SIMILARITY_THRESHOLD: {{ .Values.rag.similarityThreshold | default 0.7 | quote }}
+  
+  # Embedding cache configuration
+  EMBEDDING_CACHE_ENABLED: {{ .Values.embeddingCache.enabled | quote }}
+  EMBEDDING_CACHE_TTL: {{ .Values.embeddingCache.ttl | default 86400 | quote }}
+  
+  # Feature flags
+  ENABLE_METRICS: {{ .Values.metrics.enabled | quote }}
+  ENABLE_TRACING: {{ .Values.tracing.enabled | quote }}
+  
+  {{- with .Values.extraConfig }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}

@@ -1,0 +1,64 @@
+# K3D Cluster Configuration for DocFlow Local Development
+# Creates a lightweight Kubernetes cluster mirroring stage/prod config
+
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: docflow-local
+servers: 1
+agents: 2
+kubeAPI:
+  host: "localhost"
+  hostIP: "127.0.0.1"
+  hostPort: "6443"
+image: rancher/k3s:v1.28.5-k3s1
+ports:
+  # HTTP ingress
+  - port: 8080:80
+    nodeFilters:
+      - loadbalancer
+  # HTTPS ingress
+  - port: 8443:443
+    nodeFilters:
+      - loadbalancer
+  # PostgreSQL (for direct access)
+  - port: 5432:5432
+    nodeFilters:
+      - loadbalancer
+  # Agent WebSocket
+  - port: 8765:8765
+    nodeFilters:
+      - loadbalancer
+  # Grafana
+  - port: 3000:3000
+    nodeFilters:
+      - loadbalancer
+options:
+  k3d:
+    wait: true
+    timeout: "120s"
+  k3s:
+    extraArgs:
+      # Disable traefik, we'll use nginx-ingress
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+# Local container registry
+registries:
+  create:
+    name: registry.localhost
+    host: "0.0.0.0"
+    hostPort: "5111"
+  config: |
+    mirrors:
+      "registry.localhost:5111":
+        endpoint:
+          - http://registry.localhost:5111
+# Persistent storage
+volumes:
+  - volume: /tmp/k3d-docflow-storage:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - all

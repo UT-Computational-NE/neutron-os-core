@@ -1,0 +1,39 @@
+# Redis for local development
+# Used for caching, session storage, and pub/sub
+
+architecture: standalone
+
+auth:
+  enabled: false  # No auth for local dev
+
+master:
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: local-path
+
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 200m
+
+  configuration: |
+    maxmemory 100mb
+    maxmemory-policy allkeys-lru
+
+# Disable replicas for local
+replica:
+  replicaCount: 0
+
+# Disable sentinel for local
+sentinel:
+  enabled: false
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false

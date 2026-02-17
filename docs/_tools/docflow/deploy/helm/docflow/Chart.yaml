@@ -1,0 +1,30 @@
+apiVersion: v2
+name: docflow
+description: |
+  DocFlow - AI-powered documentation workflow system.
+  Provides document management, RAG-based search, and collaborative workflows.
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - documentation
+  - workflow
+  - ai
+  - rag
+  - collaboration
+
+home: https://github.com/neutron-os/docflow
+sources:
+  - https://github.com/neutron-os/docflow
+
+maintainers:
+  - name: Neutron OS Team
+    email: team@neutron-os.dev
+
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: productivity
+
+dependencies: []

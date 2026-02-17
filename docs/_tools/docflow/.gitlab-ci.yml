@@ -1,0 +1,413 @@
+# DocFlow GitLab CI/CD Pipeline
+# Supports: test → build → deploy-stage → deploy-prod (blue/green)
+
+stages:
+  - test
+  - build
+  - security
+  - deploy-stage
+  - integration-test
+  - deploy-prod-prep
+  - deploy-prod-switch
+  - cleanup
+
+# =============================================================================
+# Variables
+# =============================================================================
+
+variables:
+  DOCKER_REGISTRY: $CI_REGISTRY
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  HELM_REPO: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/helm/api/stable/charts
+  
+  # Kubernetes namespaces
+  STAGE_NAMESPACE: docflow-stage
+  PROD_NAMESPACE: docflow-prod
+  
+  # AWS region
+  AWS_REGION: us-east-1
+  
+  # Python version
+  PYTHON_VERSION: "3.11"
+
+# =============================================================================
+# Templates
+# =============================================================================
+
+.python-base:
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - pip install --upgrade pip
+    - pip install -e ".[dev]"
+
+.docker-base:
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+.k8s-base:
+  image: alpine/k8s:1.28.4
+  before_script:
+    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+    - aws configure set region $AWS_REGION
+
+# =============================================================================
+# Test Stage
+# =============================================================================
+
+test:unit:
+  extends: .python-base
+  stage: test
+  services:
+    - name: pgvector/pgvector:pg15
+      alias: postgres
+  variables:
+    POSTGRES_DB: test
+    POSTGRES_USER: test
+    POSTGRES_PASSWORD: test
+    DATABASE_URL: postgresql://test:test@postgres:5432/test
+  script:
+    - pytest tests/unit/ -v --cov=docflow --cov-report=xml --cov-report=term
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 1 week
+
+test:integration:
+  extends: .python-base
+  stage: test
+  services:
+    - name: pgvector/pgvector:pg15
+      alias: postgres
+    - name: redis:7
+      alias: redis
+  variables:
+    POSTGRES_DB: test
+    POSTGRES_USER: test
+    POSTGRES_PASSWORD: test
+    DATABASE_URL: postgresql://test:test@postgres:5432/test
+    REDIS_URL: redis://redis:6379
+  script:
+    - pytest tests/integration/ -v
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_ID
+
+lint:
+  extends: .python-base
+  stage: test
+  script:
+    - pip install ruff mypy
+    - ruff check src/
+    - ruff format --check src/
+    - mypy src/docflow --ignore-missing-imports
+  allow_failure: false
+
+scrub-check:
+  extends: .python-base
+  stage: test
+  script:
+    - python scripts/scrub_for_oss.py . --check
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_ID
+  allow_failure: true  # Warning only until OSS release
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+
+build:api:
+  extends: .docker-base
+  stage: build
+  script:
+    - docker build -t $DOCKER_IMAGE/api:$CI_COMMIT_SHA -f docker/Dockerfile.api .
+    - docker push $DOCKER_IMAGE/api:$CI_COMMIT_SHA
+    - |
+      if [ "$CI_COMMIT_TAG" ]; then
+        docker tag $DOCKER_IMAGE/api:$CI_COMMIT_SHA $DOCKER_IMAGE/api:$CI_COMMIT_TAG
+        docker tag $DOCKER_IMAGE/api:$CI_COMMIT_SHA $DOCKER_IMAGE/api:latest
+        docker push $DOCKER_IMAGE/api:$CI_COMMIT_TAG
+        docker push $DOCKER_IMAGE/api:latest
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+
+build:agent:
+  extends: .docker-base
+  stage: build
+  script:
+    - docker build -t $DOCKER_IMAGE/agent:$CI_COMMIT_SHA -f docker/Dockerfile.agent .
+    - docker push $DOCKER_IMAGE/agent:$CI_COMMIT_SHA
+    - |
+      if [ "$CI_COMMIT_TAG" ]; then
+        docker tag $DOCKER_IMAGE/agent:$CI_COMMIT_SHA $DOCKER_IMAGE/agent:$CI_COMMIT_TAG
+        docker tag $DOCKER_IMAGE/agent:$CI_COMMIT_SHA $DOCKER_IMAGE/agent:latest
+        docker push $DOCKER_IMAGE/agent:$CI_COMMIT_TAG
+        docker push $DOCKER_IMAGE/agent:latest
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+
+build:helm:
+  stage: build
+  image: alpine/helm:3.13
+  script:
+    - helm lint deploy/helm/docflow
+    - helm package deploy/helm/docflow --version ${CI_COMMIT_TAG:-0.0.0-$CI_COMMIT_SHA}
+    - |
+      curl --request POST \
+        --form "chart=@docflow-${CI_COMMIT_TAG:-0.0.0-$CI_COMMIT_SHA}.tgz" \
+        --user gitlab-ci-token:$CI_JOB_TOKEN \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/helm/api/stable/charts"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+
+build:python:
+  extends: .python-base
+  stage: build
+  script:
+    - pip install build twine
+    - python -m build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_TAG
+
+# =============================================================================
+# Security Stage
+# =============================================================================
+
+security:trivy:
+  stage: security
+  image: aquasec/trivy:latest
+  script:
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKER_IMAGE/api:$CI_COMMIT_SHA
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKER_IMAGE/agent:$CI_COMMIT_SHA
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+
+security:dependency:
+  extends: .python-base
+  stage: security
+  script:
+    - pip install safety
+    - safety check --full-report
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# =============================================================================
+# Deploy Stage
+# =============================================================================
+
+deploy:stage:
+  extends: .k8s-base
+  stage: deploy-stage
+  environment:
+    name: stage
+    url: https://docflow-stage.example.com
+  script:
+    - aws eks update-kubeconfig --name docflow-stage --region $AWS_REGION
+    - |
+      helm upgrade --install docflow \
+        --repo $HELM_REPO docflow \
+        --version 0.0.0-$CI_COMMIT_SHA \
+        --namespace $STAGE_NAMESPACE \
+        --create-namespace \
+        --values deploy/helm/docflow/values-stage.yaml \
+        --set api.image.tag=$CI_COMMIT_SHA \
+        --set agent.image.tag=$CI_COMMIT_SHA \
+        --wait --timeout 10m
+    - kubectl rollout status deployment/docflow-api -n $STAGE_NAMESPACE --timeout=5m
+    - kubectl rollout status deployment/docflow-agent -n $STAGE_NAMESPACE --timeout=5m
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+test:stage-integration:
+  extends: .python-base
+  stage: integration-test
+  environment:
+    name: stage
+  script:
+    - pytest tests/integration/ -v --env=stage
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - deploy:stage
+
+# =============================================================================
+# Production Deploy (Blue/Green)
+# =============================================================================
+
+# Deploy to inactive color
+deploy:prod-blue:
+  extends: .k8s-base
+  stage: deploy-prod-prep
+  environment:
+    name: prod-blue
+    url: https://docflow-blue.example.com
+  script:
+    - aws eks update-kubeconfig --name docflow-prod --region $AWS_REGION
+    - |
+      helm upgrade --install docflow-blue \
+        --repo $HELM_REPO docflow \
+        --version ${CI_COMMIT_TAG} \
+        --namespace $PROD_NAMESPACE \
+        --values deploy/helm/docflow/values-prod.yaml \
+        --set blueGreen.enabled=true \
+        --set blueGreen.activeColor=blue \
+        --set api.image.tag=$CI_COMMIT_SHA \
+        --set agent.image.tag=$CI_COMMIT_SHA \
+        --wait --timeout 10m
+    - kubectl rollout status deployment/docflow-api-blue -n $PROD_NAMESPACE --timeout=5m
+    - kubectl rollout status deployment/docflow-agent-blue -n $PROD_NAMESPACE --timeout=5m
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual
+
+# Run smoke tests on blue
+test:prod-smoke:
+  extends: .k8s-base
+  stage: deploy-prod-prep
+  script:
+    - aws eks update-kubeconfig --name docflow-prod --region $AWS_REGION
+    - |
+      kubectl run smoke-test --rm -it --restart=Never \
+        --namespace $PROD_NAMESPACE \
+        --image=$DOCKER_IMAGE/api:$CI_COMMIT_SHA \
+        -- pytest tests/smoke/ -v
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - deploy:prod-blue
+
+# Switch traffic to blue
+switch:to-blue:
+  extends: .k8s-base
+  stage: deploy-prod-switch
+  environment:
+    name: production
+    url: https://docflow.example.com
+  script:
+    - aws eks update-kubeconfig --name docflow-prod --region $AWS_REGION
+    - |
+      # Update service selector to point to blue
+      kubectl patch service docflow-api \
+        --namespace $PROD_NAMESPACE \
+        -p '{"spec":{"selector":{"docflow.io/color":"blue"}}}'
+      kubectl patch service docflow-agent \
+        --namespace $PROD_NAMESPACE \
+        -p '{"spec":{"selector":{"docflow.io/color":"blue"}}}'
+    - |
+      # Verify traffic is flowing
+      echo "Waiting for traffic to stabilize..."
+      sleep 30
+      kubectl run verify --rm -it --restart=Never \
+        --namespace $PROD_NAMESPACE \
+        --image=curlimages/curl \
+        -- curl -f http://docflow-api/health
+    - echo "✅ Production switched to blue"
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - test:prod-smoke
+  when: manual
+
+# Emergency rollback to green
+rollback:to-green:
+  extends: .k8s-base
+  stage: deploy-prod-switch
+  environment:
+    name: production
+  script:
+    - aws eks update-kubeconfig --name docflow-prod --region $AWS_REGION
+    - |
+      kubectl patch service docflow-api \
+        --namespace $PROD_NAMESPACE \
+        -p '{"spec":{"selector":{"docflow.io/color":"green"}}}'
+      kubectl patch service docflow-agent \
+        --namespace $PROD_NAMESPACE \
+        -p '{"spec":{"selector":{"docflow.io/color":"green"}}}'
+    - echo "⚠️ Rolled back to green"
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual
+
+# =============================================================================
+# Cleanup
+# =============================================================================
+
+cleanup:old-images:
+  stage: cleanup
+  image: alpine:3.18
+  script:
+    - |
+      # Keep last 10 images, delete older ones
+      # This is a simplified example - adjust for your registry
+      echo "Cleanup job placeholder - implement based on your registry"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+  allow_failure: true
+
+# =============================================================================
+# Release
+# =============================================================================
+
+publish:pypi:
+  extends: .python-base
+  stage: cleanup
+  script:
+    - pip install twine
+    - |
+      TWINE_PASSWORD=${CI_JOB_TOKEN} \
+      TWINE_USERNAME=gitlab-ci-token \
+      python -m twine upload \
+        --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi \
+        dist/*
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - build:python
+    - switch:to-blue
+
+# Create GitLab Release
+release:create:
+  stage: cleanup
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "DocFlow $CI_COMMIT_TAG"
+    description: |
+      Release $CI_COMMIT_TAG
+      
+      ## Installation
+      ```bash
+      pip install docflow==$CI_COMMIT_TAG
+      ```
+      
+      ## Docker Images
+      ```bash
+      docker pull $DOCKER_IMAGE/api:$CI_COMMIT_TAG
+      docker pull $DOCKER_IMAGE/agent:$CI_COMMIT_TAG
+      ```
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - switch:to-blue
