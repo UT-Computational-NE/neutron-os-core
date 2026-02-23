@@ -14,7 +14,7 @@ Instead of asking 50+ questions, focus on **6 critical inputs** that drive most 
 | Rank | Cost Driver | Range | Impact | Source | Question For |
 |------|-------------|-------|--------|--------|--------------|
 | **1** | **Data egress patterns** | $0–$500/mo | 10x variation | Network bandwidth | Nick + Cole |
-| **2** | **PiXie Phase 1 yes/no** | $0 or +$150–300/mo | Binary decision | Hardware scope | Max |
+| **2** | **PiXie streaming timeline** | $0 or +$150–300/mo | Depends on Early 2026 vs. Late 2026+ decision | Hardware + sampling rates TBD | Max |
 | **3** | **EKS operating hours/week** | 40–168 hrs | 4x variation | Compute | Nick |
 | **4** | **Data retention policy** | 1yr–5yr | 3x variation | Storage | Dr. Clarno |
 | **5** | **Claude API query volume** | 0–100 queries/day | 10x variation | External services | Jay |
@@ -31,12 +31,16 @@ Instead of asking 50+ questions, focus on **6 critical inputs** that drive most 
 - **Our estimate if not provided:** 100 GB/month = $9/mo (conservative)
 - **Ask:** Cole + Nick: "How much data moves out of AWS monthly?" (reports, external collaborators, backups)
 
-### 2. PiXie Phase 1 (Binary, **+$150–300/mo**)
-- **What it is:** High-speed data acquisition hardware connected to cluster
-- **Why it matters:** Drives Redpanda Cloud costs, storage costs, network costs
-- **Our estimate if "No":** $0 for PiXie (use standard TRIGA data sources)
-- **Our estimate if "Yes":** $250/mo base Redpanda + 20 GB/day storage
-- **Ask:** Max: "Is PiXie Phase 1 happening in 2026, yes or no?"
+### 2. PiXie Data Streaming Timeline (**+$0–300/mo**)
+- **What it is:** High-speed data acquisition (SMU + thermocouples) streaming to cloud
+- **Status:** System in active development; **no TRIGA test data yet**; sampling rates/format TBD
+- **Why it matters:** Determines whether to budget Redpanda Cloud, extra storage, network capacity
+- **Timeline scenarios:**
+  - **Early 2026 (Q1/Q2):** Budget Redpanda base tier + storage (~$250/mo)
+  - **Late 2026 (Q3/Q4):** Archive locally first, defer streaming → ~$0 additional cost in Phase 1
+  - **2027+:** Deferred to Phase 2 → ~$0 in Phase 1 baseline cost
+- **Our estimate if TBD:** Late 2026 (conservative; actual sampling rates + logging strategy pending)
+- **Ask:** Max: "Realistic timeline for PiXie streaming to cloud?" (depends on sampling rate decisions + detector availability)
 
 ### 3. EKS Operating Hours ($167–350/mo, **4x variation**)
 - **What it is:** How many hours/week is the cluster actually running?
@@ -138,9 +142,14 @@ This way, the estimate is **defensible and traceable**, even with missing data.
 
 These questions **cannot be estimated**. We must have answers:
 
-1. **Max:** "Is PiXie Phase 1 happening in 2026?"
-2. **Dr. Clarno:** "GovCloud or standard AWS?"
-3. **Dr. Clarno:** "Data retention compliance requirement?"
+1. **Max (Feb 16):** "What's the realistic timeline for PiXie streaming to cloud?" (Early 2026 vs. Late 2026 vs. 2027+)
+   - *Why blocking:* Determines $0–300/mo Redpanda costs; also affects sampling rate decisions
+2. **Jay (Feb 16):** "How many Claude API calls/day in Phase 1?" (or "TBD pending RAG scope")
+   - *Why blocking:* 10x cost variation ($24–240/mo); also high-level RAG architecture decision
+3. **Dr. Clarno (Feb 20):** "GovCloud or standard AWS?"
+   - *Why blocking:* +30% cost impact; also ITAR compliance requirement
+4. **Dr. Clarno (Feb 20):** "Data retention compliance requirement?" (1 yr? 5 yr? 7 yr?)
+   - *Why blocking:* Determines archive storage costs ($0–100/mo range)
 
 Without these, cost estimate is incomplete.
 
@@ -150,11 +159,15 @@ Without these, cost estimate is incomplete.
 
 | Scenario | Estimated Cost | Confidence | Driver |
 |----------|---|---|---|
-| Minimal (no PiXie) | $612/mo | High | Few variables, most controllable |
-| Recommended (PiXie yes, 40 hrs/week) | $1,134/mo | Medium | Depends on egress + RAG usage |
-| Full Cloud (heavy usage, GovCloud) | $2,016/mo | Low | Many assumptions about scale |
+| Minimal (PiXie deferred to 2027+) | $612/mo | High | Few variables, most controllable |
+| Recommended (PiXie Early 2026, 40 hrs/week) | $1,134/mo | Medium | Depends on egress + RAG usage + PiXie timeline |
+| Full Cloud (heavy usage, GovCloud, 24/7 PiXie) | $2,016/mo | Low | Many assumptions about scale + detector lifespan |
 
-**Key uncertainty:** Egress patterns (can vary 10x). Everything else is well-understood.
+**Key uncertainties:**
+- **PiXie timeline & sampling rates** (TBD; currently untested with TRIGA)
+- **Data egress patterns** (can vary 10x depending on external access)
+- **Claude API RAG usage** (depends on Phase 1 shadowcasting scope)
+- **Detector deployment duration** (mini fission chamber burn-out timeline)
 
 ---
 
@@ -180,8 +193,11 @@ This doc establishes the **simplified approach**. Each stakeholder gets a person
 - [FORM-Max-PiXie.md](FORM-Max-PiXie.md) — 1 blocking question + 2 estimates
 - [FORM-Jay-ML.md](FORM-Jay-ML.md) — 2 key questions + 3 estimates
 - [FORM-Clarno-Compliance.md](FORM-Clarno-Compliance.md) — 3 blocking questions + 2 estimates
+- [FORM-Generic-DataBuilder.md](FORM-Generic-DataBuilder.md) — For anyone else building systems (flexible questions)
 
-**All forms:** ~5 min to fill out, immediate high-value response.
+**All forms:** ~5–10 min to fill out, immediate high-value response.
+
+**For others:** If you're building something not covered by the specific forms above (new sensor integration, validation framework, automation tool, etc.), use the generic form. It's designed to fit any data collection or processing system.
 
 ---
 

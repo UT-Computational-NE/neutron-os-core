@@ -1,0 +1,4 @@
+# Code owners for repository folders
+# Assign owners to the tools and docs folders to prevent accidental duplication
+/tools/ @ben
+/docs/ @ben

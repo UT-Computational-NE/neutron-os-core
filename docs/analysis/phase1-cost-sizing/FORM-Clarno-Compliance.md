@@ -7,6 +7,12 @@
 
 ---
 
+## Precision Expectation
+
+Order-of-magnitude estimates (±50%) are perfect. Rough ranges beat false precision. T-shirt sizing or "I don't know" is fine—we have fallbacks.
+
+---
+
 ## Overview
 
 I need your help with three critical decisions that affect the cost estimate significantly:
@@ -95,84 +101,15 @@ This includes:
 
 ---
 
-## Question 4 (Optional): Disaster Recovery & Multi-Region Needs
+## Additional Context (Optional)
 
-### Do Phase 1 operations require multi-region failover or backup to another facility?
+Any other compliance, budget, or policy constraints that affect Phase 1 scoping?
 
-**Options:**
-- [ ] No — Single region (us-east-1 or us-gov-cloud-east-1) is fine
-- [ ] Yes — Backup to another AWS region for DR
-- [ ] Maybe — Plan for Phase 1.5 or 2, not Phase 1
-
-**Your answer:** _______________________________________________
-
-**Note:** Multi-region adds ~30–50% to infrastructure cost. Not required for Phase 1, but may be needed later.
-
----
-
-## Question 5 (Optional): Budget Constraints or Flexibility
-
-### Are there hard budget caps for Phase 1, or flexibility for scaling?
-
-**Options:**
-- [ ] Hard cap: Must stay under $_____ /month
-- [ ] Target: Prefer $1,000–1,500/month range
-- [ ] Flexible: Scale as needed, cost not primary constraint
-- [ ] Budget TBD: Waiting on funding confirmation
-
-**Your answer:** _______________________________________________
-
-**Note:** Helps us optimize scenarios. We have Low ($612/mo), Medium ($1,134/mo), High ($2,016/mo) options.
-
----
-
-## Optional: Additional Governance/Compliance Notes
-
-If you have other compliance requirements (export controls, data residency, audit trails, institutional policies), add them here:
-
-```
-(e.g., "Data must not leave US territory", "Annual security audit required")
-```
+_______________________________________________
 
 ---
 
 ## Thank You!
 
-Your decisions are foundational for Phase 1 planning. Even if some answers are "uncertain," your best judgment now helps us scope the budget correctly and escalate questions to legal/compliance as needed.
-
-**Return to:** Ben (email or this form filled out)  
-**Deadline:** **Friday, Feb 20, 5 PM** ⚠️
-
----
-
-## How Your Answers Are Used
-
-| Your Answer | Maps To | AWS Service | Impact |
-|------------|---------|---|---|
-| Q1: Standard AWS vs. GovCloud | Region selection | AWS Global Infrastructure | ±30% cost (+$340/mo) |
-| Q2: Data retention years | Storage tiers | S3 + Glacier | 3x variation ($30–210/mo) |
-| Q3: TACC allocation status | Compute location | EKS vs. on-prem | 50–100% cost variance |
-| Q4: Multi-region DR | Replication strategy | Cross-region replication | +30–50% cost |
-| Q5: Budget constraints | Scenario selection | Architecture optimization | Affects final recommendation |
-
-All costs will be traceable to official AWS pricing pages.
-
----
-
-## Next Steps After Your Response
-
-1. **Feb 20, 5 PM:** Ben collects all team responses
-2. **Feb 24:** Cost estimation tool generates final Recommended, High, and Low scenarios
-3. **Feb 25:** Ben prepares Executive Summary + Cost Tables + Technical Justification
-4. **Feb 27:** Deliver to Dr. Clarno for review + approval meeting
-
-**Expected outcomes:** 
-- Final Phase 1 budget recommendation (with contingency)
-- Sensitivity analysis (if assumptions change)
-- Architecture comparison (standard AWS vs. GovCloud, etc.)
-
----
-
-## Recognition
-
-Thank you for your leadership on NeutronOS Phase 1. These decisions ensure the cost estimate reflects real compliance and operational requirements, not just theoretical scenarios.
+**Return to:** Ben  
+**Deadline:** Friday, Feb 20, 5 PM ⚠️

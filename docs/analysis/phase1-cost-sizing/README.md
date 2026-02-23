@@ -15,12 +15,18 @@
 ### For Understanding the Approach
 - **[SIMPLIFIED-COST-DRIVERS.md](SIMPLIFIED-COST-DRIVERS.md)** — Why 6 questions? What gets estimated?
 
-### Personalized Forms (Each 3–6 minutes)
+### Personalized Forms (Each 3–10 minutes)
 - **[FORM-Cole-Physics.md](FORM-Cole-Physics.md)** — Physics/MPACT data (deadline: Feb 20)
 - **[FORM-Nick-Operations.md](FORM-Nick-Operations.md)** — TRIGA operations (deadline: Feb 20)
 - **[FORM-Max-PiXie.md](FORM-Max-PiXie.md)** — PiXie hardware (deadline: **Feb 16** ⚠️)
 - **[FORM-Jay-ML.md](FORM-Jay-ML.md)** — ML/data engineering (deadline: **Feb 16** ⚠️)
 - **[FORM-Clarno-Compliance.md](FORM-Clarno-Compliance.md)** — Compliance/approval (deadline: Feb 20)
+- **[FORM-Ben-Platform.md](FORM-Ben-Platform.md)** — Neutron OS platform architecture & NuclearBench (deadline: **Feb 28** ⚠️)
+- **[FORM-Ondrej-DigitalTwins.md](FORM-Ondrej-DigitalTwins.md)** — MSR DT & OffGas DT (deadline: Feb 26)
+- **[FORM-Shayan-MSRData.md](FORM-Shayan-MSRData.md)** — MSR chemistry data, training & validation (deadline: Feb 26)
+
+### Generic Form (For Others Building Systems)
+- **[FORM-Generic-DataBuilder.md](FORM-Generic-DataBuilder.md)** — For anyone else collecting/processing data (deadline: Feb 20)
 
 ### Quick Reference (Optional Deep Dive)
 - **[COST-ESTIMATION-SOURCES.md](COST-ESTIMATION-SOURCES.md)** — Where costs come from (TL;DR)
@@ -57,7 +63,7 @@
 | # | Question | Who | Impact | Estimate If Missing |
 |---|----------|-----|--------|---|
 | 1 | Data egress/month? | Cole + Nick | Network costs (10x variation) | 100 GB/mo = $9/mo |
-| 2 | PiXie Phase 1 yes/no? | Max | Architecture scope (binary) | No PiXie (baseline) |
+| 2 | PiXie streaming timeline? | Max | Redpanda + storage (Early 2026 vs. Late 2026 vs. 2027+) | Late 2026+ (conservative) |
 | 3 | EKS hours/week? | Nick | Compute costs (4x variation) | 40 hrs/wk = $346/mo |
 | 4 | Data retention policy? | Dr. Clarno | Storage costs (3x variation) | 2 years = $60/mo |
 | 5 | Claude API calls/day? | Jay | External service costs (10x) | 10 calls/day = $48/mo |
@@ -65,15 +71,18 @@
 
 ---
 
-## Three Blocking Decisions
+## Blocking Decisions (Must Provide by Deadline)
 
-**These MUST be answered by their deadlines:**
+**These MUST be answered to finalize the estimate:**
 
-1. **Max (Feb 16):** PiXie Phase 1 → Yes or No? (blocks Redpanda sizing)
-2. **Jay (Feb 16):** Claude API usage → light/moderate/heavy? (blocks external service budget)
-3. **Dr. Clarno (Feb 20):** ITAR ruling → GovCloud or standard AWS? (blocks region selection)
+| Blocking Gate | Owner | Deadline | Impact |
+|---|---|---|---|
+| PiXie streaming timeline | Max | Feb 16 | Determines $0–300/mo Redpanda + storage costs; also flags sampling rate/format decisions TBD |
+| Claude API usage level | Jay | Feb 16 | Determines $24–240/mo external service costs (10x variation) |
+| ITAR compliance ruling | Dr. Clarno | Feb 20 | GovCloud (±30% cost) or standard AWS |
+| Data retention requirement | Dr. Clarno | Feb 20 | 1–7 year policy affects archive storage ($0–100/mo range) |
 
-Without these, we cannot finalize the estimate.
+⚠️ **Note on PiXie:** System in active development; **no TRIGA test data yet**. Sampling rates, data format, and logging strategy TBD with digital twin team. Timeline depends on these parameters being finalized.
 
 ---
 

@@ -34,6 +34,9 @@ Your personalized form takes **3–6 minutes** to complete. **Two-week timeline*
 | **Cole** | [FORM-Cole-Physics.md](FORM-Cole-Physics.md) | **Fri, Feb 20, 5 PM** | Egress + archive volume affect storage + network |
 | **Nick** | [FORM-Nick-Operations.md](FORM-Nick-Operations.md) | **Fri, Feb 20, 5 PM** | Operating hours + data volume affect compute + storage |
 
+**For others building systems:** If you're not listed above but are building something that generates/collects data (new sensor integration, validation framework, automation tool, etc.), use the generic form:
+- [FORM-Generic-DataBuilder.md](FORM-Generic-DataBuilder.md) | **Fri, Feb 20, 5 PM** | Flexible questions for any data-generating system
+
 ---
 
 ## The Six Critical Questions

@@ -1,0 +1,40 @@
+{
+  "session_id": "60d708cff94b",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What documents are tracked in this project?",
+      "timestamp": "2026-02-20T01:49:54.894815+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll check what documents are currently being tracked in the docflow system.",
+      "timestamp": "2026-02-20T01:49:56.677781+00:00",
+      "tool_calls": [
+        {
+          "name": "query_docs",
+          "id": "toolu_016184gGJ8o1i8Qyd2NmAEtJ",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Currently, there is only one document being tracked in the docflow system:\n\n- **docflow-spec** (Status: published, Version: v1)\n\nThis appears to be the docflow specification document itself. The docflow system seems to be newly set up or configured to track a minimal set of documents at this point.\n\nWould you like me to:\n1. Check what markdown files exist in the docs directory that could potentially be added to tracking?\n2. Look at the current docflow configuration to understand what types of documents it's set up to track?\n3. Check if there are any document differences or link issues with the currently tracked document?",
+      "timestamp": "2026-02-20T01:50:01.016159+00:00"
+    },
+    {
+      "role": "user",
+      "content": "List the files in docs/prd/",
+      "timestamp": "2026-02-20T01:50:01.016934+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "LLM unavailable \u2014 no providers configured.",
+      "timestamp": "2026-02-20T01:50:01.172010+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-20T01:49:54.894226+00:00",
+  "updated_at": "2026-02-20T01:50:01.172021+00:00"
+}

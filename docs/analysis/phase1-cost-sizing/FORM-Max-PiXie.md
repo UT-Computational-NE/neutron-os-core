@@ -7,109 +7,107 @@
 
 ---
 
+## Precision Expectation
+
+Order-of-magnitude estimates (±50%) are perfect. Rough ranges beat false precision. T-shirt sizing or "I don't know" is fine—we have fallbacks.
+
+---
+
 ## Overview
 
 I need your help with:
 - Whether PiXie Phase 1 is happening in 2026
-- Data volume and format from the DAQ system
-- Hardware integration timeline
+- Current development status and testing timeline
+- Data volume estimates (once sampling rates are finalized)
+- Hardware integration constraints
 
-Your answer to **Question 1** determines ~$150–300/mo of the cost estimate. This is a blocking gate—we cannot estimate further without it.
+**Context:** PiXie is in active development. You haven't yet tested with actual TRIGA data, and key parameters (sampling rates, data format, volume) are still TBD. Your answer to **Question 1** determines whether we budget for PiXie Phase 1, and answers to Q2–Q3 help us plan for the uncertainties.
 
 ---
 
 ## Question 1 (BLOCKING): PiXie Phase 1 in 2026? ⚠️
 
-### Is PiXie Phase 1 hardware connected to the cluster in 2026?
+### What's the realistic timeline for PiXie data streaming to Neutron OS?
+
+**Context:** PiXie is in active development. You haven't tested with actual TRIGA data yet, and sampling rates/data formats are still TBD with the digital twin team.
 
 **Options:**
-- [ ] **YES** — PiXie is operational in 2026 (proceed to Q2 + Q3)
-- [ ] **NO** — PiXie deferred to 2027 or later (cost estimate excludes PiXie)
-- [ ] **UNCERTAIN** — needs decision before Feb 20
+- [ ] **Early 2026** — Ready to stream nightly data to cloud (like ZOC logger today)
+- [ ] **Late 2026** — Still in testing/optimization; archive locally first
+- [ ] **2027+** — Defer to Phase 2 (data stays local, no cloud streaming)
+- [ ] **UNCERTAIN** — Waiting on SMU/thermocouple decisions from team
 
 **Your answer:** _______________________________________________
 
 **Why this matters:**
-- **YES:** Adds Redpanda Cloud ($150–300/mo) + extra storage + network capacity
-- **NO:** Simpler architecture, lower baseline cost ($612/mo Minimal scenario)
-- **Cost difference:** ~$200/mo annually (impacts budget by ~$2,400 in Phase 1)
+- **Early 2026:** Adds Redpanda Cloud ($150–300/mo) + extra storage
+- **Late 2026:** Local archive only, minimal new cloud costs until Q4
+- **2027+:** Baseline cost stays $612/mo (Minimal scenario)
+- **Cost range:** ~$0–300/mo depending on timeline
 
 ---
 
-## Question 2 (IF "YES"): Data Volume from PiXie
+## Question 2: Sampling Rate & Data Format Strategy
 
-### How much data per day from the PiXie DAQ system?
+### What are your planned SMU + thermocouple sampling rates?
+
+**Context:** You mentioned SMU needs 1 KHz+, thermocouples could be 10s of Hz. These haven't been locked in with the digital twin team yet.
 
 **Options:**
-- [ ] Light: 1–5 GB/day (sparse sampling, limited sensors)
-- [ ] Moderate: 5–20 GB/day (typical high-speed acquistion)
-- [ ] Heavy: 20–50 GB/day (continuous, multi-detector)
-- [ ] Extreme: 50+ GB/day (streaming all channels; specify below)
+- [ ] **Conservative:** SMU 1 kHz, thermocouples 10 Hz (lower bandwidth, easier debugging)
+- [ ] **Moderate:** SMU 2–5 kHz, thermocouples 50+ Hz (real-time control loop ready)
+- [ ] **Aggressive:** SMU 10+ kHz, thermocouples 100+ Hz (captures transients)
+- [ ] **TBD:** Waiting on digital twin team guidance on required sampling rates
 
 **Your answer:** _______________________________________________
 
-**Note:** If unsure, estimate "Moderate: 5–20 GB/day" for high-speed physics DAQ.
+**Why this matters:** Sampling rate directly drives data volume. Without TRIGA test data, we'll estimate conservatively.
 
-**Impact:**
-- 5 GB/day = $20/mo storage + $50/mo Redpanda
-- 20 GB/day = $80/mo storage + $150/mo Redpanda
-- 50 GB/day = $200/mo storage + $300/mo Redpanda
-
----
-
-## Question 3 (IF "YES"): Data Format & Retention
-
-### How long should PiXie data stay "hot" (immediately accessible)?
-
-**Options:**
-- [ ] Short-term: 1–2 weeks (quick analysis, then archive)
-- [ ] Medium-term: 1–3 months (active research window)
-- [ ] Long-term: 6–12 months (comprehensive historical analysis)
-- [ ] Depends on use case; specify below
+### What data format will you use? (CSV, HDF5, binary, or PostgreSQL?)
 
 **Your answer:** _______________________________________________
 
-**Note:** We'll use "Medium-term: 1–3 months" if you don't specify.
+**Note:** This affects storage costs and pipeline complexity. ZOC uses CSV currently.
 
 ---
 
-## Optional: Additional Context
+## Question 3: Data Logging Strategy (Continuous vs. Burst)
 
-If you have other PiXie considerations (upgrades planned, detector changes, sampling rate constraints), add them here:
+### How will PiXie logging work in Phase 1?
 
-```
-(e.g., "PiXie sampling rate increases 10x in Phase 1.5")
-```
+**Options:**
+- [ ] **Only during reactor ops** (e.g., 20–30 hrs/week) — Lower volume
+- [ ] **24/7 continuous** (all day, every day) — Higher volume, captures decay rates
+- [ ] **Determined by detector lifespan** — Log continuously until mini fission chamber burn-out
+- [ ] **TBD** — Waiting on Dr. Charlton/Dr. Clarno guidance on detector deployment timeline
+
+**Your answer:** _______________________________________________
+
+**Why this matters:** 
+- Reactor-only logging: ~$50–100/mo storage
+- 24/7 logging: ~$200–400/mo storage
+- Detector burn-out determines how long to keep this running
+
+### Data retention in cloud:
+
+**Plan:** Archive locally, sync nightly to TACC (like ZOC logger today). Real-time streaming to cloud is Phase 2+ decision.
+
+**Immediate need:** How long should cloud keep hot data (for analysis/access)?
+- [ ] 1–2 weeks
+- [ ] 1–3 months
+- [ ] TBD (we'll estimate 1–3 months)
+
+---
+
+## Additional Context (Optional)
+
+Anything else about PiXie that affects data volume, timeline, or cloud costs?
+
+_______________________________________________
 
 ---
 
 ## Thank You!
 
-Your response is **critical** for budget planning. Even if uncertain, your best estimate helps.
-
-**Return to:** Ben (email or this form filled out)  
-**Deadline:** **Wednesday, Feb 16, 5 PM** ⚠️ (earlier than others—blocking gate)
-
----
-
-## How Your Answers Are Used
-
-| Your Answer | Maps To | AWS Service | Impact |
-|------------|---------|---|---|
-| Q1: PiXie yes/no | Architecture scope | EKS + Redpanda | $0 or +$200–300/mo |
-| Q2: Data volume/day | Throughput tiers | S3 + Redpanda | Scales costs linearly |
-| Q3: Retention window | Storage class mix | S3 Standard vs. Glacier | Affects retrieval speed |
-
-All costs will be traceable to official AWS + Redpanda pricing pages.
-
----
-
-## Why Feb 16 Deadline?
-
-This blocks several downstream decisions:
-- Storage architecture (S3 Standard vs. Glacier mix)
-- Redpanda cluster sizing
-- Network egress budget
-- Compute resource allocation
-
-**Answer by Feb 16 EOD → Ben can consolidate all Phase 1 scope by Feb 20.**
+**Return to:** Ben  
+**Deadline:** Wednesday, Feb 16, 5 PM ⚠️

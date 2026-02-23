@@ -7,6 +7,12 @@
 
 ---
 
+## Precision Expectation
+
+Order-of-magnitude estimates (±50%) are perfect. Rough ranges beat false precision. T-shirt sizing or "I don't know" is fine—we have fallbacks.
+
+---
+
 ## Overview
 
 I need your help with the AI/RAG architecture for NeutronOS:
@@ -91,67 +97,15 @@ This affects storage costs and one-time migration volume.
 
 ---
 
-## Question 4: Shadowcasting Approach (Optional Detail)
+## Additional Context (Optional)
 
-### How will shadowcasting run in Phase 1?
+Anything else about ML pipelines, data, or Claude API usage that affects costs?
 
-This affects compute + storage:
-
-**Options:**
-- [ ] Nightly batch (run once/day like today on TACC) — minimal cost
-- [ ] Continuous background (streaming predictions) — moderate cost
-- [ ] On-demand (only when reactor state changes) — minimal cost
-- [ ] Multiple per day (3–4x/day for different scenarios) — higher cost
-
-**Your answer:** _______________________________________________
-
-**Note:** We'll assume "Nightly batch" if you don't specify. Can scale up in Phase 2.
-
----
-
-## Optional: Additional Context
-
-If you have other ML/data engineering considerations (new models planned, external datasets, collaborators), add them here:
-
-```
-(e.g., "Planning to integrate external datasets for flux prediction in Phase 1.5")
-```
+_______________________________________________
 
 ---
 
 ## Thank You!
 
-Your detailed knowledge of the data pipeline is essential for accurate cost estimation. Your work on shadowcasting, meeting intake, and RAG systems is driving a lot of the platform value—this form ensures the infrastructure costs reflect that.
-
-**Return to:** Ben (email or this form filled out)  
-**Deadline:** **Wednesday, Feb 16, 5 PM** ⚠️ (blocking gate)
-
----
-
-## How Your Answers Are Used
-
-| Your Answer | Maps To | AWS Service | Impact |
-|------------|---------|---|---|
-| Q1: Claude API calls/day | API costs | Anthropic Claude | $24–$400+/mo |
-| Q2: Training data volume | Storage needs | S3 | $1–20/mo |
-| Q3: Retraining frequency | Compute hours | EC2 | $0–100+/mo |
-| Q4: Shadowcasting frequency | Batch compute | EKS + EC2 | $50–300/mo |
-
-All costs will be traceable to official AWS + Anthropic pricing pages.
-
----
-
-## Recognition
-
-Thank you for the extensive work on shadowcasting, meeting intake, and RAG systems. Your innovations are driving much of NeutronOS Phase 1's value. This cost estimate ensures the infrastructure budget reflects that contribution.
-
----
-
-## Why Feb 16 Deadline?
-
-Q1 and Q2 block downstream architecture decisions:
-- External service budget (Claude API is ~10% of total in Recommended scenario)
-- Storage architecture (training data affects S3 sizing)
-- Compute allocation (retraining frequency affects node sizing)
-
-**Answer by Feb 16 EOD → Ben can finalize infrastructure scope by Feb 20.**
+**Return to:** Ben  
+**Deadline:** Wednesday, Feb 16, 5 PM ⚠️

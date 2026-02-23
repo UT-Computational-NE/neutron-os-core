@@ -42,16 +42,29 @@
   - Reference URLs (all official, all current)
 
 ### TIER 2: Implementation (For Data Collection & Tool Usage)
-- **aws-cost-estimate-data-collection.md** (30 min to fill out)
-  - Stakeholder questionnaire (Sections A–E)
+
+#### Personalized Forms (Questionnaires)
+- **FORM-Cole-Physics.md** (5 min) — MPACT data, archive size | Due: Feb 20
+- **FORM-Nick-Operations.md** (5 min) — TRIGA operating hours, data volume | Due: Feb 20
+- **FORM-Max-PiXie.md** (5 min) — PiXie Phase 1 timeline, sampling rates | Due: Feb 16 ⚠️
+- **FORM-Jay-ML.md** (5 min) — Claude API usage, RAG corpus size | Due: Feb 16 ⚠️
+- **FORM-Clarno-Compliance.md** (5 min) — ITAR, retention, TACC status | Due: Feb 20
+- **FORM-Ben-Platform.md** (10 min) — Neutron OS platform architecture, NuclearBench | Due: Feb 28 ⚠️
+- **FORM-Ondrej-DigitalTwins.md** (8 min) — MSR DT, OffGas DT infrastructure | Due: Feb 26
+- **FORM-Shayan-MSRData.md** (5 min) — MSR chemistry data, training, validation | Due: Feb 26
+- **FORM-Generic-DataBuilder.md** (5 min) — For others building systems | Due: Feb 20
+
+#### Supporting Tools & Documentation
+- **aws-cost-estimate-data-collection.md** (30 min to fill out; reference/backup)
+  - Original comprehensive questionnaire
+  - Stakeholder questionnaire (Sections A–E, now replaced by shorter personalized forms)
   - Section F: Cost calculation framework (formulas)
   - Section I: Response recording template
-  - Due: Friday, Feb 16, 5 PM
   
 - **USING-THE-COST-TOOL.md** (5 min read, 30 min to run)
   - How to use Python cost_estimation_tool
   - Quick start: Run 3 commands, get scenarios
-  - Workflow: Load responses → generate reports (Feb 17)
+  - Workflow: Load responses → generate reports (Feb 24)
   - Advanced: Custom scenarios, sensitivity testing
 
 ### TIER 3: Deep Dive (For Methodology & Rigor)
@@ -130,9 +143,22 @@
 - COST-ESTIMATION-SOURCES.md (background reading)
 - aws-cost-estimate-data-collection.md (the worksheet)
 
-### Feb 13–16: Data Collection
-→ Stakeholders fill out:
-- aws-cost-estimate-data-collection.md (Sections A–E)
+### Feb 13–26: Data Collection (Staggered Deadlines)
+→ Stakeholders fill out their personalized forms:
+
+**Feb 16 (Blocking gates):**
+- **Max:** FORM-Max-PiXie.md ⚠️
+- **Jay:** FORM-Jay-ML.md ⚠️
+
+**Feb 20:**
+- **Cole:** FORM-Cole-Physics.md
+- **Nick:** FORM-Nick-Operations.md
+- **Dr. Clarno:** FORM-Clarno-Compliance.md
+- **Others:** FORM-Generic-DataBuilder.md
+
+**Feb 26:**
+- **Ondrej:** FORM-Ondrej-DigitalTwins.md
+- **Shayan:** FORM-Shayan-MSRData.md
 
 ### Feb 16 & 20: Data Collection Deadlines
 → Ben collects responses:

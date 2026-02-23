@@ -12,7 +12,7 @@ For: Anyone populating cost estimates after Feb 16 data collection
 ### 1. Verify Installation
 
 ```bash
-cd Neutron_OS/cost_estimation_tool
+cd Neutron_OS/tools/cost_estimation_tool
 python test_scenarios.py
 ```
 
@@ -47,7 +47,7 @@ Copy the output into your final approval document. All costs are traced back to 
 Defines the **structure** of all cost data:
 
 ```python
-from cost_estimation_tool import StakeholderResponses, OperationsInputs, CostBreakdown
+from tools.cost_estimation_tool import StakeholderResponses, OperationsInputs, CostBreakdown
 
 # Define what stakeholders tell us
 responses = StakeholderResponses(
@@ -78,7 +78,7 @@ breakdown = CostBreakdown(
 Implements the **formulas** from aws-comprehensive-utility-usage.md:
 
 ```python
-from cost_estimation_tool import CostCalculator
+from tools.cost_estimation_tool import CostCalculator
 
 calculator = CostCalculator(responses)
 
@@ -112,7 +112,7 @@ breakdown = calculator.calculate_full_breakdown("Recommended")
 Instantiates **three scenarios** from the comprehensive utility analysis:
 
 ```python
-from cost_estimation_tool import scenario_minimal, scenario_recommended, scenario_full_cloud
+from tools.cost_estimation_tool import scenario_minimal, scenario_recommended, scenario_full_cloud
 
 # Each returns a complete CostBreakdown
 minimal = scenario_minimal()           # $612/mo
@@ -133,7 +133,7 @@ print(f"2027 cost (12 months): ${recommended.annual_cost_2027_12mo():,.2f}")
 Formats **output** for humans:
 
 ```python
-from cost_estimation_tool import CostReporter
+from tools.cost_estimation_tool import CostReporter
 
 scenarios = [scenario_minimal(), scenario_recommended(), scenario_full_cloud()]
 
@@ -412,7 +412,7 @@ Load into Python/R/SQL for:
 
 Ensure you're in the right directory:
 ```bash
-cd Neutron_OS/cost_estimation_tool
+cd Neutron_OS/tools/cost_estimation_tool
 python main.py --compare
 ```
 

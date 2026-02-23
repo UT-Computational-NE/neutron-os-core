@@ -129,9 +129,11 @@ Each service has dedicated pricing page with:
 
 | Question | Tool Input | Rationale |
 |----------|-----------|-----------|
-| C1a: PiXie status (Phase 1 yes/no) | Redpanda Cloud base tier on/off | Yes = +$150-300/mo; No = $0 |
-| C2a: Current daily data volume (GB) | Redpanda throughput calculator | 0.5 GB/day = ~6 MB/sec = ~10K events/sec (depends on event structure) |
-| C2b: Data format (CSV, HDF5, NetCDF) | Compression ratio → storage cost | CSV = no compression; HDF5 = native compression; affects archive size |
+| C1a: PiXie status (Phase 1 yes/no) | Redpanda Cloud base tier on/off | **Early 2026** = +$150-300/mo; **Late 2026+** = $0 (deferred or local archive only) |
+| C2a: Sampling rates & data volume | Redpanda throughput calculator | **TBD:** Depends on SMU rate (1 kHz+ planned) + thermocouple rate (10–100 Hz) + logging strategy (reactor-only vs. 24/7) |
+| C2b: Data format & logging strategy | Compression ratio + logging frequency | **TBD:** Format (CSV/HDF5/binary) + duration (continuous vs. burst) + detector lifespan unknown |
+
+**⚠️ PiXie Development Status:** System is in active testing; **no baseline measurements yet** from TRIGA reactor. All estimates are placeholder values pending finalization with digital twin team and Dr. Charlton/Clarno.
 
 **SECTION D: ML & Data Engineering (Jay)**
 
@@ -166,7 +168,7 @@ Map each cost formula to its underlying assumption:
 | **RDS PostgreSQL** | `db.t3.small @ $75/mo` | Burstable instance; adequate for Gold tables + vector index | Baseline workload: <10 concurrent connections, <100GB storage | https://aws.amazon.com/rds/pricing/ |
 | **CloudWatch Logs** | `100 GB/mo @ $0.50/GB ingestion + $0.03/GB stored` | Info-level logging; 30-day retention | Debug logging = 3x volume; errors-only = 0.3x volume | https://aws.amazon.com/cloudwatch/pricing/ |
 | **Claude API** | `input_tokens × $3/1M + output_tokens × $15/1M` | 10 queries/day × 5K input + 500 output tokens | Conservative: ~150K input + 15K output tokens/month = $0.45 + $0.23 = $0.68/mo per 10 queries/day | https://www.anthropic.com/pricing |
-| **Redpanda Cloud** | `$150/mo base + $50/10K events/sec above 100K/sec` | Base tier included; Phase 1 low throughput | 0.5 GB/day PiXie ≈ 6 MB/sec ≈ 10K events/sec (depends on event structure) | https://redpanda.com/pricing |
+| **Redpanda Cloud** | `$150/mo base + $50/10K events/sec above 100K/sec` | **PLACEHOLDER:** Phase 1 (if Early 2026) = base tier; actual volume TBD when sampling rates locked | 0.5 GB/day placeholder ≈ 6 MB/sec ≈ 10K events/sec **← Not measured yet**; actual depends on SMU rate, logging strategy, detector lifespan | https://redpanda.com/pricing |
 
 ---
 
@@ -245,7 +247,36 @@ Source: https://aws.amazon.com/s3/pricing/
 | **External APIs (Claude, Redpanda)** | Medium | Third-party pricing subject to market changes; review quarterly |
 | **Regional Pricing Variations** | N/A | GovCloud ~30% higher; Singapore/Tokyo ~20% higher |
 
-### 4.2 Our Update Policy
+### 4.2 PiXie Development Status & Cost Uncertainty ⚠️
+
+**Current Status (Feb 19, 2026):** PiXie is in **active development**; **no baseline measurements from TRIGA reactor yet**.
+
+**Key Unknowns Affecting Cost:**
+
+| Unknown | Impact on Cost | Estimated Range | Status |
+|---------|---|---|---|
+| **Timeline** | Redpanda ($0–300/mo) | Early 2026 vs. Late 2026+ | Awaiting team decision |
+| **SMU sampling rate** | Data volume (unknown) | 1 kHz to 10+ kHz | Waiting on control algorithm requirements |
+| **Thermocouple sampling** | Data volume (unknown) | 10 Hz to 100+ Hz | Nick estimated "10s of Hz"; TBD with digital twin |
+| **Logging strategy** | Storage ($50–400/mo) | Reactor-only (20-30 hrs/week) vs. 24/7 | Depends on detector lifespan + burn rate |
+| **Data format** | Storage & CPU (small variance) | CSV vs. HDF5 vs. binary | Not yet decided by team |
+| **Detector deployment** | Redpanda duration (3–12 mo cost) | Months to years | Mini fission chambers degrade over time; duration TBD |
+
+**Placeholder Assumptions (Pending Validation):**
+- 0.5 GB/day data volume ← **NOT MEASURED**; used for Redpanda base tier estimation only
+- Early 2026 timeline for Phase 1 ← May shift to Late 2026
+- Reactor-only logging (not 24/7) ← Confirms with Dr. Charlton on detector availability
+
+**Cost Impact if Assumptions Change:**
+- **If Late 2026+ instead of Early 2026:** Save $150–300/mo until detector installed
+- **If 24/7 logging instead of reactor-only:** 2–3x storage cost ($200–400/mo Redpanda base tier)
+- **If sampling rates higher than 1 kHz SMU:** Data volume could 10x (pending measurement)
+
+**Feb 24 Action:** Once Max provides sampling rate + logging strategy, re-estimate Redpanda + storage costs with actual parameters.
+
+---
+
+### 4.3 Our Update Policy
 
 **Cost Estimate Valid Until:** May 12, 2026 (3 months from Feb 12 baseline)
 
@@ -253,17 +284,23 @@ Source: https://aws.amazon.com/s3/pricing/
 - [ ] AWS announces regional pricing changes
 - [ ] EKS/RDS instance types change
 - [ ] External service pricing changes (Redpanda, Claude)
+- [ ] **PiXie development decision (timing, sampling rates, format)** ← HIGH PRIORITY
 - [ ] Quarterly review of major cost drivers
-- [ ] Change in PiXie Phase 1 decision impacts Redpanda costs
 
 **Re-estimation Triggers:**
 ```
+IF PiXie parameters finalized:
+  → Load actual sampling rates into Redpanda throughput calculator
+  → Recalculate storage + streaming costs
+  → Update Redpanda from base tier to actual usage tier
+  → Document variance vs. Feb 12 baseline
+
 IF price_change > 5% on major cost driver:
   → Recalculate all three scenarios
   → Document variance vs. Feb 12 baseline
   → Update cost estimate for Dr. Clarno approval
 
-Major cost drivers: Data egress, Claude API, Redpanda, EKS compute
+Major cost drivers: PiXie (if deployed), Data egress, Claude API, EKS compute
 ```
 
 ---

@@ -1,0 +1,124 @@
+# Neutron OS — GitLab CI/CD Pipeline
+#
+# Three tiers:
+#   1. test:unit       — runs on every push, no secrets needed
+#   2. test:integration — runs on main/MRs, needs CI/CD variables for live channels
+#   3. build + publish — runs on tags, publishes to GitLab Package Registry
+#
+# Required CI/CD Variables (Settings → CI/CD → Variables):
+#   GITLAB_TOKEN          — Personal access token for rsicc-gitlab.tacc.utexas.edu
+#   MS_GRAPH_CLIENT_ID    — Azure AD app registration
+#   MS_GRAPH_CLIENT_SECRET
+#   MS_GRAPH_TENANT_ID
+#
+# Runner setup:
+#   If no shared runners are available on TACC GitLab, register your own:
+#   gitlab-runner register --url https://rsicc-gitlab.tacc.utexas.edu \
+#     --token <runner-token> --executor shell
+#
+# See Makefile for local equivalents of each stage.
+
+stages:
+  - test
+  - build
+  - publish
+
+# =============================================================================
+# Variables
+# =============================================================================
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+  PYTHON_VERSION: "3.12"
+
+# =============================================================================
+# Templates
+# =============================================================================
+
+.python-setup:
+  image: python:${PYTHON_VERSION}-slim
+  cache:
+    key: pip-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .pip-cache/
+  before_script:
+    - pip install --quiet --upgrade pip
+    - pip install --quiet -e ".[dev,docflow]"
+
+# =============================================================================
+# Test Stage
+# =============================================================================
+
+test:unit:
+  extends: .python-setup
+  stage: test
+  script:
+    - pytest tests/ -v --tb=short -m "not integration"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_MERGE_REQUEST_ID
+
+test:integration:
+  extends: .python-setup
+  stage: test
+  script:
+    - pip install --quiet python-gitlab requests
+    - pytest tests/integration/ -v --tb=short -m "integration"
+  variables:
+    # These come from GitLab CI/CD Variables (masked, protected)
+    GITLAB_TOKEN: $GITLAB_TOKEN
+    MS_GRAPH_CLIENT_ID: $MS_GRAPH_CLIENT_ID
+    MS_GRAPH_CLIENT_SECRET: $MS_GRAPH_CLIENT_SECRET
+    MS_GRAPH_TENANT_ID: $MS_GRAPH_TENANT_ID
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_ID
+  allow_failure: true  # Don't block on external service flakiness
+
+lint:
+  extends: .python-setup
+  stage: test
+  script:
+    - pip install --quiet ruff
+    - ruff check tools/ --select E,F,W --ignore E501
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_MERGE_REQUEST_ID
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+
+build:wheel:
+  extends: .python-setup
+  stage: build
+  script:
+    - pip install --quiet build
+    - python -m build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_TAG
+
+# =============================================================================
+# Publish Stage — GitLab Package Registry
+# =============================================================================
+
+publish:package:
+  extends: .python-setup
+  stage: publish
+  script:
+    - pip install --quiet twine
+    - |
+      TWINE_PASSWORD=${CI_JOB_TOKEN} \
+      TWINE_USERNAME=gitlab-ci-token \
+      python -m twine upload \
+        --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi \
+        dist/*
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - build:wheel

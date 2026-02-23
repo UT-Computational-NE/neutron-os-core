@@ -7,6 +7,12 @@
 
 ---
 
+## Precision Expectation
+
+Order-of-magnitude estimates (±50%) are perfect. Rough ranges beat false precision. T-shirt sizing or "I don't know" is fine—we have fallbacks.
+
+---
+
 ## Overview
 
 I need your help with:
@@ -97,11 +103,17 @@ If you have other operational considerations (maintenance windows, seasonal vari
 
 ---
 
+## Additional Context (Optional)
+
+Anything else about facility operations, scheduling, or data that affects AWS costs?
+
+_______________________________________________
+
+---
+
 ## Thank You!
 
-Your 3–5 minute response helps ensure the cost estimate reflects real TRIGA operations.
-
-**Return to:** Ben (email or this form filled out)  
+**Return to:** Ben  
 **Deadline:** Friday, Feb 20, 5 PM
 
 ---
