@@ -32,6 +32,7 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
   PYTHON_VERSION: "3.12"
+  VENV_DIR: "$CI_PROJECT_DIR/.venv"
 
 # =============================================================================
 # Templates
@@ -43,7 +44,10 @@ variables:
     key: pip-${CI_COMMIT_REF_SLUG}
     paths:
       - .pip-cache/
+      - .venv/
   before_script:
+    - python3 -m venv "$VENV_DIR"
+    - export PATH="$VENV_DIR/bin:$PATH"
     - pip install --quiet --upgrade pip
     - pip install --quiet -e ".[dev,docflow]"
 
@@ -106,6 +110,8 @@ test:migrations:
     POSTGRES_PASSWORD: neut
     NEUT_DB_URL: "postgresql://neut:neut@postgres:5432/neut_test"
   before_script:
+    - python3 -m venv "$VENV_DIR"
+    - export PATH="$VENV_DIR/bin:$PATH"
     - pip install --quiet --upgrade pip
     - pip install --quiet -e ".[dev,sense]"
     # Wait for PostgreSQL to be ready
@@ -203,6 +209,8 @@ publish:dev:
   extends: .python-setup
   stage: publish
   before_script:
+    - python3 -m venv "$VENV_DIR"
+    - export PATH="$VENV_DIR/bin:$PATH"
     - pip install --quiet --upgrade pip
     - pip install --quiet build twine
     # Stamp dev version: 0.1.0 → 0.1.0.dev<pipeline_iid>
