@@ -30,7 +30,8 @@ from tools.agents.chat.commands import (
     cmd_sessions,
     cmd_resume,
     cmd_new,
-    cmd_permissions,
+    cmd_rename,
+    cmd_archive,
     cmd_usage,
     get_slash_commands,
 )
@@ -38,9 +39,18 @@ from tools.agents.chat.provider_factory import create_render_provider, create_in
 from tools.agents.chat.providers.base import RenderProvider, InputProvider
 from tools.agents.orchestrator.bus import EventBus
 from tools.agents.orchestrator.session import Session, SessionStore
-from tools.agents.orchestrator.permissions import PermissionStore
 from tools.agents.sense.gateway import Gateway
 from tools.agents.setup.renderer import _c, _Colors
+
+
+def _input_border() -> str:
+    """Return a thin horizontal rule for framing user input."""
+    try:
+        import shutil
+        width = shutil.get_terminal_size().columns
+    except Exception:
+        width = 80
+    return _c(_Colors.DIM, "\u2500" * width)
 
 
 def run_repl(
@@ -76,9 +86,13 @@ def run_repl(
                 if multiline_mode:
                     prefix = "...> "
                 else:
+                    # Padding lifts input area away from terminal bottom
+                    print("\n\n\n\n\n\n")
+                    # Top border before input
+                    print(_input_border())
                     prefix = "you> "
 
-                user_input = input_prov.prompt(prefix)
+                user_input = input_prov.prompt(prefix, show_border=not multiline_mode)
             except KeyboardInterrupt:
                 if multiline_mode:
                     multiline_mode = False
@@ -186,7 +200,7 @@ def _handle_slash_command(
         return cmd_status(agent)
 
     if cmd == "/sessions":
-        return cmd_sessions(store)
+        return cmd_sessions(store, input_prov=None)
 
     if cmd == "/resume":
         arg = parts[1].strip() if len(parts) > 1 else ""
@@ -197,9 +211,13 @@ def _handle_slash_command(
     if cmd == "/new":
         return cmd_new(store, agent)
 
-    if cmd == "/permissions":
-        args = parts[1:] if len(parts) > 1 else []
-        return cmd_permissions(agent, args)
+    if cmd == "/rename":
+        title = " ".join(parts[1:]).strip() if len(parts) > 1 else ""
+        return cmd_rename(agent, store, title)
+
+    if cmd == "/archive":
+        arg = parts[1].strip() if len(parts) > 1 else ""
+        return cmd_archive(arg, store, agent)
 
     if cmd == "/usage":
         return cmd_usage(agent)
@@ -302,7 +320,24 @@ def get_parser() -> argparse.ArgumentParser:
         "--bare", action="store_true",
         help=argparse.SUPPRESS,  # Internal: show full mascot banner
     )
+    parser.add_argument(
+        "--no-tui", action="store_true",
+        help="Disable full-screen TUI, use classic REPL",
+    )
     return parser
+
+
+def _is_fullscreen_available() -> bool:
+    """Check if full-screen TUI can launch (TTY + prompt_toolkit)."""
+    if not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
+        return False
+    if not hasattr(sys.stdout, "isatty") or not sys.stdout.isatty():
+        return False
+    try:
+        import prompt_toolkit  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 def main():
@@ -312,11 +347,6 @@ def main():
     store = SessionStore()
     gateway = Gateway()
     bus = EventBus()
-    permissions = PermissionStore()
-
-    # Create providers
-    render = create_render_provider(force=args.render)
-    input_prov = create_input_provider(force=args.input_mode)
 
     # Resume or create session
     session: Optional[Session] = None
@@ -338,11 +368,32 @@ def main():
                 sys.exit(1)
         session = store.create(context=context)
 
+    stream = not args.no_stream
+
+    # Create agent without a render provider — each branch wires its own
     agent = ChatAgent(
         gateway=gateway, bus=bus, session=session,
-        render=render, permissions=permissions,
+        render=None,
     )
-    stream = not args.no_stream
+
+    # Try full-screen TUI first
+    if not args.no_tui and _is_fullscreen_available():
+        try:
+            from tools.agents.chat.fullscreen import FullScreenChat
+            tui = FullScreenChat(
+                agent, store, stream=stream, show_banner=args.bare,
+            )
+            try:
+                tui.run()
+            finally:
+                store.save(agent.session)
+            return
+        except Exception:
+            pass  # Fall through to classic REPL
+
+    # Classic REPL fallback
+    render = create_render_provider(force=args.render)
+    input_prov = create_input_provider(force=args.input_mode)
 
     try:
         run_repl(agent, store, stream=stream, render=render, input_prov=input_prov,

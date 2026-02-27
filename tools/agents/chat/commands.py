@@ -20,14 +20,15 @@ def cmd_help() -> str:
     lines = [
         "",
         f"  {_c(_Colors.BOLD, 'Chat Commands:')}",
-        f"  {_c(_Colors.CYAN, '/help')}           Show this help",
-        f"  {_c(_Colors.CYAN, '/status')}         Session info, gateway, usage",
-        f"  {_c(_Colors.CYAN, '/usage')}          Token usage and cost breakdown",
-        f"  {_c(_Colors.CYAN, '/permissions')}    View/manage tool approval rules",
-        f"  {_c(_Colors.CYAN, '/sessions')}       List saved sessions",
-        f"  {_c(_Colors.CYAN, '/resume')} <id>    Load a different session",
-        f"  {_c(_Colors.CYAN, '/new')}            Start a fresh session",
-        f"  {_c(_Colors.CYAN, '/exit')}           Save and exit",
+        f"  {_c(_Colors.CYAN, '/help')}              Show this help",
+        f"  {_c(_Colors.CYAN, '/status')}            Session info, gateway, usage",
+        f"  {_c(_Colors.CYAN, '/usage')}             Token usage and cost breakdown",
+        f"  {_c(_Colors.CYAN, '/sessions')}          List saved sessions",
+        f"  {_c(_Colors.CYAN, '/resume')} <id|#>     Load a session by ID or number",
+        f"  {_c(_Colors.CYAN, '/rename')} <title>    Rename the current session",
+        f"  {_c(_Colors.CYAN, '/archive')} [id|#]    Archive a session (current if omitted)",
+        f"  {_c(_Colors.CYAN, '/new')}               Start a fresh session",
+        f"  {_c(_Colors.CYAN, '/exit')}              Save and exit",
         "",
     ]
 
@@ -39,7 +40,7 @@ def cmd_help() -> str:
         doc_cmds = [(k, v) for k, v in cli_commands.items() if k.startswith("/doc")]
 
         if sense_cmds:
-            lines.append(f"  {_c(_Colors.BOLD, 'Sense Pipeline:')}")
+            lines.append(f"  {_c(_Colors.BOLD, 'Neut Sense:')}")
             for cmd, help_text in sorted(sense_cmds)[:8]:  # Show top 8
                 display = cmd.replace("/sense ", "/sense ")
                 lines.append(f"  {_c(_Colors.CYAN, display)}  {help_text[:40]}")
@@ -71,9 +72,10 @@ def cmd_status(agent: ChatAgent) -> str:
     else:
         gw_status = "stub mode (no LLM configured)"
 
+    title_display = session.title or "(untitled)"
     lines = [
         "",
-        f"  {_c(_Colors.BOLD, 'Session:')}  {session.session_id}",
+        f"  {_c(_Colors.BOLD, 'Session:')}  {session.session_id} — {title_display}",
         f"  {_c(_Colors.BOLD, 'Messages:')} {len(session.messages)}",
         f"  {_c(_Colors.BOLD, 'Gateway:')}  {gw_status}",
     ]
@@ -88,15 +90,6 @@ def cmd_status(agent: ChatAgent) -> str:
         )
         if usage.total_cost > 0:
             lines.append(f"  {_c(_Colors.BOLD, 'Cost:')}     ${usage.total_cost:.4f}")
-
-    # Permission rules
-    rules = agent.permissions.list_rules()
-    if rules:
-        allowed = [r.tool_name for r in rules if r.allowed]
-        if allowed:
-            lines.append(
-                f"  {_c(_Colors.BOLD, 'Allowed:')}  {', '.join(allowed)}"
-            )
 
     if session.context:
         ctx_keys = list(session.context.keys())
@@ -132,61 +125,12 @@ def cmd_usage(agent: ChatAgent) -> str:
     return "\n".join(lines)
 
 
-def cmd_permissions(agent: ChatAgent, args: list[str] | None = None) -> str:
-    """View/manage tool approval rules."""
-    args = args or []
-
-    if not args:
-        # List current rules
-        rules = agent.permissions.list_rules()
-        if not rules:
-            return "\n  No permission rules set.\n"
-
-        lines = [
-            "",
-            f"  {_c(_Colors.BOLD, 'Permission Rules:')}",
-        ]
-        for r in rules:
-            scope = _c(_Colors.CYAN, r.scope.value)
-            status = _c(_Colors.GREEN, "allowed") if r.allowed else _c(_Colors.RED, "denied")
-            lines.append(f"  {r.tool_name:25s}  {scope}  {status}")
-        lines.extend([
-            "",
-            f"  {_c(_Colors.DIM, 'Usage: /permissions allow-global <tool>')}",
-            f"  {_c(_Colors.DIM, '       /permissions revoke <tool>')}",
-            f"  {_c(_Colors.DIM, '       /permissions reset')}",
-            "",
-        ])
-        return "\n".join(lines)
-
-    subcmd = args[0]
-
-    if subcmd == "allow-global" and len(args) > 1:
-        tool_name = args[1]
-        from tools.agents.orchestrator.actions import ACTION_REGISTRY
-        if tool_name not in ACTION_REGISTRY:
-            return f"\n  Unknown tool: {tool_name}\n"
-        agent.permissions.allow_global(tool_name)
-        return f"\n  {_c(_Colors.GREEN, 'v')} Globally allowed: {tool_name}\n"
-
-    if subcmd == "revoke" and len(args) > 1:
-        tool_name = args[1]
-        agent.permissions.revoke(tool_name)
-        return f"\n  Revoked: {tool_name}\n"
-
-    if subcmd == "reset":
-        agent.permissions.reset()
-        return "\n  All permission rules cleared.\n"
-
-    return f"\n  Unknown subcommand: {subcmd}\n"
-
-
 def cmd_sense() -> str:
     """Return sense pipeline status."""
     from tools.agents.chat.tools import execute_tool
     result = execute_tool("sense_status", {})
     lines = [""]
-    lines.append(f"  {_c(_Colors.BOLD, 'Sense Pipeline Status')}")
+    lines.append(f"  {_c(_Colors.BOLD, 'Neut Sense Status')}")
     inbox = result.get("inbox_raw", {})
     if inbox:
         for source, count in inbox.items():
@@ -217,26 +161,40 @@ def cmd_doc() -> str:
     return "\n".join(lines)
 
 
-def cmd_sessions(store: SessionStore) -> str:
-    """Return formatted list of sessions."""
+def cmd_sessions(store: SessionStore, input_prov=None) -> str:
+    """Return formatted list of sessions with titles.
+
+    If input_prov supports interactive selection (PTK), offers arrow-key
+    session picking. Otherwise falls back to a numbered list.
+    """
     session_ids = store.list_sessions()
     if not session_ids:
         return "\n  No saved sessions.\n"
 
     lines = ["", f"  {_c(_Colors.BOLD, 'Saved sessions:')}"]
-    for sid in session_ids[:10]:
-        session = store.load(sid)
-        if session:
-            msg_count = len(session.messages)
-            updated = session.updated_at[:10] if session.updated_at else ""
+    for i, sid in enumerate(session_ids[:15], 1):
+        meta = store.load_meta(sid)
+        if meta:
+            title = meta.get("title") or _c(_Colors.DIM, "(untitled)")
+            msg_count = meta["message_count"]
+            updated = meta["updated_at"][:10] if meta["updated_at"] else ""
+            idx = _c(_Colors.DIM, f"{i:2d}.")
             lines.append(
-                f"  {_c(_Colors.CYAN, sid)}  "
-                f"{msg_count} messages  "
-                f"{_c(_Colors.DIM, updated)}"
+                f"  {idx} {_c(_Colors.CYAN, sid)}  "
+                f"{title}  "
+                f"{_c(_Colors.DIM, f'{msg_count} msgs  {updated}')}"
             )
         else:
-            lines.append(f"  {_c(_Colors.CYAN, sid)}")
-    lines.append("")
+            lines.append(f"  {_c(_Colors.DIM, f'{i:2d}.')} {_c(_Colors.CYAN, sid)}")
+    if len(session_ids) > 15:
+        lines.append(f"  {_c(_Colors.DIM, f'... and {len(session_ids) - 15} more')}")
+    lines.extend([
+        "",
+        f"  {_c(_Colors.DIM, 'Use')} {_c(_Colors.CYAN, '/resume <id>')} "
+        f"{_c(_Colors.DIM, 'or')} {_c(_Colors.CYAN, '/resume <number>')} "
+        f"{_c(_Colors.DIM, 'to load a session.')}",
+        "",
+    ])
     return "\n".join(lines)
 
 
@@ -245,14 +203,24 @@ def cmd_resume(
     store: SessionStore,
     agent: ChatAgent,
 ) -> str:
-    """Resume a session by ID. Returns status message."""
+    """Resume a session by ID or number (from /sessions list)."""
+    # Support numeric index from /sessions list
+    if session_id.isdigit():
+        idx = int(session_id) - 1
+        all_ids = store.list_sessions()
+        if 0 <= idx < len(all_ids):
+            session_id = all_ids[idx]
+        else:
+            return f"\n  {_c(_Colors.RED, 'Invalid session number:')} {session_id}\n"
+
     session = store.load(session_id)
     if session is None:
         return f"\n  {_c(_Colors.RED, 'Session not found:')} {session_id}\n"
 
     agent.session = session
+    title_str = f" — {session.title}" if session.title else ""
     return (
-        f"\n  Resumed session {_c(_Colors.CYAN, session_id)} "
+        f"\n  Resumed session {_c(_Colors.CYAN, session_id)}{title_str} "
         f"({len(session.messages)} messages)\n"
     )
 
@@ -267,13 +235,55 @@ def cmd_new(store: SessionStore, agent: ChatAgent) -> str:
     new_session = store.create()
     agent.session = new_session
 
-    # Clear session-scoped permissions
-    agent.permissions.clear_session()
-
     return (
         f"\n  Saved {_c(_Colors.DIM, old_id)}, "
         f"started {_c(_Colors.CYAN, new_session.session_id)}\n"
     )
+
+
+def cmd_rename(agent: ChatAgent, store: SessionStore, title: str) -> str:
+    """Rename the current session."""
+    if not title:
+        return "\n  Usage: /rename <title>\n"
+    agent.session.title = title
+    store.save(agent.session)
+    return f"\n  Session renamed to: {_c(_Colors.CYAN, title)}\n"
+
+
+def cmd_archive(
+    session_id: str,
+    store: SessionStore,
+    agent: ChatAgent,
+) -> str:
+    """Archive a session (or the current one if no ID given)."""
+    if not session_id:
+        # Archive current session and start a new one
+        target_id = agent.session.session_id
+        store.save(agent.session)
+        if store.archive(target_id):
+            new_session = store.create()
+            agent.session = new_session
+            return (
+                f"\n  Archived {_c(_Colors.DIM, target_id)}, "
+                f"started {_c(_Colors.CYAN, new_session.session_id)}\n"
+            )
+        return f"\n  {_c(_Colors.RED, 'Failed to archive session')}\n"
+
+    # Support numeric index
+    if session_id.isdigit():
+        idx = int(session_id) - 1
+        all_ids = store.list_sessions()
+        if 0 <= idx < len(all_ids):
+            session_id = all_ids[idx]
+        else:
+            return f"\n  {_c(_Colors.RED, 'Invalid session number:')} {session_id}\n"
+
+    if session_id == agent.session.session_id:
+        return cmd_archive("", store, agent)
+
+    if store.archive(session_id):
+        return f"\n  Archived session {_c(_Colors.DIM, session_id)}\n"
+    return f"\n  {_c(_Colors.RED, 'Session not found:')} {session_id}\n"
 
 
 # ---------------------------------------------------------------------------
@@ -285,9 +295,10 @@ CHAT_META_COMMANDS = {
     "/help": "Show available commands",
     "/status": "Session info, gateway, usage",
     "/usage": "Token usage and cost breakdown",
-    "/permissions": "View/manage tool approval rules",
     "/sessions": "List saved sessions",
-    "/resume": "Load a different session (/resume <id>)",
+    "/resume": "Load a session by ID or number (/resume <id|#>)",
+    "/rename": "Rename the current session (/rename <title>)",
+    "/archive": "Archive a session (/archive [id|#])",
     "/new": "Start a fresh session",
     "/exit": "Save and exit",
 }

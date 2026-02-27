@@ -1,7 +1,6 @@
 """Tests for the chat CLI — slash commands, REPL behavior."""
 
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from tools.agents.setup.renderer import set_color_enabled
@@ -43,7 +42,6 @@ class TestSlashCommands:
         from tools.agents.chat.agent import ChatAgent
         from tools.agents.chat.usage import UsageTracker
         from tools.agents.orchestrator.session import Session
-        from tools.agents.orchestrator.permissions import PermissionStore
         from tools.agents.sense.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
@@ -52,7 +50,6 @@ class TestSlashCommands:
         agent.gateway = MagicMock(spec=Gateway)
         agent.gateway.active_provider = None
         agent.usage = UsageTracker()
-        agent.permissions = PermissionStore(permissions_file=Path("/tmp/_neut_test_perms.json"))
 
         result = cmd_status(agent)
         assert "Session:" in result
@@ -63,14 +60,12 @@ class TestSlashCommands:
         from tools.agents.chat.agent import ChatAgent
         from tools.agents.chat.usage import UsageTracker
         from tools.agents.orchestrator.session import Session
-        from tools.agents.orchestrator.permissions import PermissionStore
         from tools.agents.sense.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session()
         agent.gateway = MagicMock(spec=Gateway)
         agent.usage = UsageTracker()
-        agent.permissions = PermissionStore(permissions_file=Path("/tmp/_neut_test_perms.json"))
         provider_mock = MagicMock()
         provider_mock.name = "anthropic"
         provider_mock.model = "claude-sonnet"
@@ -82,7 +77,7 @@ class TestSlashCommands:
 
     def test_cmd_sense(self):
         result = cmd_sense()
-        assert "Sense Pipeline Status" in result
+        assert "Neut Sense Status" in result
 
     def test_cmd_sessions_empty(self):
         from tools.agents.orchestrator.session import SessionStore
@@ -135,7 +130,6 @@ class TestSlashCommands:
 
     def test_cmd_new(self):
         from tools.agents.orchestrator.session import SessionStore, Session
-        from tools.agents.orchestrator.permissions import PermissionStore
         from tools.agents.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -144,7 +138,6 @@ class TestSlashCommands:
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session(session_id="old_id")
-        agent.permissions = PermissionStore(permissions_file=Path("/tmp/_neut_test_perms.json"))
 
         result = cmd_new(store, agent)
         assert "Saved" in result or "started" in result

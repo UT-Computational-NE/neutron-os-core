@@ -23,7 +23,6 @@ from tools.agents.orchestrator.actions import (
 from tools.agents.orchestrator.approval import ApprovalGate
 from tools.agents.orchestrator.bus import EventBus
 from tools.agents.orchestrator.session import Session
-from tools.agents.orchestrator.permissions import PermissionStore
 from tools.agents.chat.tools import (
     execute_tool,
     get_all_tools,
@@ -69,14 +68,12 @@ class ChatAgent:
         bus: Optional[EventBus] = None,
         session: Optional[Session] = None,
         render: Optional[RenderProvider] = None,
-        permissions: Optional[PermissionStore] = None,
     ):
         self.gateway = gateway or Gateway()
         self.bus = bus or EventBus()
         self.gate = ApprovalGate()
         self.session = session or Session()
         self.usage = UsageTracker()
-        self.permissions = permissions or PermissionStore()
         self._render = render
         # Backward-compat: bare callback for tests
         self._renderer_callback: Optional[Callable[[Iterator[StreamChunk]], str]] = None
@@ -106,7 +103,12 @@ class ChatAgent:
         tools = get_tool_definitions()
 
         for _round in range(MAX_TOOL_ROUNDS):
-            if stream and self.gateway.available and (self._render or self._renderer_callback):
+            # First round streams to show immediate output.
+            # Subsequent rounds (after tool results) use non-streaming to
+            # prevent the model from re-rendering text it already showed.
+            use_stream = stream and _round == 0
+
+            if use_stream and self.gateway.available and (self._render or self._renderer_callback):
                 response = self._streaming_turn(messages, system, tools)
             elif self.gateway.available:
                 response = self._non_streaming_turn(messages, system, tools)
@@ -118,6 +120,9 @@ class ChatAgent:
 
             # If no tool calls, we're done
             if not response.tool_use:
+                # If this was a non-streamed round, render the final text now
+                if not use_stream and response.text and self._render:
+                    self._render.render_message("assistant", response.text)
                 self.session.add_message("assistant", response.text)
                 return response.text
 
@@ -378,24 +383,17 @@ class ChatAgent:
             action = create_action(tool_block.name, tool_block.input)
             self.gate.submit(action)
 
-            # If write action, check permission memory first
+            # If write action, get human approval
             if action.status == ActionStatus.PENDING:
-                if self.permissions.is_allowed(tool_block.name):
+                if self._render:
+                    choice = self._render.render_approval_prompt(action)
+                else:
+                    from tools.agents.chat.renderer import render_approval_prompt
+                    choice = render_approval_prompt(action)
+
+                if choice in ("a", "A"):
                     self.gate.approve(action.action_id)
                 else:
-                    # Get approval from user via render provider or fallback
-                    if self._render:
-                        choice = self._render.render_approval_prompt(action)
-                    else:
-                        from tools.agents.chat.renderer import render_approval_prompt
-                        choice = render_approval_prompt(action)
-
-                    if choice == "a":
-                        self.gate.approve(action.action_id)
-                    elif choice == "A":
-                        self.gate.approve(action.action_id)
-                        self.permissions.allow_session(tool_block.name)
-                    else:
                         self.gate.reject(action.action_id, "User rejected")
                         if self._render:
                             self._render.render_action_result(action)
