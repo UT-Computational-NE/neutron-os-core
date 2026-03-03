@@ -932,12 +932,14 @@ class FullScreenChat:
         stream: bool = True,
         show_banner: bool = False,
         restart_ctx: dict | None = None,
+        auto_picker: bool = False,
     ):
         self._agent = agent
         self._store = store
         self._stream = stream
         self._show_banner = show_banner
         self._restart_ctx = restart_ctx
+        self._auto_picker = auto_picker
 
         # Update system state
         self._update_info: VersionInfo | None = None
@@ -2132,6 +2134,9 @@ class FullScreenChat:
                     f"{pointer}{check} {sid}  {title:<30s}"
                     f"  {msg_count:>3d} msgs  {updated}{archived_tag}"
                 )
+            elif item.get("id") == "__new__":
+                # Synthetic "New session" entry — render distinctly
+                lines.append(f"{pointer}+  {'New session':<30s}")
             else:
                 lines.append(
                     f"{pointer}{sid}  {title:<30s}"
@@ -2173,6 +2178,13 @@ class FullScreenChat:
         if p.mode == PickerMode.SELECT:
             item = p.items[p.cursor]
             sid = item["id"]
+
+            # "New session" sentinel — just dismiss and stay on blank session
+            if sid == "__new__":
+                self._dismiss_picker()
+                self._set_suggestion("welcome")
+                return
+
             # Close picker and clear output for the new session
             self._picker = None
             with self._output_lock:
@@ -2367,6 +2379,27 @@ class FullScreenChat:
         # If resuming from an update restart, inject the friendly message
         if self._restart_ctx:
             self._inject_restart_message()
+
+        # Auto-open session picker if there are saved sessions to choose from
+        if self._auto_picker:
+            self._auto_picker = False
+            items = self._load_picker_items(include_archived=False)
+            if items:
+                new_item = {
+                    "id": "__new__",
+                    "title": "New session",
+                    "message_count": 0,
+                    "updated_at": "",
+                }
+                saved = self._output_buffer.text
+                self._picker = PickerState(
+                    mode=PickerMode.SELECT,
+                    items=[new_item] + items,
+                    cursor=0,
+                    checked=set(),
+                    saved_output=saved,
+                )
+                self._render_picker()
 
         # Start background update checker
         self._update_checker = BackgroundUpdateChecker(

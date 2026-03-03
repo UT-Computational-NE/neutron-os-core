@@ -389,13 +389,20 @@ def main():
         render=None,
     )
 
+    # Auto-open session picker on launch when there's no explicit intent
+    auto_pick = (
+        not args.resume
+        and restart_ctx is None
+        and not getattr(args, 'context', None)
+    )
+
     # Try full-screen TUI first
     if not args.no_tui and _is_fullscreen_available():
         try:
             from tools.agents.chat.fullscreen import FullScreenChat
             tui = FullScreenChat(
                 agent, store, stream=stream, show_banner=args.bare,
-                restart_ctx=restart_ctx,
+                restart_ctx=restart_ctx, auto_picker=auto_pick,
             )
             try:
                 tui.run()
