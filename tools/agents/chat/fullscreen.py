@@ -134,6 +134,8 @@ _STYLE = Style.from_dict({
     "completion-menu":                    "bg:#1a1a2e #c0c0c0",
     "completion-menu.completion":         "bg:#1a1a2e #c0c0c0",
     "completion-menu.completion.current": f"bg:{_CHERENKOV_DIM} #000000",
+    # Text selection (prompt_toolkit uses "class:selected" for selection highlight)
+    "selected":         "bg:#264f78",
     # Scroll indicator
     "scrollbar.thumb":  "bg:#444444",
     # Session picker
@@ -171,10 +173,25 @@ _MERMAID_KEYWORDS = {
 
 
 class _OutputLexer(Lexer):
-    """Applies markdown-like styling to the output buffer line-by-line."""
+    """Applies markdown-like styling to the output buffer line-by-line.
+
+    Also overlays ``class:selected`` on the active mouse-drag selection
+    (read from ``_ScrollableBufferControl.sel_start / sel_end``).  This
+    is done in the lexer instead of ``HighlightSelectionProcessor`` because
+    focus stays on the input buffer during drag — the built-in processor
+    only highlights the *focused* control.
+    """
+
+    def __init__(self, control: _ScrollableBufferControl | None = None):
+        self._control = control
 
     def lex_document(self, document):
         lines = document.lines
+
+        # Snapshot the selection range (may change between renders)
+        ctrl = self._control
+        sel_start = ctrl.sel_start if ctrl else None
+        sel_end = ctrl.sel_end if ctrl else None
 
         # Pre-process: track code-fence state and language across lines
         styled: list[list[tuple[str, str]]] = []
@@ -231,6 +248,10 @@ class _OutputLexer(Lexer):
                 continue
 
             styled.append(self._style_line(line))
+
+        # --- Overlay mouse-drag selection highlight ---
+        if sel_start is not None and sel_end is not None:
+            _apply_selection_overlay(styled, lines, sel_start, sel_end)
 
         def get_line(lineno: int) -> list[tuple[str, str]]:
             if lineno < len(styled):
@@ -646,6 +667,76 @@ def _process_mermaid_blocks(
 
 
 # ---------------------------------------------------------------------------
+# Selection overlay — applies class:selected to lexer fragments
+# ---------------------------------------------------------------------------
+
+def _apply_selection_overlay(
+    styled: list[list[tuple[str, str]]],
+    lines: list[str],
+    sel_start: int,
+    sel_end: int,
+) -> None:
+    """Overlay ``class:selected`` on *styled* fragments for the range
+    [sel_start, sel_end) in the buffer text.
+
+    Operates in-place on *styled* (one entry per document line).
+    *lines* are the raw text lines from the document (``document.lines``).
+    """
+    if sel_start >= sel_end:
+        return
+
+    char_pos = 0  # running cursor through the full buffer text
+    for lineno, line in enumerate(lines):
+        line_len = len(line)
+        line_end = char_pos + line_len  # exclusive (does not include the \n)
+
+        # Does this line overlap the selection?
+        if char_pos < sel_end and line_end > sel_start:
+            from_col = max(0, sel_start - char_pos)
+            to_col = min(line_len, sel_end - char_pos)
+            if from_col < to_col and lineno < len(styled):
+                styled[lineno] = _highlight_fragments(
+                    styled[lineno], from_col, to_col,
+                )
+
+        char_pos = line_end + 1  # +1 for the \n
+        if char_pos >= sel_end:
+            break
+
+
+def _highlight_fragments(
+    fragments: list[tuple[str, str]],
+    from_col: int,
+    to_col: int,
+) -> list[tuple[str, str]]:
+    """Return a new fragment list with ``class:selected`` applied from
+    *from_col* to *to_col* (character offsets within the line)."""
+    result: list[tuple[str, str]] = []
+    col = 0
+    for style, text in fragments:
+        frag_end = col + len(text)
+        if frag_end <= from_col or col >= to_col:
+            # Entirely outside selection
+            result.append((style, text))
+        elif col >= from_col and frag_end <= to_col:
+            # Entirely inside selection
+            result.append((style + " class:selected", text))
+        else:
+            # Partial overlap — split the fragment
+            before = text[: max(0, from_col - col)]
+            middle = text[max(0, from_col - col): min(len(text), to_col - col)]
+            after = text[min(len(text), to_col - col):]
+            if before:
+                result.append((style, before))
+            if middle:
+                result.append((style + " class:selected", middle))
+            if after:
+                result.append((style, after))
+        col = frag_end
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Fast-scroll BufferControl — higher mouse wheel sensitivity
 # ---------------------------------------------------------------------------
 
@@ -674,13 +765,11 @@ class _ScrollMetricsCapture(Margin):
 class _ScrollableBufferControl(BufferControl):
     """BufferControl with fast mouse scroll and click-drag text selection.
 
-    Implements mouse selection explicitly (position translation + drag
-    tracking) because the base BufferControl's mouse_handler doesn't
-    reliably support drag-to-select across prompt_toolkit versions.
-
-    On mouse-up the selected text is auto-copied to the system clipboard
-    (terminal-style), then focus snaps back to the input buffer so the
-    user can keep typing immediately.
+    Focus never leaves the input buffer — the cursor stays blinking in the
+    input area at all times.  Selection is tracked internally via
+    ``_sel_start`` / ``_sel_end`` (buffer cursor positions) and rendered by
+    the ``_OutputLexer`` which reads these values.  On mouse-up, selected
+    text is auto-copied to the system clipboard (terminal-style behaviour).
     """
 
     _cached_half: int = 20
@@ -690,6 +779,9 @@ class _ScrollableBufferControl(BufferControl):
         super().__init__(**kwargs)
         self._tui = tui
         self._drag_start: int | None = None
+        # Selection range (inclusive start, exclusive end) — read by _OutputLexer
+        self.sel_start: int | None = None
+        self.sel_end: int | None = None
 
     # -- Position translation ------------------------------------------------
 
@@ -744,19 +836,20 @@ class _ScrollableBufferControl(BufferControl):
                 pass
             return None
 
-        # --- MOUSE_DOWN — focus, position cursor, begin drag ---
+        # --- MOUSE_DOWN — begin drag, do NOT steal focus from input ---
         if mouse_event.event_type == MouseEventType.MOUSE_DOWN:
-            try:
-                from prompt_toolkit.application import get_app
-                get_app().layout.current_control = self
-            except Exception:
-                pass
             pos = self._mouse_pos_to_cursor(
                 mouse_event.position.y, mouse_event.position.x,
             )
-            self.buffer.cursor_position = pos
-            self.buffer.selection_state = None
             self._drag_start = pos
+            # Clear any previous selection
+            self.sel_start = None
+            self.sel_end = None
+            try:
+                from prompt_toolkit.application import get_app
+                get_app().invalidate()
+            except Exception:
+                pass
             return None
 
         # --- MOUSE_MOVE — extend selection from drag start ---
@@ -765,12 +858,10 @@ class _ScrollableBufferControl(BufferControl):
                 pos = self._mouse_pos_to_cursor(
                     mouse_event.position.y, mouse_event.position.x,
                 )
-                self.buffer.cursor_position = pos
                 if pos != self._drag_start:
-                    self.buffer.selection_state = SelectionState(
-                        original_cursor_position=self._drag_start,
-                        type=SelectionType.CHARACTERS,
-                    )
+                    a, b = sorted((self._drag_start, pos))
+                    self.sel_start = a
+                    self.sel_end = b
                 try:
                     from prompt_toolkit.application import get_app
                     get_app().invalidate()
@@ -778,37 +869,31 @@ class _ScrollableBufferControl(BufferControl):
                     pass
             return None
 
-        # --- MOUSE_UP — auto-copy selection, snap focus to input ---
+        # --- MOUSE_UP — auto-copy selection to clipboard ---
         if mouse_event.event_type == MouseEventType.MOUSE_UP:
             if self._drag_start is not None:
                 pos = self._mouse_pos_to_cursor(
                     mouse_event.position.y, mouse_event.position.x,
                 )
-                self.buffer.cursor_position = pos
+                # Fallback: if MOUSE_MOVE never fired, compute range now
+                if pos != self._drag_start:
+                    a, b = sorted((self._drag_start, pos))
+                    self.sel_start = a
+                    self.sel_end = b
 
-                # Auto-copy to system clipboard if a real drag occurred
-                if self.buffer.selection_state is not None:
-                    start = self.buffer.selection_state.original_cursor_position
-                    end = self.buffer.cursor_position
-                    if start > end:
-                        start, end = end, start
-                    selected = self.buffer.text[start:end]
+                # Auto-copy to system clipboard
+                if self.sel_start is not None and self.sel_end is not None:
+                    selected = self.buffer.text[self.sel_start:self.sel_end]
                     if selected:
                         _copy_to_system_clipboard(selected)
 
-                self.buffer.selection_state = None
                 self._drag_start = None
+                # Keep sel_start/sel_end so highlight persists after release.
+                # Next MOUSE_DOWN clears it.
 
-            # Snap focus back to input buffer
             try:
                 from prompt_toolkit.application import get_app
-                app = get_app()
-                for win in app.layout.get_visible_focusable_windows():
-                    ctrl = win.content
-                    if isinstance(ctrl, BufferControl) and ctrl.buffer.name == "input":
-                        app.layout.focus(win)
-                        break
-                app.invalidate()
+                get_app().invalidate()
             except Exception:
                 pass
             return None
@@ -1342,24 +1427,35 @@ class FullScreenChat:
         # only when there IS a selection (copy), otherwise cancel.
 
         # Override Ctrl+C: copy if selection exists, otherwise cancel.
-        # Checks BOTH input and output buffers since focus snaps back to
-        # input after mouse-up but the selection lives on the output buffer.
+        # Checks the output control's sel_start/sel_end (mouse drag) and
+        # the input buffer's selection_state (shift+arrow selection).
         @kb.add("c-c", eager=True)
         def _copy_or_cancel(event):
-            # Check output buffer first (mouse selection lands here)
-            for buf in (self._output_buffer, event.current_buffer):
-                if buf.selection_state is not None:
-                    start = buf.selection_state.original_cursor_position
-                    end = buf.cursor_position
-                    if start > end:
-                        start, end = end, start
-                    if start != end:
-                        selected_text = buf.text[start:end]
-                        event.app.clipboard.set_data(ClipboardData(selected_text))
-                        # Also copy to system clipboard via OSC 52
-                        _copy_to_system_clipboard(selected_text)
-                    buf.selection_state = None
-                    return
+            # Check output area mouse selection first
+            ctrl = self._output_window.content
+            if (hasattr(ctrl, "sel_start") and ctrl.sel_start is not None
+                    and ctrl.sel_end is not None):
+                selected_text = self._output_buffer.text[ctrl.sel_start:ctrl.sel_end]
+                if selected_text:
+                    event.app.clipboard.set_data(ClipboardData(selected_text))
+                    _copy_to_system_clipboard(selected_text)
+                ctrl.sel_start = None
+                ctrl.sel_end = None
+                event.app.invalidate()
+                return
+            # Check input buffer selection (shift+arrow)
+            buf = event.current_buffer
+            if buf.selection_state is not None:
+                start = buf.selection_state.original_cursor_position
+                end = buf.cursor_position
+                if start > end:
+                    start, end = end, start
+                if start != end:
+                    selected_text = buf.text[start:end]
+                    event.app.clipboard.set_data(ClipboardData(selected_text))
+                    _copy_to_system_clipboard(selected_text)
+                buf.selection_state = None
+                return
             # No selection — original cancel behavior
             if self._picker is not None:
                 self._dismiss_picker()
@@ -1498,13 +1594,16 @@ class FullScreenChat:
 
         # Output area — fills ALL remaining vertical space, pushing
         # the fixed-height bottom elements to the terminal floor.
+        output_control = _ScrollableBufferControl(
+            tui=self,
+            buffer=self._output_buffer,
+            focusable=True,
+            lexer=_OutputLexer(),  # lexer wired to control below
+        )
+        # Wire lexer → control so it can read sel_start/sel_end
+        output_control.lexer = _OutputLexer(control=output_control)
         output_window = Window(
-            content=_ScrollableBufferControl(
-                tui=self,
-                buffer=self._output_buffer,
-                focusable=True,
-                lexer=_OutputLexer(),
-            ),
+            content=output_control,
             wrap_lines=True,
             height=D(min=1, weight=1),
             right_margins=[_ScrollMetricsCapture(self)],
