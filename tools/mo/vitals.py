@@ -7,7 +7,6 @@ gracefully to shutil.disk_usage without it.
 from __future__ import annotations
 
 import os
-import shutil
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

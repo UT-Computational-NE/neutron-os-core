@@ -94,7 +94,7 @@ class GitHubProvider(RepoSourceProvider):
         except Exception as exc:
             exc_str = str(exc)
             if "lifetime" in exc_str or "366 days" in exc_str:
-                print(f"  GitHub: org requires token expiration ≤ 1 year — edit your token at github.com/settings/personal-access-tokens")
+                print("  GitHub: org requires token expiration ≤ 1 year — edit your token at github.com/settings/personal-access-tokens")
             elif "403" in exc_str:
                 print(f"  GitHub: access denied for {self.org} — check token permissions and org membership")
             else:
@@ -171,7 +171,7 @@ class GitHubProvider(RepoSourceProvider):
                 activity.issues.append({
                     "iid": issue.number,
                     "title": issue.title,
-                    "labels": [l.name for l in issue.labels],
+                    "labels": [lbl.name for lbl in issue.labels],
                     "assignees": assignees,
                     "author": issue.user.login if issue.user else "",
                     "created_at": issue.created_at.isoformat() if issue.created_at else "",
@@ -187,7 +187,7 @@ class GitHubProvider(RepoSourceProvider):
 
         # -- Labels --------------------------------------------------------
         try:
-            activity.labels = sorted(l.name for l in gh_repo.get_labels())
+            activity.labels = sorted(lbl.name for lbl in gh_repo.get_labels())
         except Exception:
             pass
 

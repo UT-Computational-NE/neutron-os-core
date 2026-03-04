@@ -216,7 +216,7 @@ class Bootstrap:
             missing.append("alembic")
 
         try:
-            import pgvector
+            import pgvector  # noqa: F401
             details["pgvector"] = "installed"
         except ImportError:
             missing.append("pgvector (pip)")

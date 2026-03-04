@@ -21,7 +21,6 @@ try:
     from rich.live import Live
     from rich.markdown import Markdown
     from rich.panel import Panel
-    from rich.syntax import Syntax
     from rich.text import Text
     from rich.theme import Theme
 
@@ -37,7 +36,7 @@ def _is_diff(text: str) -> bool:
     lines = text.splitlines()
     if len(lines) < 3:
         return False
-    diff_markers = sum(1 for l in lines if l.startswith(("+", "-", "@@", "---", "+++")))
+    diff_markers = sum(1 for line in lines if line.startswith(("+", "-", "@@", "---", "+++")))
     return diff_markers / max(len(lines), 1) > 0.3
 
 

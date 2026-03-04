@@ -15,10 +15,8 @@ from __future__ import annotations
 import difflib
 import json
 import os
-import re
 import shutil
 import subprocess
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -588,7 +586,7 @@ def _exec_git_commit_fix(params: dict[str, Any]) -> dict[str, Any]:
             )
 
         # Commit
-        result = subprocess.run(
+        subprocess.run(
             [git_bin, "commit", "-m", message],
             capture_output=True, text=True, check=True, timeout=10,
             cwd=str(_REPO_ROOT),

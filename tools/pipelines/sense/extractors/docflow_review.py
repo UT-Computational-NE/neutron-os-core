@@ -178,7 +178,6 @@ class MSGraphProvider(DocProvider):
         item_id = self._resolve_item_id(uri)
 
         # Get document content (as plain text)
-        content_url = f"{self._base_url}/me/drive/items/{item_id}/content"
         # Note: For .docx, we'd need to download and parse
         # Graph API can convert to PDF/HTML but not plain text directly
 

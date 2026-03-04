@@ -183,7 +183,7 @@ class TestDocumentModel:
             ],
         )
 
-        issues = doc.validate()
+        doc.validate()
 
         # Should detect missing alt text
         assert len(doc.get_missing_alt_text()) == 1

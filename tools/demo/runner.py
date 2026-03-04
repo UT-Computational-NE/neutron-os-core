@@ -12,9 +12,7 @@ Reuses tools/agents/setup/renderer.py for consistent visual language
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Callable
 
 from tools.setup import renderer

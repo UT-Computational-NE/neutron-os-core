@@ -209,10 +209,7 @@ class TestChannelAccessibility:
     def test_outlook_calendar_accessible(self, ms_graph_creds):
         """Outlook calendar channel is configured."""
         from tools.pipelines.sense.calendar_context import OutlookCalendarProvider
-        provider = OutlookCalendarProvider(
-            client_id=ms_graph_creds["client_id"],
-            client_secret=ms_graph_creds["client_secret"],
-        )
+        provider = OutlookCalendarProvider()
         assert provider.is_available()
     
     def test_gitlab_accessible(self, gitlab_token):

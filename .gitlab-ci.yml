@@ -51,7 +51,7 @@ variables:
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
-    - pip install --quiet -e ".[dev,docflow]" requests
+    - pip install --quiet -e ".[dev,docflow,chat]" requests
 
 # =============================================================================
 # Test Stage
@@ -136,13 +136,23 @@ test:migrations:
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
     - pip install --quiet -e ".[dev,sense]"
-    # Wait for PostgreSQL to be ready
+    # Wait for PostgreSQL to be ready (Python-based, no pg_isready needed)
     - |
-      for i in $(seq 1 30); do
-        pg_isready -h postgres -p 5432 -U neut && break
-        echo "Waiting for PostgreSQL... ($i/30)"
-        sleep 2
-      done
+      python3 -c "
+      import socket, time
+      for i in range(30):
+          try:
+              s = socket.create_connection(('postgres', 5432), timeout=2)
+              s.close()
+              print('PostgreSQL is ready')
+              break
+          except (ConnectionRefusedError, socket.timeout, OSError):
+              print(f'Waiting for PostgreSQL... ({i+1}/30)')
+              time.sleep(2)
+      else:
+          print('WARNING: PostgreSQL may not be ready')
+      "
+
   script:
     # Test 1: Fresh migration applies cleanly
     - echo "Testing fresh migration..."

@@ -49,10 +49,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional, TypeVar
+from typing import Optional, TypeVar
 
 # Re-export core types for provider implementations
-from tools.pipelines.sense.models import Signal
+from tools.pipelines.sense.models import Signal as Signal
 
 
 class ProviderCapability(Enum):

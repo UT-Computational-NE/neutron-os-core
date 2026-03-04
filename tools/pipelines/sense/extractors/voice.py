@@ -101,7 +101,6 @@ class VoiceExtractor(BaseExtractor):
 
         # Optional diarization + voice identification
         speakers: dict[str, list[str]] = {}
-        identified_speakers: dict[str, str] = {}  # label -> person name
         speaker_matches: list = []
 
         try:

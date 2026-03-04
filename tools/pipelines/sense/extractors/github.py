@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -113,7 +113,7 @@ class GitHubExtractor(BaseExtractor):
         if not self.token:
             return False
         try:
-            from github import Github  # type: ignore[import-untyped]
+            from github import Github  # type: ignore[import-untyped]  # noqa: F401
             return True
         except ImportError:
             return False

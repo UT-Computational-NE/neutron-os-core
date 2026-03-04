@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 import sys
-import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, TYPE_CHECKING
@@ -276,7 +275,7 @@ def render_thinking_spinner(label: str = "Thinking"):
 def render_message(role: str, content: str) -> None:
     """Print a chat message with role prefix and markdown formatting."""
     if role == "assistant":
-        prefix = _c(_Colors.BOLD + _Colors.CHERENKOV, "neut>") if _use_color() else "neut>"
+        _c(_Colors.BOLD + _Colors.CHERENKOV, "neut>") if _use_color() else "neut>"
         print()
         for line in content.splitlines():
             formatted = format_markdown_line(line)

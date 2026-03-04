@@ -349,7 +349,7 @@ class Gateway:
     ) -> CompletionResponse:
         """Call a provider with native tool-use params and normalize the response."""
         try:
-            import requests
+            import requests  # noqa: F401
         except ImportError:
             raise RuntimeError("requests library required for LLM calls")
 
@@ -568,7 +568,7 @@ class Gateway:
     ) -> Iterator[StreamChunk]:
         """SSE stream from a provider, yielding StreamChunk objects."""
         try:
-            import requests
+            import requests  # noqa: F401
         except ImportError:
             raise RuntimeError("requests library required for LLM calls")
 

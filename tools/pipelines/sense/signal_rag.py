@@ -231,7 +231,7 @@ class LocalEmbeddings(EmbeddingProvider):
 
     def is_available(self) -> bool:
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
+            from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]  # noqa: F401
             return True
         except ImportError:
             return False

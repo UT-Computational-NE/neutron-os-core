@@ -14,11 +14,9 @@ import atexit
 import os
 import shutil
 import threading
-import time
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from uuid import uuid4
 
 from tools.mo.manifest import Manifest, ScratchEntry

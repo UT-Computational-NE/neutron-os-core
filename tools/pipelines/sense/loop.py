@@ -436,7 +436,7 @@ class LoopTracker:
 
     def compute_metrics(self, since_days: int = 30) -> LoopHealthMetrics:
         """Compute health metrics from recent iterations."""
-        cutoff = datetime.now().isoformat()[:10]  # Simplified
+        datetime.now().isoformat()[:10]  # Simplified
 
         # Filter to recent closed iterations
         closed = [

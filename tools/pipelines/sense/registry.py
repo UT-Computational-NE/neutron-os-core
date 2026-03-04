@@ -412,7 +412,7 @@ class SignalRegistry:
         """Register built-in subscribers."""
         # Briefing subscriber
         try:
-            from tools.pipelines.sense.briefing import BriefingService
+            from tools.pipelines.sense.briefing import BriefingService  # noqa: F401
 
             meta = SubscriberMetadata(
                 name="briefing",

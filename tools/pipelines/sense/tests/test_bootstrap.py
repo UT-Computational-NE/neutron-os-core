@@ -142,7 +142,7 @@ class TestPrerequisiteChecks:
 
                 # Simulate missing psycopg2
                 import sys
-                original_modules = sys.modules.copy()
+                sys.modules.copy()
 
                 # This would need more sophisticated mocking in practice
                 # For now, just verify the structure works
@@ -172,7 +172,7 @@ class TestK3DSetup:
             with patch.object(bootstrap, "_run_cmd") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0)
 
-                result = bootstrap.setup_k3d()
+                bootstrap.setup_k3d()
 
                 # Should have called k3d cluster start
                 assert mock_run.called
@@ -188,7 +188,7 @@ class TestK3DSetup:
                 mock_run.return_value = MagicMock(returncode=0)
 
                 with patch("time.sleep"):
-                    result = bootstrap.setup_k3d()
+                    bootstrap.setup_k3d()
 
                 # Should have called k3d cluster create
                 assert mock_run.called
@@ -237,7 +237,7 @@ class TestPostgresSetup:
                 with patch("time.sleep"):
                     with patch("tempfile.NamedTemporaryFile"):
                         with patch("os.unlink"):
-                            result = bootstrap.setup_postgres()
+                            bootstrap.setup_postgres()
 
                 # Should have called kubectl apply
                 assert mock_run.called

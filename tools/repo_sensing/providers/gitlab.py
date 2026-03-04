@@ -14,7 +14,6 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from tools.repo_sensing.base import (
     MAX_COMMIT_MESSAGE_LENGTH,

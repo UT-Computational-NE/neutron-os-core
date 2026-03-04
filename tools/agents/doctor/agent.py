@@ -16,7 +16,6 @@ Flow:
 
 from __future__ import annotations
 
-import difflib
 import json
 import sys
 from dataclasses import asdict, dataclass, field

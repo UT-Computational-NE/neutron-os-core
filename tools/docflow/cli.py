@@ -124,7 +124,7 @@ def _format_time_ago(iso_timestamp: str) -> str:
         else:
             minutes = delta.seconds // 60
             return f"{minutes}m ago" if minutes > 0 else "just now"
-    except:
+    except Exception:
         return iso_timestamp[:10]
 
 

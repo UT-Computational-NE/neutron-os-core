@@ -90,9 +90,9 @@ def _cmd_init(args: argparse.Namespace) -> None:
     print(f"  {ext_dir}/extractors/             Sense extractors")
     print()
     print("Next steps:")
-    print(f"  neut ext                    # Verify it appears")
+    print("  neut ext                    # Verify it appears")
     print(f"  neut ext check {args.name}  # Validate")
-    print(f"  neut chat                   # Chat tools are available immediately")
+    print("  neut chat                   # Chat tools are available immediately")
 
 
 def _cmd_docs(args: argparse.Namespace) -> None:

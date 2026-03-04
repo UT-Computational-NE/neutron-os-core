@@ -292,7 +292,7 @@ class HealthChecker:
 
             with urllib.request.urlopen(req, timeout=5) as resp:
                 latency = (time.time() - start) * 1000
-                data = resp.read().decode()
+                resp.read().decode()
 
                 return ServiceHealth(
                     name="Sense Server",
@@ -325,7 +325,7 @@ class HealthChecker:
         # MCP server runs on demand via stdio, not as a daemon
         # Check if it's importable and configured
         try:
-            from tools.mcp_server import server
+            from tools.mcp_server import server  # noqa: F401
 
             return ServiceHealth(
                 name="MCP Server",

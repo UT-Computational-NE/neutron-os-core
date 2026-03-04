@@ -87,7 +87,7 @@ class LocalStorageProvider(StorageProvider):
             return entries
 
         search_path = prefix_path if prefix_path.is_dir() else prefix_path.parent
-        pattern = prefix_path.name + "*" if not prefix_path.is_dir() else "*"
+        prefix_path.name + "*" if not prefix_path.is_dir() else "*"
 
         for path in sorted(search_path.rglob("*")):
             if path.is_file():

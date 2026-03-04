@@ -277,7 +277,7 @@ class PptxGenerationProvider:
 
 
 def _cli_template(ext_name: str) -> str:
-    return f'''"""CLI command for querying reactor logs.
+    return '''"""CLI command for querying reactor logs.
 
 Registered as: neut logs
 """
@@ -310,7 +310,7 @@ def main():
     args = parser.parse_args()
 
     if args.action == "search":
-        print(f"Searching logs for: {{args.query or '(all)'}}")
+        print(f"Searching logs for: {args.query or '(all)'}")
         print("  (connect to your reactor log database)")
     elif args.action == "summary":
         print("Reactor Operations Summary")

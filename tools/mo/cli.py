@@ -254,8 +254,8 @@ def _cmd_vitals(args) -> int:
         data = snap.to_dict()
         data["pressure"] = pressure
         data["leaks"] = [
-            {"owner": l.owner, "pattern": l.pattern, "evidence": l.evidence}
-            for l in leaks
+            {"owner": leak.owner, "pattern": leak.pattern, "evidence": leak.evidence}
+            for leak in leaks
         ]
         print(json.dumps(data, indent=2))
         return 0
@@ -341,8 +341,8 @@ def _cmd_diagnose(args) -> int:
             "level": pressure,
             "vitals": snap.to_dict(),
             "leaks": [
-                {"owner": l.owner, "pattern": l.pattern, "evidence": l.evidence}
-                for l in leaks
+                {"owner": leak.owner, "pattern": leak.pattern, "evidence": leak.evidence}
+                for leak in leaks
             ],
         }
 
@@ -353,12 +353,12 @@ def _cmd_diagnose(args) -> int:
         print(f"\nDiagnosis:\n{verdict.diagnosis}")
 
         if verdict.actions_taken:
-            print(f"\nActions taken:")
+            print("\nActions taken:")
             for action in verdict.actions_taken:
                 print(f"  - {action}")
 
         if verdict.recommendations:
-            print(f"\nRecommendations:")
+            print("\nRecommendations:")
             for rec in verdict.recommendations:
                 print(f"  - {rec}")
 

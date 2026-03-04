@@ -95,8 +95,8 @@ class PRDCommentsExtractor(BaseExtractor):
 
         # Try to import msal for authentication
         try:
-            import msal
-            import requests
+            import msal  # noqa: F401
+            import requests  # noqa: F401
         except ImportError:
             return Extraction(
                 extractor=self.name,

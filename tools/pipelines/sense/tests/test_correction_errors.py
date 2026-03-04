@@ -39,7 +39,7 @@ class TestNonBlockingCorrections:
 
     def test_correction_auto_applies_above_threshold(self, tmp_path):
         """Corrections above threshold apply automatically without review."""
-        system = CorrectionReviewSystem(corrections_dir=tmp_path)
+        CorrectionReviewSystem(corrections_dir=tmp_path)
 
         # High-confidence correction should just apply
         correction = AppliedCorrection(
@@ -70,7 +70,7 @@ class TestNonBlockingCorrections:
 
     def test_low_confidence_still_applies_but_flagged(self, tmp_path):
         """Even low-confidence corrections apply, but are more likely flagged."""
-        system = CorrectionReviewSystem(corrections_dir=tmp_path)
+        CorrectionReviewSystem(corrections_dir=tmp_path)
 
         # The problematic correction
         correction = AppliedCorrection(
@@ -101,7 +101,7 @@ class TestDownstreamErrorFlagging:
 
     def test_flag_jet_design_error(self, tmp_path):
         """JEDI owner sees misrouted signal and flags the error."""
-        system = CorrectionReviewSystem(corrections_dir=tmp_path)
+        CorrectionReviewSystem(corrections_dir=tmp_path)
 
         # First, the correction was applied
         correction = AppliedCorrection(

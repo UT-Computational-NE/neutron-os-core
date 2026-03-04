@@ -18,7 +18,7 @@ class TerminalNotificationProvider(NotificationProvider):
     def __init__(self, config: dict[str, Any] | None = None):
         self._pync_available = False
         try:
-            import pync  # type: ignore
+            import pync  # type: ignore  # noqa: F401
             self._pync_available = True
         except ImportError:
             pass

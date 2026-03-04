@@ -292,7 +292,7 @@ def main():
         try:
             from tools.docflow.providers.sharepoint import SharePointProvider
 
-            provider = SharePointProvider()
+            SharePointProvider()
             # TODO: Implement actual upload
             print("   ℹ️  Upload would push to SharePoint")
             print(f"   (Manual step: upload {docx_path} to SharePoint PRD folder)")

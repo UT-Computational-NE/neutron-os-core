@@ -8,7 +8,6 @@ Tools are divided into READ (safe) and WRITE (mutating) categories.
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 

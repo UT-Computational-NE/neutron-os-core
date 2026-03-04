@@ -478,7 +478,7 @@ class CorrectionPropagator:
         try:
             from tools.pipelines.sense.signal_rag import SignalRAG
 
-            rag = SignalRAG()
+            SignalRAG()
 
             # Load signals and re-index
             # Note: This is a simplified version - full implementation would
@@ -499,7 +499,7 @@ class CorrectionPropagator:
     def _handle_resynthesis(self, job: PropagationJob) -> bool:
         """Queue re-synthesis of affected published content."""
         signal_ids = job.payload.get("signal_ids", [])
-        published_endpoints = job.payload.get("published_endpoints", [])
+        job.payload.get("published_endpoints", [])
 
         if not signal_ids:
             return True
@@ -507,7 +507,7 @@ class CorrectionPropagator:
         try:
             from tools.pipelines.sense.correction_review import CorrectionReviewSystem
 
-            system = CorrectionReviewSystem()
+            CorrectionReviewSystem()
 
             # Create resynthesis jobs via the available method
             # Note: Full implementation would create jobs per signal

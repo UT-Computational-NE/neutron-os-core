@@ -2929,7 +2929,7 @@ def cmd_db(args):
         try:
             index_data = json.loads(INDEX_PATH.read_text())
             signal_count = len(index_data) if isinstance(index_data, list) else 0
-        except:
+        except Exception:
             signal_count = 0
 
         print(f"Found {signal_count} signals to import")
@@ -3473,7 +3473,7 @@ def cmd_voice(args):
     if people_file.exists():
         content = people_file.read_text()
         # Count table rows (skip header row)
-        team_size = len([l for l in content.split("\n") if l.startswith("|") and "---" not in l]) - 1
+        team_size = len([line for line in content.split("\n") if line.startswith("|") and "---" not in line]) - 1
 
     print("🎤 Voice Identification Status")
     print()

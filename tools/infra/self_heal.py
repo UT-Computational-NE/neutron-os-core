@@ -14,11 +14,10 @@ from __future__ import annotations
 import hashlib
 import os
 import platform
-import sys
 import traceback as tb_module
 from argparse import Namespace
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Callable
 
 from tools.infra.orchestrator.bus import EventBus
 
