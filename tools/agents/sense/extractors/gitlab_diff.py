@@ -344,6 +344,7 @@ class GitLabDiffExtractor(BaseExtractor):
                 source=self.name,
                 timestamp=timestamp,
                 raw_text=f"New project: {proj['path']}",
+                initiatives=[self._guess_initiative(proj["path"])],
                 signal_type="progress",
                 detail=f"Newly discovered project: {proj['name']} ({proj['path']})",
                 confidence=1.0,

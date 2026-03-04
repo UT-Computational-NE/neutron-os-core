@@ -109,6 +109,19 @@ ACTION_REGISTRY: dict[str, ActionCategory] = {
     "read_file": ActionCategory.READ,
     "list_files": ActionCategory.READ,
 
+    # Review tools (read = inspect, write = decide/complete)
+    "review_start": ActionCategory.READ,
+    "review_get_item": ActionCategory.READ,
+    "review_progress": ActionCategory.READ,
+    "review_decide": ActionCategory.WRITE,
+    "review_complete": ActionCategory.WRITE,
+
+    # Email tools (read = list/preview, write = draft/send)
+    "email_list": ActionCategory.READ,
+    "email_preview": ActionCategory.READ,
+    "email_draft": ActionCategory.WRITE,
+    "email_send": ActionCategory.WRITE,
+
     # Write actions (require approval)
     "sense_ingest": ActionCategory.WRITE,
     "sense_draft": ActionCategory.WRITE,

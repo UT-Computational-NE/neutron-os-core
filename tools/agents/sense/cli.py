@@ -624,10 +624,17 @@ def cmd_draft(args: argparse.Namespace) -> None:
 
     print(f"  Loaded {len(all_signals)} signal(s) from processed files")
 
+    # Re-resolve people and initiatives against current config
+    # (handles config changes since signals were originally extracted)
+    from tools.agents.sense.correlator import Correlator
+    correlator = Correlator()
+    correlator.resolve_signals(all_signals)
+    print(f"  Re-resolved against {len(correlator.people)} people, {len(correlator.initiatives)} initiatives")
+
     synthesizer = Synthesizer()
     print(f"  Previously reported: {synthesizer.get_reported_count()} signal(s)")
 
-    changelog = synthesizer.synthesize(all_signals, include_all=include_all)
+    changelog = synthesizer.synthesize(all_signals, include_all=include_all, correlator=correlator)
 
     if not changelog.entries:
         print("\n  No new signals to report!")
@@ -635,8 +642,18 @@ def cmd_draft(args: argparse.Namespace) -> None:
             print("  Use --all to include previously reported signals.")
         return
 
+    # Update blocker tracker with any blocker signals
+    from tools.agents.sense.blocker_tracker import BlockerTracker
+    blocker_tracker = BlockerTracker()
+    blocker_signals = [s for s in all_signals if s.signal_type == "blocker"]
+    if blocker_signals:
+        blocker_tracker.update(blocker_signals)
+        active = blocker_tracker.get_active_blockers()
+        cross = blocker_tracker.get_cross_cutting_blockers()
+        print(f"  Blockers: {len(active)} active ({len(cross)} cross-cutting)")
+
     changelog_path = synthesizer.write_changelog(changelog)
-    summary_path = synthesizer.write_weekly_summary(changelog)
+    summary_path = synthesizer.write_weekly_summary(changelog, correlator=correlator, blocker_tracker=blocker_tracker)
 
     print(f"\n  Changelog: {changelog_path}")
     print(f"  Summary:   {summary_path}")

@@ -4,6 +4,9 @@ Subcommands:
     neut doc publish <file>              Generate + publish to configured storage
     neut doc publish --draft <file>      Draft with review period
     neut doc publish --all --changed-only Batch publish changed docs
+    neut doc review [file]               Interactive human-in-the-loop review
+    neut doc review --quick              Fast one-shot approve/reject
+    neut doc review --status             Show active review sessions
     neut doc generate <file>             Generate locally only (no upload)
     neut doc pull [<doc_id>]             Pull external doc → update local .md
     neut doc pull --all                  Pull all tracked docs from external storage
@@ -565,6 +568,78 @@ def cmd_onboard(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_review(args: argparse.Namespace) -> None:
+    """Interactive human-in-the-loop review of a draft document."""
+    from tools.review.models import ReviewSessionStore
+    from tools.review.runner import ReviewRunner
+    from tools.review.adapters.draft_adapter import (
+        DraftReviewAdapter,
+        create_draft_session,
+        find_draft,
+    )
+
+    store = ReviewSessionStore()
+
+    # --status: show active review sessions without entering review
+    if getattr(args, "review_status", False):
+        sessions = store.list_active()
+        if not sessions:
+            print("No active review sessions.")
+            return
+        print(f"\nActive review sessions: {len(sessions)}\n")
+        for s in sessions:
+            reviewed, total = s.progress
+            print(f"  {s.session_id}")
+            print(f"    Source:   {s.source}")
+            print(f"    Progress: {reviewed}/{total} reviewed")
+            print()
+        return
+
+    # Find the draft to review
+    file_arg = getattr(args, "file", None)
+    draft_path = find_draft(file_arg=file_arg)
+    if not draft_path:
+        if file_arg:
+            print(f"Draft not found: {file_arg}")
+        else:
+            print("No draft files found in tools/agents/drafts/")
+            print("Generate one with: neut sense draft")
+        sys.exit(1)
+
+    print(f"File: {draft_path.name}")
+
+    # --chat: hand off to conversational review in neut chat
+    if getattr(args, "chat", False):
+        from tools.agents.chat.entry import enter_chat
+
+        content = draft_path.read_text(encoding="utf-8")
+        enter_chat(
+            context_markdown=(
+                f"# Review: {draft_path.name}\n\n"
+                f"The user wants to review this draft conversationally.\n"
+                f"Use the review_start, review_get_item, review_decide, "
+                f"review_progress, and review_complete tools to drive the review.\n\n"
+                f"---\n\n{content}"
+            ),
+            title=f"Review: {draft_path.stem}",
+            suggestions=[
+                "Let's review this draft",
+                "Show me the first section",
+                "Accept everything and finalize",
+            ],
+            source="neut_doc_review",
+        )
+        return
+
+    fresh = getattr(args, "fresh", False)
+    quick = getattr(args, "quick", False)
+    session = create_draft_session(draft_path, store, fresh=fresh)
+
+    adapter = DraftReviewAdapter()
+    runner = ReviewRunner(adapter, store)
+    runner.run(session, quick=quick)
+
+
 def cmd_overview(args: argparse.Namespace) -> None:
     """Show dashboard overview of document ecosystem."""
     from tools.docflow.engine import DocFlowEngine
@@ -650,6 +725,7 @@ COMMANDS: dict[str, str] = {
     "overview": "Dashboard of document ecosystem",
     "publish": "Generate + publish to storage",
     "generate": "Generate locally only",
+    "review": "Interactive human-in-the-loop review",
     "pull": "Pull external doc → update .md",
     "status": "Show document status",
     "check-links": "Verify cross-doc links",
@@ -683,6 +759,14 @@ def get_parser() -> argparse.ArgumentParser:
     pub_parser.add_argument("--changed-only", action="store_true", help="Only changed docs")
     pub_parser.add_argument("--storage", help="Override storage provider (e.g., 'local')")
     pub_parser.add_argument("--force", action="store_true", help="Force publish even if no changes detected")
+
+    # review
+    rev_parser = subparsers.add_parser("review", help="Interactive human-in-the-loop review")
+    rev_parser.add_argument("file", nargs="?", help="Draft file to review (default: most recent)")
+    rev_parser.add_argument("--fresh", action="store_true", help="Start over, discard previous progress")
+    rev_parser.add_argument("--quick", action="store_true", help="Fast one-shot review (approve/reject all)")
+    rev_parser.add_argument("--status", action="store_true", dest="review_status", help="Show active review sessions")
+    rev_parser.add_argument("--chat", action="store_true", help="Review conversationally via neut chat")
 
     # generate
     gen_parser = subparsers.add_parser("generate", help="Generate locally only")
@@ -731,6 +815,8 @@ def main():
         cmd_overview(args)
     elif args.command == "publish":
         cmd_publish(args)
+    elif args.command == "review":
+        cmd_review(args)
     elif args.command == "generate":
         cmd_generate(args)
     elif args.command == "pull":
