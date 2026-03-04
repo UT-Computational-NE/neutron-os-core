@@ -48,7 +48,7 @@ infra/
 
 ```bash
 # From repo root
-neut setup
+neut config
 # Follow prompts; select "yes" for infrastructure setup
 ```
 

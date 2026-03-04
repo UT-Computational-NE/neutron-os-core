@@ -1,4 +1,4 @@
-# Sense Health Monitoring — Design Plan
+# Neut Sense Health Monitoring — Design Plan
 
 **Status:** Draft for Review  
 **Created:** 2026-02-24  

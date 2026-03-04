@@ -1,23 +1,17 @@
-# NeutronOS Agent State Management Technical Specification
+Table of Contents
 
-**Status:** Draft  
-**Owner:** Ben Lindley  
-**Created:** 2026-02-24  
-**PRD Reference:** [agent-state-management-prd.md](../prd/agent-state-management-prd.md)
+NeutronOS Agent State Management Technical Specification
 
----
+Status: Draft   Owner: Ben Lindley   Created: 2026-02-24   PRD Reference: agent-state-management-prd.md
 
-## Overview
+Overview
 
 This specification defines the technical implementation of NeutronOS agent state management, enabling backup, encryption, restoration, and migration of agent state across devices and team members.
 
----
+Architecture
 
-## Architecture
+Component Diagram
 
-### Component Diagram
-
-```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         neut state CLI                          │
 ├─────────────┬─────────────┬─────────────┬─────────────┬────────┤
@@ -41,11 +35,9 @@ This specification defines the technical implementation of NeutronOS agent state
 │  │  State   │ │  State   │ │  State   │ │  State   │ │ State  │ │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
 └─────────────────────────────────────────────────────────────────┘
-```
 
-### Module Structure
+Module Structure
 
-```
 tools/agents/state/
 ├── __init__.py
 ├── locations.py        # State location definitions
@@ -54,15 +46,11 @@ tools/agents/state/
 ├── encryption.py       # age/git-crypt integration
 ├── export.py           # Portable export format
 └── cli.py              # CLI subcommands
-```
 
----
+State Location Registry
 
-## State Location Registry
+Location Definition
 
-### Location Definition
-
-```python
 # tools/agents/state/locations.py
 
 from dataclasses import dataclass
@@ -98,7 +86,7 @@ class GitPolicy(Enum):
     TRACK_PLAIN = "plain"          # Track in Git, unencrypted (non-sensitive)
     OPTIONAL = "optional"          # User choice (not in .gitignore, not required)
 
-@dataclass
+
 class StateLocation:
     """Definition of a state storage location."""
     path: str                          # Relative to Neutron_OS root
@@ -293,15 +281,11 @@ STATE_LOCATIONS: list[StateLocation] = [
         backup_priority=BackupPriority.EXCLUDE,
     ),
 ]
-```
 
----
+CLI Commands
 
-## CLI Commands
+neut state inventory
 
-### `neut state inventory`
-
-```
 Usage: neut state inventory [OPTIONS]
 
   Display inventory of all agent state locations.
@@ -332,11 +316,9 @@ Example Output:
 
   Total: 15 locations, 1.4 MB
   Critical: 5 | High: 6 | Medium: 3 | Optional: 1
-```
 
-### `neut state backup`
+neut state backup
 
-```
 Usage: neut state backup [OPTIONS]
 
   Create encrypted backup of agent state.
@@ -373,11 +355,9 @@ Example:
     Size: 892 KB (compressed from 1.4 MB)
     Files: 47
     Checksum: sha256:a1b2c3d4...
-```
 
-### `neut state restore`
+neut state restore
 
-```
 Usage: neut state restore [OPTIONS] BACKUP_PATH
 
   Restore agent state from backup.
@@ -412,11 +392,9 @@ Example:
 
   Total: 47 files, 892 KB
   Run without --dry-run to apply.
-```
 
-### `neut state export`
+neut state export
 
-```
 Usage: neut state export [OPTIONS] CATEGORY
 
   Export state category to portable format.
@@ -441,15 +419,11 @@ Example:
 
   Exported to: my-corrections.json
   Schema version: 1.0
-```
 
----
+Backup Format
 
-## Backup Format
+Archive Structure
 
-### Archive Structure
-
-```
 neut-state-{timestamp}.tar.gz
 ├── manifest.json           # Backup metadata
 ├── config/
@@ -471,11 +445,9 @@ neut-state-{timestamp}.tar.gz
 │       └── *.json
 └── sessions/
     └── *.json
-```
 
-### Manifest Schema
+Manifest Schema
 
-```json
 {
   "$schema": "https://neutronos.dev/schemas/state-backup-manifest-v1.json",
   "version": "1.0",
@@ -513,17 +485,13 @@ neut-state-{timestamp}.tar.gz
     }
   ]
 }
-```
 
----
+Encryption
 
-## Encryption
+age Integration
 
-### age Integration
+ is a modern, audited encryption tool:age
 
-[age](https://age-encryption.org/) is a modern, audited encryption tool:
-
-```python
 # tools/agents/state/encryption.py
 
 import subprocess
@@ -578,11 +546,9 @@ class AgeEncryption:
             env = {"AGE_PASSPHRASE": passphrase}
         
         subprocess.run(cmd, check=True, env=env)
-```
 
-### Keychain Integration (macOS)
+Keychain Integration (macOS)
 
-```python
 import subprocess
 
 def store_passphrase_keychain(service: str, account: str, passphrase: str) -> None:
@@ -604,17 +570,13 @@ def get_passphrase_keychain(service: str, account: str) -> str:
         "-w",
     ], capture_output=True, text=True, check=True)
     return result.stdout.strip()
-```
 
----
+Git Integration
 
-## Git Integration
+State management is designed to be Git-aware but Git-optional. When running in a Git repository, the system can leverage Git for versioning, sync, and backup while remaining fully functional without Git.
 
-State management is designed to be **Git-aware but Git-optional**. When running in a Git repository, the system can leverage Git for versioning, sync, and backup while remaining fully functional without Git.
+Git Detection
 
-### Git Detection
-
-```python
 # tools/agents/state/git_integration.py
 
 import subprocess
@@ -622,7 +584,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-@dataclass
+
 class GitStatus:
     """Git repository status for state management."""
     is_git_repo: bool
@@ -705,11 +667,9 @@ def detect_git_status(path: Path) -> GitStatus:
             has_remote=False, remote_url=None, is_clean=True,
             git_crypt_enabled=False, git_crypt_unlocked=False,
         )
-```
 
-### Git-Aware Inventory Display
+Git-Aware Inventory Display
 
-```python
 def format_git_status(location: StateLocation, git_status: GitStatus) -> str:
     """Format Git tracking status for display."""
     if not git_status.is_git_repo:
@@ -743,15 +703,13 @@ def format_git_status(location: StateLocation, git_status: GitStatus) -> str:
             return "git:encrypted"
     
     return "git:tracked"
-```
 
-### Git-Crypt Integration (Phase 1)
+Git-Crypt Integration (Phase 1)
 
-[git-crypt](https://github.com/AGWA/git-crypt) provides transparent encryption for Git-tracked files.
+ provides transparent encryption for Git-tracked files.git-crypt
 
-#### Setup
+Setup
 
-```bash
 # Initialize git-crypt in repo
 git-crypt init
 
@@ -774,11 +732,9 @@ EOF
 # Commit the configuration
 git add .gitattributes
 git commit -m "Configure git-crypt for state encryption"
-```
 
-#### `.gitattributes` Patterns
+.gitattributes Patterns
 
-```gitattributes
 # Tier 1: Encrypted state (decrypted only on authorized machines)
 tools/agents/config/people.md filter=git-crypt diff=git-crypt
 tools/agents/config/initiatives.md filter=git-crypt diff=git-crypt
@@ -790,23 +746,19 @@ tools/agents/inbox/corrections/user_glossary.json filter=git-crypt diff=git-cryp
 
 # Note: Large/sensitive state stays in .gitignore (Tier 2)
 # inbox/raw/, inbox/processed/, sessions/ are NOT tracked
-```
 
-#### Unlock on New Machine
+Unlock on New Machine
 
-```bash
 # Using symmetric key
 git-crypt unlock /path/to/neutron-os.key
 
 # Using GPG (if your key was added)
 git-crypt unlock
-```
 
-### Git-Aware Commands
+Git-Aware Commands
 
-#### `neut state sync`
+neut state sync
 
-```
 Usage: neut state sync [OPTIONS]
 
   Synchronize state with Git remote.
@@ -837,11 +789,9 @@ Example:
       + 12 new correction entries
 
   State synchronized.
-```
 
-#### `neut state backup --git-commit`
+neut state backup --git-commit
 
-```
 Usage: neut state backup [OPTIONS]
 
 Options:
@@ -864,13 +814,11 @@ Example:
   ✓ Pushed to origin/main
 
   Backup complete.
-```
 
-### State Merge Strategy
+State Merge Strategy
 
 When pulling state from Git, conflicts may occur. The system uses schema-aware merge:
 
-```python
 # tools/agents/state/merge.py
 
 from typing import Any
@@ -921,13 +869,11 @@ MERGE_STRATEGIES = {
     ".doc-state.json": merge_doc_registry,  # Same strategy
     # For config files, prefer manual merge or remote-wins
 }
-```
 
-### Migration: Existing Repo to Git-Crypt
+Migration: Existing Repo to Git-Crypt
 
 For repositories with existing unencrypted state:
 
-```bash
 # 1. Ensure state is in .gitignore first
 echo "tools/agents/config/" >> .gitignore
 git add .gitignore
@@ -951,13 +897,9 @@ git commit -m "Add encrypted state files"
 # 6. Force-push to rewrite history (optional, if state was previously tracked unencrypted)
 # WARNING: This rewrites history and requires team coordination
 # git filter-branch --force --tree-filter 'git-crypt status -e || true' HEAD
-```
 
----
+PostgreSQL Schema (Phase 2)
 
-## PostgreSQL Schema (Phase 2)
-
-```sql
 -- State snapshots for team sync
 CREATE TABLE state_snapshots (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -999,15 +941,11 @@ CREATE TABLE state_access_log (
 CREATE INDEX idx_state_snapshots_user ON state_snapshots(user_id);
 CREATE INDEX idx_state_access_log_user ON state_access_log(user_id);
 CREATE INDEX idx_state_access_log_time ON state_access_log(created_at);
-```
 
----
+Testing Strategy
 
-## Testing Strategy
+Unit Tests
 
-### Unit Tests
-
-```python
 # tests/agents/state/test_inventory.py
 
 def test_inventory_scanner_finds_all_locations():
@@ -1059,11 +997,9 @@ def test_restore_validates_checksum():
     
     with pytest.raises(ChecksumError):
         backup.restore(archive_path)
-```
 
-### Integration Tests
+Integration Tests
 
-```python
 def test_backup_restore_roundtrip():
     """Full backup and restore preserves all state."""
     # Create state
@@ -1085,22 +1021,11 @@ def test_backup_restore_roundtrip():
         # Verify
         assert (root / "tools/agents/config/people.md").read_text() == "# People\n"
         assert (root / ".doc-registry.json").exists()
-```
 
----
+Dependencies
 
-## Dependencies
+Installation
 
-| Dependency | Version | Purpose |
-|------------|---------|---------|
-| age | ≥1.0 | File encryption |
-| git-crypt | ≥0.7 | Git-transparent encryption (Phase 1) |
-| python-gnupg | ≥0.5 | GPG operations (optional) |
-| keyring | ≥24.0 | Cross-platform keychain access |
-
-### Installation
-
-```bash
 # macOS
 brew install age git-crypt
 
@@ -1109,23 +1034,21 @@ sudo apt install age git-crypt
 
 # Python dependencies
 pip install keyring
-```
 
----
+Migration Notes
 
-## Migration Notes
+Schema Versioning
 
-### Schema Versioning
+The manifest includes a version field for forward compatibility:
 
-The manifest includes a `version` field for forward compatibility:
+• v1.0: Initial schema (Phase 0)
 
-- **v1.0**: Initial schema (Phase 0)
-- **v1.1**: Added git-crypt metadata (Phase 1)
-- **v2.0**: PostgreSQL sync metadata (Phase 2)
+• v1.1: Added git-crypt metadata (Phase 1)
+
+• v2.0: PostgreSQL sync metadata (Phase 2)
 
 Migration code checks version and applies transforms:
 
-```python
 def migrate_manifest(manifest: dict) -> dict:
     version = manifest.get("version", "1.0")
     
@@ -1135,12 +1058,11 @@ def migrate_manifest(manifest: dict) -> dict:
         manifest["version"] = "1.1"
     
     return manifest
-```
 
----
+Related Documents
 
-## Related Documents
+• Agent State Management PRD
 
-- [Agent State Management PRD](../prd/agent-state-management-prd.md)
-- [DocFlow Specification](docflow-spec.md) — Document lifecycle state
-- [Data Architecture Specification](data-architecture-spec.md)
+•  — Document lifecycle stateDocFlow Specification
+
+• Data Architecture Specification

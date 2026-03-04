@@ -78,13 +78,13 @@ The [Media Library](../../tools/agents/sense/media_library.py) indexes all recor
 
 ```bash
 # Search recordings
-neut sense media search "DocFlow architecture decision" --discuss
+neut media search "DocFlow architecture decision" --discuss
 
 # Extract action items
-neut sense media discuss <id> --actions
+neut media discuss <id> --actions
 
 # Explain technical concepts
-neut sense media discuss <id> --concepts
+neut media discuss <id> --concepts
 ```
 
 ### Stage 2: SYNTHESIZE — Pattern Recognition & Actionable Outputs

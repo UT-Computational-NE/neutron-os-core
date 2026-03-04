@@ -41,9 +41,9 @@ Key design decisions already made:
 
 ---
 
-## What We're Adding: `neut sense`
+## What We're Adding: Neut Sense
 
-A new CLI noun that extends the existing `neut` command structure. `sense` is the
+A new CLI noun (`neut sense`) that extends the existing `neut` command structure. Neut Sense is the
 agentic module for continuous program awareness — ingesting signals from multiple
 sources, extracting structured information, and maintaining program state.
 
@@ -100,7 +100,7 @@ neut ext    — Extension management               (platform-facing)
 neut infra  — Infrastructure management          (platform-facing)
 ```
 
-`sense` is unique: it's the only noun that runs proactively (heartbeat) and
+Neut Sense is unique: it's the only noun that runs proactively (heartbeat) and
 synthesizes across sources rather than querying a single system. But it follows
 the same patterns: offline-first, human-in-the-loop for writes, JSON/table
 output formats.
@@ -127,8 +127,8 @@ Apply to GitLab                   GitLab exports → sense inbox
                                   (to tracker, GitLab, Linear, OneDrive)
 ```
 
-`meeting-intake` is a specialized extractor that `sense` orchestrates. The
-meeting-intake README already defines the right pipeline; `sense` adds:
+`meeting-intake` is a specialized extractor that Neut Sense orchestrates. The
+meeting-intake README already defines the right pipeline; Neut Sense adds:
 1. Voice Memos as an additional audio source (same Whisper pipeline)
 2. Non-audio sources (GitLab, Teams messages, freetext, email)
 3. Cross-source synthesis (merge signals from all sources into one draft)
@@ -508,10 +508,10 @@ mermaid, INL framing). It should NOT be replaced with agent context.
 Instead, **append a section** for agent development:
 
 ```markdown
-## Agent Development (neut sense)
+## Agent Development (Neut Sense)
 
 ### Architecture
-See `docs/prd/neut-cli-prd.md` for CLI design. The `sense` noun extends
+See `docs/prd/neut-cli-prd.md` for CLI design. Neut Sense extends
 the existing command structure for proactive program awareness.
 
 Agent code lives in `tools/agents/`. Instance config in `tools/agents/config/`
@@ -526,7 +526,7 @@ is .gitignored.
 - `tools/meeting-intake/` — Teams recording pipeline (pre-existing)
 
 ### Design Principles
-- **Extend, don't replace:** `meeting-intake` is an extractor that `sense` orchestrates
+- **Extend, don't replace:** `meeting-intake` is an extractor that Neut Sense orchestrates
 - **Human-in-the-loop:** All writes require explicit approval
 - **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
 - **IDE-agnostic:** CLI-first, no IDE plugins, MCP server for tool integration
@@ -588,7 +588,7 @@ neut sense publish --target onedrive
 | Notifications | pync (macOS) + ntfy.sh (remote) | Local + mobile push |
 | CLI framework | Click/Typer (Python prototype) → Rust (production) | Match neut CLI spec |
 
-**Note on CLI language:** The neut CLI spec says Rust. For the `sense` prototype,
+**Note on CLI language:** The neut CLI spec says Rust. For the Neut Sense prototype,
 Python is fine — it wraps existing Python tools (Whisper, openpyxl, python-gitlab).
-If `sense` needs to be compiled into the Rust `neut` binary later, it can be
+If Neut Sense needs to be compiled into the Rust `neut` binary later, it can be
 called as a subprocess or rewritten. Don't let language choice block week 1.

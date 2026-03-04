@@ -1,77 +1,72 @@
-# DocFlow: Document Lifecycle Management System
+Table of Contents
 
-**Version:** 0.2.0  
-**Status:** Specification (In Development)  
-**Last Updated:** February 17, 2026  
-**Owner:** Ben Booth (UT Nuclear Engineering)
+DocFlow: Document Lifecycle Management System
 
-> **Architecture pattern:** DocFlow follows the same Factory/Provider pattern
-> established in the [Digital Twin Architecture Spec](digital-twin-architecture-spec.md)
-> §6-8. Each concern is an Extension Point with an abstract Provider contract,
-> a Factory for instantiation, and facility-specific implementations registered
-> via configuration. See the [Extension Point Catalog](#7-extension-point-catalog)
-> for the complete mapping.
+Version: 0.2.0   Status: Specification (In Development)   Last Updated: February 17, 2026   Owner: Ben Booth (UT Nuclear Engineering)
 
----
+Architecture pattern: DocFlow follows the same Factory/Provider pattern
+established in the 
+§6-8. Each concern is an Extension Point with an abstract Provider contract,
+a Factory for instantiation, and facility-specific implementations registered
+via configuration. See the 
+for the complete mapping.Digital Twin Architecture SpecExtension Point Catalog
 
-## 1. Executive Summary
+1. Executive Summary
 
-DocFlow is a document lifecycle management system that treats markdown (.md)
-files as **source code** and published artifacts as **deployment outputs**. It
-automates publication, review, feedback incorporation, and embedding pipelines
-while maintaining a clean Git workflow.
+DocFlow is a document lifecycle management system that treats markdown (.md) files as source code and published artifacts as deployment outputs. It automates publication, review, feedback incorporation, and embedding pipelines while maintaining a clean Git workflow.
 
-DocFlow is **storage-agnostic, format-agnostic, and feedback-agnostic**. The
-core workflow engine (state machine, review periods, link registry, Git
-integration) knows nothing about OneDrive, Word documents, or Microsoft Graph.
-These are implementations of Provider contracts that facilities swap based on
-their environment.
+DocFlow is storage-agnostic, format-agnostic, and feedback-agnostic. The core workflow engine (state machine, review periods, link registry, Git integration) knows nothing about OneDrive, Word documents, or Microsoft Graph. These are implementations of Provider contracts that facilities swap based on their environment.
 
-### Key Capabilities
+Key Capabilities
 
-- **Single-source truth:** .md files are the source; published artifacts are generated outputs
-- **Multi-stage publication:** Local → Draft Review → Published → Archived
-- **Formal review cycles:** Review periods with required/optional reviewers, deadline tracking
-- **Feedback collection:** Extract reviewer feedback from published artifacts (format-dependent)
-- **Cross-document linking:** Automatic URL rewriting for internal doc references
-- **CI/CD native:** Git-based workflow, branch-aware publication
-- **Fully extensible:** Factory/Provider pattern for storage, generation, feedback, notifications
-- **Human-in-the-loop:** RACI-based autonomy levels with approval gates
+• Single-source truth: .md files are the source; published artifacts are generated outputs
 
----
+• Multi-stage publication: Local → Draft Review → Published → Archived
 
-## 2. Problem Statement
+• Formal review cycles: Review periods with required/optional reviewers, deadline tracking
 
-### Current Pain Points
+• Feedback collection: Extract reviewer feedback from published artifacts (format-dependent)
 
-1. **Manual link management** — After publishing, internal markdown links break.
+• Cross-document linking: Automatic URL rewriting for internal doc references
+
+• CI/CD native: Git-based workflow, branch-aware publication
+
+• Fully extensible: Factory/Provider pattern for storage, generation, feedback, notifications
+
+• Human-in-the-loop: RACI-based autonomy levels with approval gates
+
+2. Problem Statement
+
+Current Pain Points
+
+• Manual link management — After publishing, internal markdown links break.
+
    Must manually recreate all hyperlinks in the published format.
 
-2. **Branch confusion** — Multiple Git branches with divergent docs → unclear which
+• Branch confusion — Multiple Git branches with divergent docs → unclear which
+
    version is "published" → conflicting URLs for the same document.
 
-3. **Comment orphaning** — Feedback on draft documents isn't tracked when document
+• Comment orphaning — Feedback on draft documents isn't tracked when document
+
    is promoted to published version.
 
-4. **Scattered review cycle** — No formal process for review periods, deadline
+• Scattered review cycle — No formal process for review periods, deadline
+
    enforcement, or tracking reviewer responses.
 
-5. **Manual republication** — Every doc update requires manual generation, upload,
+• Manual republication — Every doc update requires manual generation, upload,
+
    and link fixing.
 
-6. **Environment lock-in** — Current publishing workflow assumes OneDrive + Word.
-   Facilities using Google Workspace, Nextcloud, S3+HTML, or other stacks
-   cannot adopt DocFlow without rewriting core logic.
+• Environment lock-in — Current publishing workflow assumes OneDrive + Word.
 
----
+   Facilities using Google Workspace, Nextcloud, S3+HTML, or other stacks    cannot adopt DocFlow without rewriting core logic.
 
-## 3. Architecture Overview
+3. Architecture Overview
 
-DocFlow decomposes into five independent concerns, each with its own Provider
-contract. The core workflow engine orchestrates these providers without knowing
-their implementations.
+DocFlow decomposes into five independent concerns, each with its own Provider contract. The core workflow engine orchestrates these providers without knowing their implementations.
 
-```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        DocFlow Architecture                             │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -115,30 +110,29 @@ their implementations.
 │  └──────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
-```
 
-### Design Principle: Core Knows Nothing
+Design Principle: Core Knows Nothing
 
-The core engine never imports or references any specific provider implementation.
-It works exclusively through the Provider ABCs. This means:
+The core engine never imports or references any specific provider implementation. It works exclusively through the Provider ABCs. This means:
 
-- The state machine transitions documents without knowing if they're .docx or .html
-- The link registry resolves URLs without knowing if they're OneDrive or S3
-- The review manager tracks deadlines without knowing if feedback comes from
+• The state machine transitions documents without knowing if they're .docx or .html
+
+• The link registry resolves URLs without knowing if they're OneDrive or S3
+
+• The review manager tracks deadlines without knowing if feedback comes from
+
   Word comments or GitLab issues
-- A facility running Google Workspace replaces `OneDriveStorageProvider` +
-  `DocxFeedbackProvider` with `GoogleDriveStorageProvider` +
-  `GoogleDocsFeedbackProvider` — the core engine doesn't change
 
----
+• A facility running Google Workspace replaces OneDriveStorageProvider +
 
-## 4. Provider Contracts
+  DocxFeedbackProvider with GoogleDriveStorageProvider +   GoogleDocsFeedbackProvider — the core engine doesn't change
 
-### 4.1 GenerationProvider
+4. Provider Contracts
+
+4.1 GenerationProvider
 
 Converts markdown source files into publishable artifacts.
 
-```python
 class GenerationProvider(ABC):
     """Converts .md source files into publishable artifact format."""
 
@@ -177,23 +171,13 @@ class GenerationProvider(ABC):
     def supports_watermark(self) -> bool:
         """Whether this format supports draft watermarks."""
         ...
-```
 
-**Implementations:**
+Implementations:
 
-| Provider | Output | Tool | Use Case |
-|----------|--------|------|----------|
-| `PandocDocxProvider` | .docx | pandoc + python-docx | Microsoft environments |
-| `PandocPdfProvider` | .pdf | pandoc + LaTeX | Print-oriented, regulatory submissions |
-| `PandocHtmlProvider` | .html | pandoc | Web-hosted documentation |
-| `SphinxHtmlProvider` | .html | Sphinx | Large documentation sites |
-| `MkDocsProvider` | .html | MkDocs | Developer documentation |
-
-### 4.2 StorageProvider
+4.2 StorageProvider
 
 Manages artifact storage, retrieval, sharing, and URL generation.
 
-```python
 class StorageProvider(ABC):
     """Manages artifact storage and retrieval."""
 
@@ -235,23 +219,13 @@ class StorageProvider(ABC):
     def delete(self, storage_id: str) -> bool:
         """Delete an artifact from storage."""
         ...
-```
 
-**Implementations:**
+Implementations:
 
-| Provider | Backend | Auth | Use Case |
-|----------|---------|------|----------|
-| `OneDriveStorageProvider` | MS Graph API | OAuth2 / client credentials | Microsoft 365 environments |
-| `GoogleDriveStorageProvider` | Google Drive API | Service account / OAuth2 | Google Workspace environments |
-| `S3StorageProvider` | AWS S3 (or MinIO) | IAM / access keys | Self-hosted, cloud-native |
-| `NextcloudStorageProvider` | WebDAV | Username/password, OAuth | European institutions, self-hosted |
-| `LocalStorageProvider` | Filesystem | None | Development, testing, air-gapped |
-
-### 4.3 FeedbackProvider
+4.3 FeedbackProvider
 
 Extracts reviewer comments/feedback from published artifacts or external systems.
 
-```python
 class FeedbackProvider(ABC):
     """Extracts reviewer feedback from published artifacts
     or external systems."""
@@ -278,12 +252,10 @@ class FeedbackProvider(ABC):
     def mark_resolved(self, artifact_ref: str, comment_id: str) -> bool:
         """Mark a comment as resolved (if supported)."""
         ...
-```
 
-**Note:** `Comment` is a core data model, not provider-specific:
+Note: Comment is a core data model, not provider-specific:
 
-```python
-@dataclass
+
 class Comment:
     comment_id: str
     author: str
@@ -293,23 +265,13 @@ class Comment:
     resolved: bool
     replies: list['Comment']
     source: str             # Provider name that produced this comment
-```
 
-**Implementations:**
+Implementations:
 
-| Provider | Source | Inline? | Use Case |
-|----------|--------|---------|----------|
-| `DocxFeedbackProvider` | word/comments.xml in .docx ZIP | Yes | OneDrive + Word review |
-| `GoogleDocsFeedbackProvider` | Google Docs API | Yes | Google Workspace review |
-| `GitLabIssueFeedbackProvider` | GitLab issue comments | No | Code-review-style feedback |
-| `EmailFeedbackProvider` | IMAP inbox parsing | No | Low-tech reviewers |
-| `HypothesisFeedbackProvider` | Hypothes.is API | Yes | Web-hosted HTML docs |
-
-### 4.4 NotificationProvider
+4.4 NotificationProvider
 
 Sends alerts, reminders, and status updates to stakeholders.
 
-```python
 class NotificationProvider(ABC):
     """Sends notifications to stakeholders."""
 
@@ -325,23 +287,13 @@ class NotificationProvider(ABC):
             urgency: "low", "normal", "high"
         """
         ...
-```
 
-**Implementations:**
+Implementations:
 
-| Provider | Channel | Use Case |
-|----------|---------|----------|
-| `SmtpNotificationProvider` | Email | Universal fallback |
-| `TeamsNotificationProvider` | MS Teams webhook | Microsoft environments |
-| `SlackNotificationProvider` | Slack webhook | Slack-native teams |
-| `TerminalNotificationProvider` | stdout + macOS notifications (pync) | Local development |
-| `NtfyNotificationProvider` | ntfy.sh | Mobile push notifications |
-
-### 4.5 EmbeddingProvider
+4.5 EmbeddingProvider
 
 Indexes document content for RAG retrieval.
 
-```python
 class EmbeddingProvider(ABC):
     """Indexes document content for retrieval-augmented generation."""
 
@@ -360,26 +312,15 @@ class EmbeddingProvider(ABC):
     def remove_document(self, doc_id: str) -> bool:
         """Remove a document from the index."""
         ...
-```
 
-**Implementations:**
+Implementations:
 
-| Provider | Backend | Use Case |
-|----------|---------|----------|
-| `ChromaDbEmbeddingProvider` | ChromaDB | Local development, small scale |
-| `PgVectorEmbeddingProvider` | PostgreSQL + pgvector | Production, existing Postgres |
-| `PineconeEmbeddingProvider` | Pinecone | Cloud-native, managed |
+5. Core Engine (Provider-Agnostic)
 
----
+The core engine contains no provider-specific logic. It orchestrates providers through their ABCs.
 
-## 5. Core Engine (Provider-Agnostic)
+5.1 Document Lifecycle State Machine
 
-The core engine contains no provider-specific logic. It orchestrates providers
-through their ABCs.
-
-### 5.1 Document Lifecycle State Machine
-
-```
 ┌────────────┐
 │   LOCAL    │  .md file in Git (any branch)
 └────┬───────┘
@@ -409,19 +350,14 @@ through their ABCs.
 ┌────────────┐
 │  ARCHIVED  │  Moved to archive location (read-only)
 └────────────┘
-```
 
-The state machine is the same regardless of whether artifacts are .docx on
-OneDrive, .html on S3, or .pdf on a local NFS share.
+The state machine is the same regardless of whether artifacts are .docx on OneDrive, .html on S3, or .pdf on a local NFS share.
 
-### 5.2 Link Registry
+5.2 Link Registry
 
-The registry maps document identifiers to their published URLs. URL format
-is entirely determined by the `StorageProvider` — the registry just stores
-whatever `get_canonical_url()` returns.
+The registry maps document identifiers to their published URLs. URL format is entirely determined by the StorageProvider — the registry just stores whatever get_canonical_url() returns.
 
-```python
-@dataclass
+
 class LinkEntry:
     doc_id: str             # e.g., "experiment-manager-prd"
     source_path: str        # e.g., "docs/prd/experiment-manager-prd.md"
@@ -431,26 +367,24 @@ class LinkEntry:
     last_published: str     # ISO 8601 timestamp
     version: str            # e.g., "v2.1"
     commit_sha: str         # Git commit at time of publication
-```
 
-Persisted to `.doc-registry.json` in repo root.
+Persisted to .doc-registry.json in repo root.
 
-**Link rewriting** is a collaboration between the registry and the
-`GenerationProvider`:
+Link rewriting is a collaboration between the registry and the GenerationProvider:
 
-1. Registry provides a `link_map: dict[str, str]` mapping relative .md paths
+• Registry provides a link_map: dict[str, str] mapping relative .md paths
+
    to published URLs
-2. `GenerationProvider.rewrite_links()` applies the map in the format-specific
+
+• GenerationProvider.rewrite_links() applies the map in the format-specific
+
    way (Word hyperlinks, HTML hrefs, PDF links, etc.)
 
-### 5.3 Review Manager
+5.3 Review Manager
 
-The review manager tracks review periods, reviewer responses, and deadline
-enforcement. It is provider-agnostic — it calls `FeedbackProvider.fetch_comments()`
-and `NotificationProvider.send()` without knowing the implementations.
+The review manager tracks review periods, reviewer responses, and deadline enforcement. It is provider-agnostic — it calls FeedbackProvider.fetch_comments() and NotificationProvider.send() without knowing the implementations.
 
-```python
-@dataclass
+
 class ReviewPeriod:
     review_id: str
     doc_id: str
@@ -464,12 +398,10 @@ class ReviewPeriod:
     responses: dict[str, ReviewerResponse]
     status: str  # "open", "extended", "closed", "promoted"
     outcome: str | None  # "approved", "approved_with_changes", "needs_revision"
-```
 
-### 5.4 Git Integration
+5.4 Git Integration
 
-```python
-@dataclass
+
 class GitContext:
     current_branch: str
     commit_sha: str
@@ -482,45 +414,23 @@ class SyncStatus(Enum):
     LOCAL_AHEAD = "local_ahead"      # Local changes not published
     REMOTE_AHEAD = "remote_ahead"    # Feedback not incorporated
     DIVERGED = "diverged"
-```
 
-**Branch policies (configurable):**
+Branch policies (configurable):
 
-| Branch Pattern | Allowed Actions |
-|----------------|-----------------|
-| `main`, `release/*` | Full publish (canonical URL) |
-| `feature/*`, `dev` | Draft publish only, local generation |
-| Other | Local generation only |
+5.5 Autonomy Framework (RACI-Based)
 
-### 5.5 Autonomy Framework (RACI-Based)
-
-```python
 class AutonomyLevel(IntEnum):
     MANUAL = 0          # Human does work
     SUGGEST = 1         # AI proposes, human approves
     CONFIRM = 2         # AI acts after timeout (unless vetoed)
     NOTIFY = 3          # AI acts, human notified after
     AUTONOMOUS = 4      # AI acts silently
-```
 
 Per-action defaults:
 
-| Action | Default Level | Rationale |
-|--------|--------------|-----------|
-| `poll_for_feedback` | AUTONOMOUS | Read-only, safe |
-| `fetch_comments` | AUTONOMOUS | Read-only, safe |
-| `analyze_feedback` | NOTIFY | LLM categorization, low risk |
-| `update_source_file` | SUGGEST | Critical — show diff first |
-| `republish_approved_doc` | CONFIRM | Auto after 10min unless vetoed |
-| `republish_new_doc` | SUGGEST | First publish = full review |
-| `promote_draft` | SUGGEST | Important decision |
+6. Document State Model
 
----
 
-## 6. Document State Model
-
-```python
-@dataclass
 class DocumentState:
     doc_id: str
     source_path: str
@@ -547,7 +457,7 @@ class DocumentState:
     # Stakeholders
     stakeholders: list[str]
 
-@dataclass
+
 class PublicationRecord:
     storage_id: str
     url: str
@@ -556,40 +466,17 @@ class PublicationRecord:
     commit_sha: str
     generation_provider: str   # Which provider generated this artifact
     storage_provider: str      # Which provider stores this artifact
-```
 
-Note that `PublicationRecord` tracks *which providers* were used. This supports
-mixed environments (e.g., migrating from OneDrive to S3 — old versions reference
-OneDrive, new versions reference S3).
+Note that PublicationRecord tracks which providers were used. This supports mixed environments (e.g., migrating from OneDrive to S3 — old versions reference OneDrive, new versions reference S3).
 
----
+7. Extension Point Catalog
 
-## 7. Extension Point Catalog
+Following the established NeutronOS pattern from the  §8:Digital Twin Architecture Spec
 
-Following the established NeutronOS pattern from the
-[Digital Twin Architecture Spec](digital-twin-architecture-spec.md) §8:
+Industry Adoption Scenarios
 
-| Factory | Provider Interface | Purpose | Example Providers |
-|---------|-------------------|---------|-------------------|
-| `GenerationFactory` | `GenerationProvider` | Markdown → artifact conversion | PandocDocx, PandocPdf, PandocHtml, Sphinx, MkDocs |
-| `StorageFactory` | `StorageProvider` | Artifact storage & URL management | OneDrive, GoogleDrive, S3, Nextcloud, Local |
-| `FeedbackFactory` | `FeedbackProvider` | Reviewer comment extraction | DocxComments, GoogleDocs, GitLabIssues, Email, Hypothes.is |
-| `NotificationFactory` | `NotificationProvider` | Alerts & reminders | SMTP, Teams, Slack, Terminal, Ntfy |
-| `EmbeddingFactory` | `EmbeddingProvider` | RAG document indexing | ChromaDB, PgVector, Pinecone |
+Factory Registration
 
-### Industry Adoption Scenarios
-
-| Stakeholder | What They Provide | Benefit |
-|-------------|-------------------|---------|
-| **Universities (Microsoft 365)** | Default config | Publish to OneDrive, review in Word |
-| **National labs (HPC + GitLab)** | StorageProvider (S3/GPFS) + FeedbackProvider (GitLab) | Publish to lab file systems, review via merge requests |
-| **Startups (Google Workspace)** | StorageProvider (GDrive) + FeedbackProvider (GDocs) | Publish to Google Drive, review in Docs |
-| **Air-gapped facilities** | StorageProvider (local) + FeedbackProvider (email) | Publish to NFS, review via email |
-| **Documentation teams** | GenerationProvider (Sphinx/MkDocs) | Publish as static HTML sites |
-
-### Factory Registration
-
-```python
 # docflow/factory.py
 
 class DocFlowFactory:
@@ -623,11 +510,9 @@ class DocFlowFactory:
     @classmethod
     def available(cls, category: str) -> list[str]:
         return list(cls._registries.get(category, {}).keys())
-```
 
 Built-in providers register themselves on import:
 
-```python
 # docflow/providers/generation/pandoc_docx.py
 
 from docflow.factory import DocFlowFactory
@@ -637,13 +522,9 @@ class PandocDocxProvider(GenerationProvider):
     ...
 
 DocFlowFactory.register("generation", "pandoc-docx", PandocDocxProvider)
-```
 
----
+8. Configuration Schema
 
-## 8. Configuration Schema
-
-```yaml
 # .doc-workflow.yaml (repo root)
 
 # --- Git policies (provider-agnostic) ---
@@ -715,28 +596,15 @@ autonomy:
     republish_approved_doc: confirm
     republish_new_doc: suggest
     promote_draft: suggest
-```
 
-### Environment Profiles
+Environment Profiles
 
 Facilities select a coherent set of providers. Common profiles:
 
-| Profile | Generation | Storage | Feedback | Notifications |
-|---------|-----------|---------|----------|---------------|
-| **Microsoft 365** | pandoc-docx | onedrive | docx-comments | teams |
-| **Google Workspace** | pandoc-docx | google-drive | google-docs | smtp |
-| **Self-Hosted** | pandoc-html | s3 (MinIO) | gitlab-issues | slack |
-| **Air-Gapped** | pandoc-pdf | local | email | terminal |
-| **Developer** | pandoc-html | local | gitlab-issues | terminal |
+9. CLI Commands
 
----
+DocFlow is accessed as a subcommand of the neut CLI: neut doc (alias: neut docflow). See docs/specs/neut-cli-spec.md for the full neut command hierarchy.
 
-## 9. CLI Commands
-
-DocFlow is accessed as a subcommand of the `neut` CLI: `neut doc` (alias: `neut docflow`).
-See `docs/specs/neut-cli-spec.md` for the full `neut` command hierarchy.
-
-```bash
 # --- Publishing ---
 neut doc publish docs/prd/foo.md              # Generate + publish
 neut doc publish --draft docs/prd/foo.md      # Publish as draft with review period
@@ -760,13 +628,9 @@ neut doc diff                                 # Show docs changed since last pub
 # --- Configuration ---
 neut doc init                                 # Create .doc-workflow.yaml interactively
 neut doc providers                            # List available providers
-```
 
----
+10. File Structure
 
-## 10. File Structure
-
-```
 tools/docflow/
   __init__.py
   cli.py                     # CLI entry point
@@ -802,43 +666,39 @@ tools/docflow/
     embedding/
       __init__.py
       chromadb_provider.py   # ChromaDbEmbeddingProvider (stub — Phase 2)
-```
 
----
+11. Relationship to Existing Code
 
-## 11. Relationship to Existing Code
-
-### `docs/_tools/publish_to_onedrive.py` (existing)
+docs/_tools/publish_to_onedrive.py (existing)
 
 This file contains working logic for:
-- Markdown → DOCX generation via pandoc
-- OneDrive upload via MS Graph API
-- Interactive file selection
-- Mermaid rendering
+
+• Markdown → DOCX generation via pandoc
+
+• OneDrive upload via MS Graph API
+
+• Interactive file selection
+
+• Mermaid rendering
 
 DocFlow does NOT rewrite this from scratch. Instead:
 
-1. `PandocDocxProvider` extracts the pandoc invocation and Mermaid rendering logic
-2. `OneDriveStorageProvider` extracts the MS Graph upload logic
-3. The existing script can continue working independently — DocFlow is additive
+• PandocDocxProvider extracts the pandoc invocation and Mermaid rendering logic
 
-### `tools/agents/sense/gateway.py` (shared)
+• OneDriveStorageProvider extracts the MS Graph upload logic
 
-DocFlow's `analyze_feedback` action (Phase 2) uses the same LLM gateway as
-`neut sense`. This avoids duplicate LLM configuration.
+• The existing script can continue working independently — DocFlow is additive
 
-### `neut sense` integration
+tools/agents/sense/gateway.py (shared)
 
-DocFlow publishes artifacts. `neut sense` can detect when artifacts receive
-feedback. Future integration: `neut sense` watches for new comments via the
-configured `FeedbackProvider` and creates Signals that flow into the weekly
-synthesis.
+DocFlow's analyze_feedback action (Phase 2) uses the same LLM gateway as Neut Sense. This avoids duplicate LLM configuration.
 
----
+Neut Sense Integration
 
-## 12. CI/CD Integration
+DocFlow publishes artifacts. Neut Sense can detect when artifacts receive feedback. Future integration: Neut Sense watches for new comments via the configured FeedbackProvider and creates Signals that flow into the weekly synthesis.
 
-```yaml
+12. CI/CD Integration
+
 # .gitlab-ci.yml
 
 stages:
@@ -867,141 +727,161 @@ publish-docs:
   environment: production
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-```
 
----
+13. Implementation Roadmap
 
-## 13. Implementation Roadmap
+Phase 1: MVP (Weeks 1-2)
 
-### Phase 1: MVP (Weeks 1-2)
-- [ ] Provider ABCs (`providers/base.py`) — all five contracts
-- [ ] Factory with registration pattern (`factory.py`)
-- [ ] Core models (`models.py`) — DocumentState, LinkEntry, Comment, PublicationRecord
-- [ ] Link registry (`registry.py`) — .doc-registry.json persistence
-- [ ] Git integration (`git_integration.py`) — branch detection, sync status
-- [ ] Document state persistence (`state.py`) — .doc-state.json
-- [ ] `PandocDocxProvider` — extract generation logic from publish_to_onedrive.py
-- [ ] `LocalStorageProvider` — filesystem storage for testing
-- [ ] `OneDriveStorageProvider` — extract upload logic from publish_to_onedrive.py
-- [ ] `TerminalNotificationProvider` — stdout + macOS notifications
-- [ ] Core engine (`engine.py`) — orchestrate generate → rewrite links → upload
-- [ ] CLI basics (`cli.py`) — publish, generate, status, check-links, providers
-- **Milestone:** `docflow publish docs/prd/foo.md` generates .docx with rewritten links and uploads to OneDrive. `docflow publish --storage local` generates to local filesystem. Core never references OneDrive.
+• [ ] Provider ABCs (providers/base.py) — all five contracts
 
-### Phase 2: Review & Feedback (Weeks 3-4)
-- [ ] `DocxFeedbackProvider` — parse word/comments.xml from .docx ZIP
-- [ ] Review manager (`reviewer.py`) — deadlines, reviewer tracking
-- [ ] Draft publication with watermark
-- [ ] Promotion workflow (draft → published → archive)
-- [ ] `SmtpNotificationProvider` — email reminders
-- [ ] `PandocHtmlProvider` — HTML generation alternative
-- **Milestone:** Complete review cycle: draft → reviewers comment → extract → incorporate → promote
+• [ ] Factory with registration pattern (factory.py)
 
-### Phase 3: Extended Providers (Weeks 5-6)
-- [ ] `S3StorageProvider` — MinIO / AWS S3 storage
-- [ ] `GitLabIssueFeedbackProvider` — review via issue comments
-- [ ] `PandocPdfProvider` — PDF generation
-- [ ] Autonomy framework — RACI-based approval gates
-- **Milestone:** A non-Microsoft facility can run DocFlow with S3 + GitLab + PDF
+• [ ] Core models (models.py) — DocumentState, LinkEntry, Comment, PublicationRecord
 
-### Phase 4: Intelligence (Weeks 7-8)
-- [ ] `ChromaDbEmbeddingProvider` — RAG document indexing
-- [ ] Feedback analysis via LLM gateway (categorize comments)
-- [ ] Scheduling daemon for polling and reminders
-- **Milestone:** Document insights flow to RAG; automated feedback triage
+• [ ] Link registry (registry.py) — .doc-registry.json persistence
 
-### Phase 5: Polish & Extension (Weeks 9-10)
-- [ ] `GoogleDriveStorageProvider`
-- [ ] `GoogleDocsFeedbackProvider`
-- [ ] `SlackNotificationProvider`
-- [ ] CLI documentation
-- [ ] Unit & integration tests
-- [ ] Error handling & recovery
-- **Milestone:** Ready for OSS release; three environment profiles fully supported
+• [ ] Git integration (git_integration.py) — branch detection, sync status
 
----
+• [ ] Document state persistence (state.py) — .doc-state.json
 
-## 14. Open Questions
+• [ ] PandocDocxProvider — extract generation logic from publish_to_onedrive.py
 
-1. **Mermaid rendering** — Currently uses mermaid.ink (external service).
-   Need self-hosted fallback for air-gapped facilities?
-   GenerationProvider could abstract this.
+• [ ] LocalStorageProvider — filesystem storage for testing
 
-2. **Rate limiting** — MS Graph, Google APIs have throttling.
+• [ ] OneDriveStorageProvider — extract upload logic from publish_to_onedrive.py
+
+• [ ] TerminalNotificationProvider — stdout + macOS notifications
+
+• [ ] Core engine (engine.py) — orchestrate generate → rewrite links → upload
+
+• [ ] CLI basics (cli.py) — publish, generate, status, check-links, providers
+
+• Milestone: docflow publish docs/prd/foo.md generates .docx with rewritten links and uploads to OneDrive. docflow publish --storage local generates to local filesystem. Core never references OneDrive.
+
+Phase 2: Review & Feedback (Weeks 3-4)
+
+• [ ] DocxFeedbackProvider — parse word/comments.xml from .docx ZIP
+
+• [ ] Review manager (reviewer.py) — deadlines, reviewer tracking
+
+• [ ] Draft publication with watermark
+
+• [ ] Promotion workflow (draft → published → archive)
+
+• [ ] SmtpNotificationProvider — email reminders
+
+• [ ] PandocHtmlProvider — HTML generation alternative
+
+• Milestone: Complete review cycle: draft → reviewers comment → extract → incorporate → promote
+
+Phase 3: Extended Providers (Weeks 5-6)
+
+• [ ] S3StorageProvider — MinIO / AWS S3 storage
+
+• [ ] GitLabIssueFeedbackProvider — review via issue comments
+
+• [ ] PandocPdfProvider — PDF generation
+
+• [ ] Autonomy framework — RACI-based approval gates
+
+• Milestone: A non-Microsoft facility can run DocFlow with S3 + GitLab + PDF
+
+Phase 4: Intelligence (Weeks 7-8)
+
+• [ ] ChromaDbEmbeddingProvider — RAG document indexing
+
+• [ ] Feedback analysis via LLM gateway (categorize comments)
+
+• [ ] Scheduling daemon for polling and reminders
+
+• Milestone: Document insights flow to RAG; automated feedback triage
+
+Phase 5: Polish & Extension (Weeks 9-10)
+
+• [ ] GoogleDriveStorageProvider
+
+• [ ] GoogleDocsFeedbackProvider
+
+• [ ] SlackNotificationProvider
+
+• [ ] CLI documentation
+
+• [ ] Unit & integration tests
+
+• [ ] Error handling & recovery
+
+• Milestone: Ready for OSS release; three environment profiles fully supported
+
+14. Open Questions
+
+• Mermaid rendering — Currently uses mermaid.ink (external service).
+
+   Need self-hosted fallback for air-gapped facilities?    GenerationProvider could abstract this.
+
+• Rate limiting — MS Graph, Google APIs have throttling.
+
    StorageProvider implementations should handle backoff internally.
 
-3. **Batch operations** — Publishing 50+ docs efficiently. StorageProvider
-   could support a `batch_upload()` method with default serial fallback.
+• Batch operations — Publishing 50+ docs efficiently. StorageProvider
 
-4. **Access control mapping** — Document approval status → sharing permissions.
+   could support a batch_upload() method with default serial fallback.
+
+• Access control mapping — Document approval status → sharing permissions.
+
    This is storage-specific and belongs in StorageProvider config, not core.
 
-5. **Offline mode** — Queue actions when no network. Core engine queues;
+• Offline mode — Queue actions when no network. Core engine queues;
+
    StorageProvider flushes on restore. Aligns with neut CLI offline-first.
 
----
+15. Security Considerations
 
-## 15. Security Considerations
+• Secrets management: Provider credentials use environment variables,
 
-- **Secrets management:** Provider credentials use environment variables,
   not YAML values. OS keyring integration for daemon mode.
-- **Token refresh:** StorageProvider implementations handle OAuth token
+
+• Token refresh: StorageProvider implementations handle OAuth token
+
   lifecycle internally.
-- **Data classification:** StorageProvider config can specify share scope
+
+• Data classification: StorageProvider config can specify share scope
+
   (organization, team, public) per publication target.
-- **Audit logging:** All state transitions logged with attribution and
-  timestamp in `.doc-state.json`.
 
----
+• Audit logging: All state transitions logged with attribution and
 
-## Success Metrics
+  timestamp in .doc-state.json.
 
-- [ ] `neut doc publish` works with at least two StorageProviders (OneDrive + Local)
-- [ ] Cross-document links rewritten correctly regardless of storage backend
-- [ ] A non-Microsoft facility can configure DocFlow without code changes
-- [ ] Review feedback incorporated in < 1 day (vs current multi-day)
-- [ ] User reports < 2 minutes per publish cycle (vs current 15-20)
-- [ ] Factory pattern verified: swapping provider in YAML changes behavior,
+Success Metrics
+
+• [ ] neut doc publish works with at least two StorageProviders (OneDrive + Local)
+
+• [ ] Cross-document links rewritten correctly regardless of storage backend
+
+• [ ] A non-Microsoft facility can configure DocFlow without code changes
+
+• [ ] Review feedback incorporated in < 1 day (vs current multi-day)
+
+• [ ] User reports < 2 minutes per publish cycle (vs current 15-20)
+
+• [ ] Factory pattern verified: swapping provider in YAML changes behavior,
+
       no core engine changes required
 
----
+Contributors
 
-## Contributors
+• Ben Booth (UT Nuclear Engineering) — Lead architect
 
-- Ben Booth (UT Nuclear Engineering) — Lead architect
+References
 
----
+•  — Factory/Provider pattern precedent (§6-8)NeutronOS Digital Twin Architecture
 
-## References
+•  — PhilosophyPragmatic Programmer
 
-### Internal Documents
+• python-docx Documentation
 
-- [NeutronOS Digital Twin Architecture](digital-twin-architecture-spec.md) — Factory/Provider pattern precedent (§6-8)
-- [Agent State Management PRD](../prd/agent-state-management-prd.md) — Document state as part of agent state taxonomy
-- [Agent State Management Spec](agent-state-management-spec.md) — Backup/restore/encryption for `.doc-registry.json`, `.doc-state.json`
+• MS Graph API
 
-### External References
+• LangGraph
 
-- [Pragmatic Programmer](https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/) — Philosophy
-- [python-docx Documentation](https://python-docx.readthedocs.io/)
-- [MS Graph API](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0)
-- [LangGraph](https://langchain-ai.github.io/langgraph/)
-
----
-
-## Document State & Agent State Integration
-
-Document lifecycle state files (`.doc-registry.json`, `.doc-state.json`, `.doc-workflow.yaml`)
-are included in the NeutronOS Agent State Management scope. These files are:
-
-- **Backed up** by `neut state backup` with CRITICAL priority
-- **Encrypted** when stored (at-rest encryption via age)
-- **Restorable** via `neut state restore` for device migration
-- **Exportable** via `neut state export documents`
-
-This ensures published document mappings are not lost during device failure or team transitions.
-See [Agent State Management PRD](../prd/agent-state-management-prd.md) for full requirements.
-
----
-
-*This specification is a living document and will be updated as the system evolves.*
+This specification is a living document and will be updated as the system evolves.

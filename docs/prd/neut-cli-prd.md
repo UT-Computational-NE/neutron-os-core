@@ -2,7 +2,7 @@
 
 **Module:** neut Command-Line Interface  
 **Status:** Planning  
-**Last Updated:** January 27, 2026  
+**Last Updated:** February 26, 2026  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)  
 **Tech Spec:** [neut CLI Specification](../specs/neut-cli-spec.md)  
 **Brand Reference:** [Brand Identity - CLI Section](../design/brand-identity.md#cli-identity)
@@ -135,7 +135,7 @@ neut ext validate ./my-extension.wasm
 
 ### 8. Interactive Chat Mode (`neut chat`)
 
-An agentic assistant for working with reactor systems—think Claude Code, but for nuclear facilities.
+An agentic assistant for working with reactor systems — think Claude Code, but for nuclear facilities. Neut is the friendly AI that powers the interactive experience; Neut Sense, Neut DocFlow, and other capabilities are tools Neut can invoke on behalf of the user.
 
 ```bash
 # Start interactive session
@@ -143,6 +143,9 @@ neut chat
 
 # Start with context
 neut chat --context "investigating fuel temp anomaly from yesterday"
+
+# Start in a specific mode
+neut chat --mode plan
 ```
 
 **Capabilities:**
@@ -152,8 +155,145 @@ neut chat --context "investigating fuel temp anomaly from yesterday"
 - Run predictions and compare against actuals
 - Search procedures, tech specs, historical incidents
 - Walk through experiment planning with safety checks
+- Ingest and search media (`neut media` via conversation)
+- Synthesize signals across sources (`neut sense` via conversation)
 
-**Key Principle:** Human-in-the-loop for all writes. Chat can draft, analyze, and suggest—but the operator confirms before anything is committed.
+**Key Principle:** Human-in-the-loop for all writes. Neut can draft, analyze, and suggest — but the operator confirms before anything is committed.
+
+#### Interaction Modes
+
+Neut operates in three modes that represent **levels of autonomy**, not different personalities. The default is Ask — the safest mode — and Neut escalates only with the user's consent.
+
+| Mode | Autonomy | What Neut Does | Side Effects |
+|------|----------|----------------|-------------|
+| **Ask** (default) | None | Answers questions, explains, searches. Read-only. | Zero |
+| **Plan** | Propose | Explores the problem, designs an approach, presents structured options for approval. Interactive wizard for complex decisions (single/multi-select forms). | Zero until approved |
+| **Agent** | Execute | Runs multi-step tasks autonomously within scoped permissions. Reports progress, pauses at checkpoints. | Bounded writes |
+
+#### Escalation Model (Default Behavior)
+
+Neut always starts in **Ask** mode. When a prompt implies action, Neut proposes escalation rather than assuming permission:
+
+```
+Operator: "Set up experiment UT-TRIGA-043 with the standard NAA config"
+
+Neut (Ask): I can help set that up. This will create a new experiment
+            record, reserve beam port 3, and generate the ROC
+            authorization request.
+
+            → Switch to Plan mode to walk through the steps? [y/N]
+```
+
+If the user confirms, Neut enters Plan mode and presents the steps as an interactive checklist. If the plan involves writes (creating records, publishing, sending notifications), Neut presents each action for explicit approval before executing.
+
+```
+Neut (Plan): Here's the setup plan for UT-TRIGA-043:
+
+  1. Create experiment record
+     - Isotope: standard NAA config (Au, Co, Fe monitors)
+     - Facility: TPNT (Thermal Pneumatic Tube)
+     - Duration: 1 hour
+     - PI: [you]
+
+  2. Check scheduling conflicts
+     - Beam port 3 availability for requested dates
+
+  3. Generate ROC authorization request
+     - Pre-filled from experiment template
+
+  Approve all and execute? [1/2/3/all/edit/cancel]
+```
+
+For batch operations with well-understood scope, Neut can propose Agent mode:
+
+```
+PM: "Synthesize this week's signals into PRD updates"
+
+Neut (Ask): This is a multi-step synthesis across voice memos, Teams
+            transcripts, and GitLab activity. I'll process signals,
+            cluster by PRD, and draft updates for your review.
+
+            → Run as Agent? You'll review drafts before anything
+              is published. [y/N]
+```
+
+#### Power-User Shortcuts
+
+Experienced users can skip escalation:
+
+```bash
+# Start directly in plan mode
+neut chat --mode plan
+
+# Or switch mid-conversation
+/plan    # Enter plan mode
+/ask     # Return to ask mode
+/agent   # Enter agent mode (requires confirmation on first use per session)
+```
+
+#### Mode Guardrails
+
+| Guardrail | Behavior |
+|-----------|----------|
+| **Writes always confirm** | Even in Agent mode, Neut pauses before creating records, publishing, or sending notifications |
+| **Agent scope is per-session** | Agent permissions don't persist across sessions |
+| **Escalation is reversible** | `/ask` returns to read-only at any time |
+| **Structured decisions** | When the option space is bounded (e.g., pick a beam port, choose an isotope config), Neut presents interactive single/multi-select forms instead of freetext |
+| **Audit trail** | All mode transitions and approved actions are logged to the session record |
+
+### 9. Program Awareness (`neut sense`)
+
+Neut Sense is the proactive sensing capability — ingesting signals from voice memos, Teams transcripts, GitLab activity, and other sources, then synthesizing them into actionable updates.
+
+```bash
+# Ingest all new signals
+neut sense ingest --all
+
+# Ingest from a specific source
+neut sense ingest --source voice
+
+# Draft weekly synthesis
+neut sense synthesize --preview
+
+# Check pipeline status
+neut sense status
+```
+
+See [Neut Sense & Synthesis MVP Spec](../specs/sense-synthesis-mvp-spec.md) for full design.
+
+### 10. Media Library (`neut media`)
+
+Cross-cutting media management — recordings, photos, documents, and binary artifacts shared across all modules.
+
+```bash
+# Ingest a file
+neut media ingest photo.jpg --tag pool-clarity --link ops:2026-02-26-shift-A
+
+# Search recordings
+neut media search "beam port schedule" --type audio
+
+# Share with approval flow
+neut media share <id> ops-team
+```
+
+See [Media Library PRD](media-library-prd.md) for full design.
+
+### 11. Document Lifecycle (`neut doc`)
+
+DocFlow manages document generation, publishing, and review cycles.
+
+```bash
+# Publish a document
+neut doc publish docs/prd/foo.md
+
+# Check document status
+neut doc status
+
+# Pull latest from storage
+neut doc pull --all
+```
+
+See [DocFlow Specification](../specs/docflow-spec.md) for full design.
 
 ---
 
@@ -268,3 +408,6 @@ The newt mascot appears in CLI contexts:
 1. **Distribution**: Homebrew? apt? Standalone binary?
 2. **Config file**: TOML vs YAML for `~/.neutrc`?
 3. **Plugins**: Allow third-party commands in v1 or defer?
+4. **Agent mode permissions**: Per-noun granularity (e.g., "agent can write to ops log but not compliance")? Or simpler role-based scoping?
+5. **Escalation UX in non-interactive contexts**: How do scripts/CI handle mode transitions? Likely: `--mode agent --yes` for pre-approved pipelines with explicit scope flags.
+6. **Session persistence**: Should Plan mode drafts survive across sessions? Or are they ephemeral?

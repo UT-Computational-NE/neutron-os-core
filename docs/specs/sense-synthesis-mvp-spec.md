@@ -1,4 +1,4 @@
-# Sense & Synthesis MVP (Phase 0) Specification
+# Neut Sense & Synthesis MVP (Phase 0) Specification
 
 **Version:** 0.1.0  
 **Date:** February 24, 2026  

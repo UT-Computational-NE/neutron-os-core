@@ -297,10 +297,10 @@ Result: v2.0.0 → v2.1.0
 
 ---
 
-## Key Integration: How Sense Workflow Feeds the Merge
+## Key Integration: How Neut Sense Feeds the Merge
 
 ```
-Sense Pipeline:
+Neut Sense Pipeline:
 ├─ Extract (voice, notes, chat)
 ├─ Synthesize (Synthesizer)
 ├─ Output: Changelog with entries
@@ -487,7 +487,7 @@ Every merge decision is recorded:
 
 ## References
 
-- **Sense Pipeline**: `tools/agents/sense/` (extractors, synthesizer, models)
+- **Neut Sense Pipeline**: `tools/agents/sense/` (extractors, synthesizer, models)
 - **DocFlow Review Extractor**: `tools/agents/sense/extractors/docflow_review.py`
 - **Semantic Versioning**: `tools/docflow/scripts/publish.py` (version logic)
 - **State Management**: `tools/docflow/state.py` (DocumentState, PublicationRecord)
