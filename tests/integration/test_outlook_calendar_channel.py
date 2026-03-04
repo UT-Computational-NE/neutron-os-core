@@ -81,7 +81,7 @@ class TestCalendarEventCorrelation:
         assert event.event_id == "test-event-123"
         assert event.title == "Weekly Sync"
         assert len(event.attendees) == 2
-        assert event.duration_minutes == 60
+        assert event.duration_minutes() == 60
 
 
 class TestOutlookCalendarFreshness:
