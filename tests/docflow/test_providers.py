@@ -139,8 +139,8 @@ class TestDocxFeedbackContract:
     def test_supports_inline_comments(self, provider):
         assert provider.supports_inline_comments() is True
 
-    def test_fetch_from_nonexistent_file(self, provider):
-        comments = provider.fetch_comments("/nonexistent/path.docx")
+    def test_fetch_from_nonexistent_file(self, provider, tmp_path):
+        comments = provider.fetch_comments(str(tmp_path / "nonexistent" / "path.docx"))
         assert comments == []
 
     def test_fetch_from_non_docx(self, provider, tmp_path):

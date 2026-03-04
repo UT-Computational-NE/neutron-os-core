@@ -189,13 +189,13 @@ module = "extractors.my_ext"
         issues = validate_extension(ext)
         assert any("nonexistent" in i for i in issues)
 
-    def test_missing_extension_root(self):
+    def test_missing_extension_root(self, tmp_path):
         ext = Extension(
             name="ghost",
             version="0.1.0",
             description="",
             author="",
-            root=Path("/nonexistent/ghost"),
+            root=tmp_path / "nonexistent" / "ghost",
         )
         issues = validate_extension(ext)
         assert any("not found" in i for i in issues)
