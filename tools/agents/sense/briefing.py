@@ -33,6 +33,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -296,7 +297,7 @@ class BriefingService:
         # If explicit 'since' provided, use it
         if since:
             if isinstance(since, str):
-                start = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                start = _parse_since(since)
             else:
                 start = since
             if start.tzinfo is None:
@@ -852,6 +853,72 @@ Generate the focused briefing:"""
             "briefings_generated": len(self.state.briefing_history),
             "consumption_events": len(self.state.consumption_history),
         }
+
+
+def _parse_since(expr: str) -> datetime:
+    """Parse a human-friendly time expression into a tz-aware UTC datetime.
+
+    Supported formats:
+        ISO:       2026-02-01, 2026-02-01T14:00, 2026-02-01T14:00:00+00:00
+        Shorthand: 2d, 3h, 1w, 2m (days, hours, weeks, months)
+        Words:     yesterday, today
+        Phrases:   "2 days ago", "3 hours ago", "last week", "last month"
+    """
+    now = datetime.now(timezone.utc)
+    s = expr.strip().lower()
+
+    # --- ISO passthrough ---
+    try:
+        dt = datetime.fromisoformat(expr.strip().replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        pass
+
+    # --- Named keywords ---
+    if s == "today":
+        return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    if s == "yesterday":
+        yest = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+        return yest.astimezone(timezone.utc)
+
+    # --- "last week" / "last month" ---
+    if s == "last week":
+        return now - timedelta(weeks=1)
+    if s == "last month":
+        return now - timedelta(days=30)
+
+    # --- Shorthand: 2d, 3h, 1w, 2m/2mo ---
+    m = re.fullmatch(r"(\d+)\s*(d|h|w|m|mo)", s)
+    if m:
+        n, unit = int(m.group(1)), m.group(2)
+        return now - _unit_to_delta(n, unit)
+
+    # --- "N days/hours/weeks/months ago" ---
+    m = re.fullmatch(r"(\d+)\s+(days?|hours?|weeks?|months?)\s+ago", s)
+    if m:
+        n, unit = int(m.group(1)), m.group(2)
+        return now - _unit_to_delta(n, unit[0])  # first char: d/h/w/m
+
+    raise ValueError(
+        f"Unrecognized time expression: '{expr}'. "
+        "Supported: ISO date (2026-02-01), shorthand (2d, 3h, 1w), "
+        "words (yesterday, today), phrases ('2 days ago', 'last week')."
+    )
+
+
+def _unit_to_delta(n: int, unit: str) -> timedelta:
+    """Convert a count and unit character to a timedelta."""
+    if unit in ("d", "day", "days"):
+        return timedelta(days=n)
+    if unit in ("h", "hour", "hours"):
+        return timedelta(hours=n)
+    if unit in ("w", "week", "weeks"):
+        return timedelta(weeks=n)
+    if unit in ("m", "mo", "month", "months"):
+        return timedelta(days=30 * n)
+    raise ValueError(f"Unknown time unit: {unit}")
 
 
 def _relative_time(dt: datetime) -> str:

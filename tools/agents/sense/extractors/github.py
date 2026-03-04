@@ -131,6 +131,8 @@ class GitHubExtractor(BaseExtractor):
     ) -> GitHubActivity:
         """Fetch recent activity from a GitHub repository.
 
+        Delegates to GitHubProvider.get_activity() from repo_sensing.
+
         Args:
             repo_full_name: "owner/repo" format
             days: How many days back to fetch
@@ -139,72 +141,73 @@ class GitHubExtractor(BaseExtractor):
         Returns:
             GitHubActivity with commits, PRs, issues
         """
-        repo = self.client.get_repo(repo_full_name)
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        from tools.repo_sensing.base import RepoInfo
+        from tools.repo_sensing.providers.github import GitHubProvider
 
-        activity = GitHubActivity(
-            repo=repo.name,
-            owner=repo.owner.login,
-            exported_at=datetime.now(timezone.utc).isoformat(),
-            time_window_days=days,
+        owner, repo_name = repo_full_name.split("/", 1)
+
+        provider = GitHubProvider(org=owner)
+        provider._client = self.client  # share the already-authenticated client
+
+        repo_info = RepoInfo(
+            id="0",
+            name=repo_name,
+            full_path=repo_full_name,
+            url=f"https://github.com/{repo_full_name}",
+            default_branch="main",
+            last_activity_at=None,
+            source="github",
         )
 
-        # Fetch commits
-        try:
-            for commit in repo.get_commits(since=since):
-                activity.commits.append({
-                    "sha": commit.sha,
-                    "message": commit.commit.message,
-                    "author": commit.commit.author.name if commit.commit.author else "Unknown",
-                    "email": commit.commit.author.email if commit.commit.author else "",
-                    "date": commit.commit.author.date.isoformat() if commit.commit.author else "",
-                    "url": commit.html_url,
-                })
-        except Exception as e:
-            print(f"Warning: Could not fetch commits: {e}")
+        raw = provider.get_activity(repo_info, days)
 
-        # Fetch pull requests
-        try:
-            for pr in repo.get_pulls(state="all", sort="updated", direction="desc"):
-                if pr.updated_at < since:
-                    break
-                activity.pull_requests.append({
-                    "number": pr.number,
-                    "title": pr.title,
-                    "state": pr.state,
-                    "author": pr.user.login if pr.user else "Unknown",
-                    "created_at": pr.created_at.isoformat() if pr.created_at else "",
-                    "updated_at": pr.updated_at.isoformat() if pr.updated_at else "",
-                    "merged_at": pr.merged_at.isoformat() if pr.merged_at else None,
-                    "url": pr.html_url,
-                    "body": (pr.body or "")[:500],
-                })
-        except Exception as e:
-            print(f"Warning: Could not fetch PRs: {e}")
+        activity = GitHubActivity(
+            repo=repo_name,
+            owner=owner,
+            exported_at=datetime.now(timezone.utc).isoformat(),
+            time_window_days=days,
+            commits=[
+                {
+                    "sha": c.get("sha", ""),
+                    "message": c.get("message", c.get("title", "")),
+                    "author": c.get("author_name", "Unknown"),
+                    "email": c.get("author_email", ""),
+                    "date": c.get("created_at", ""),
+                    "url": "",
+                }
+                for c in raw.commits
+            ],
+            pull_requests=[
+                {
+                    "number": mr.get("iid", 0),
+                    "title": mr.get("title", ""),
+                    "state": mr.get("state", "open"),
+                    "author": mr.get("author", "Unknown"),
+                    "created_at": mr.get("created_at", ""),
+                    "updated_at": mr.get("created_at", ""),
+                    "merged_at": mr.get("merged_at"),
+                    "url": mr.get("url", ""),
+                    "body": mr.get("body", ""),
+                }
+                for mr in raw.merge_requests
+            ],
+            issues=[
+                {
+                    "number": i.get("iid", 0),
+                    "title": i.get("title", ""),
+                    "state": "closed" if i.get("closed_at") else "open",
+                    "author": i.get("author", "Unknown"),
+                    "created_at": i.get("created_at", ""),
+                    "updated_at": i.get("updated_at", ""),
+                    "closed_at": i.get("closed_at"),
+                    "url": "",
+                    "labels": i.get("labels", []),
+                    "body": i.get("description", ""),
+                }
+                for i in raw.issues
+            ],
+        )
 
-        # Fetch issues
-        try:
-            for issue in repo.get_issues(state="all", sort="updated", direction="desc"):
-                if issue.updated_at < since:
-                    break
-                if issue.pull_request:  # Skip PRs in issues
-                    continue
-                activity.issues.append({
-                    "number": issue.number,
-                    "title": issue.title,
-                    "state": issue.state,
-                    "author": issue.user.login if issue.user else "Unknown",
-                    "created_at": issue.created_at.isoformat() if issue.created_at else "",
-                    "updated_at": issue.updated_at.isoformat() if issue.updated_at else "",
-                    "closed_at": issue.closed_at.isoformat() if issue.closed_at else None,
-                    "url": issue.html_url,
-                    "labels": [l.name for l in issue.labels],
-                    "body": (issue.body or "")[:500],
-                })
-        except Exception as e:
-            print(f"Warning: Could not fetch issues: {e}")
-
-        # Save if output path specified
         if output_path:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(json.dumps(activity.to_dict(), indent=2))
