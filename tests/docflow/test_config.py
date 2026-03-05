@@ -4,7 +4,7 @@ import os
 import pytest
 from pathlib import Path
 
-from tools.docflow.config import (
+from tools.extensions.builtins.docflow.config import (
     load_config,
     DocFlowConfig,
     _substitute_env_vars,

@@ -1,0 +1,11 @@
+[extension]
+name = "status"
+version = "0.2.3"
+description = "System health dashboard"
+author = "NeutronOS"
+builtin = true
+
+[[cli.commands]]
+noun = "status"
+module = "tools.extensions.builtins.status.cli"
+description = "System health dashboard"

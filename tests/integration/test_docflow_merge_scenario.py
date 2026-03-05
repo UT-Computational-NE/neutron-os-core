@@ -23,15 +23,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.pipelines.sense.models import Signal, Extraction, Changelog, ChangelogEntry
-from tools.pipelines.sense.synthesizer import Synthesizer
-from tools.pipelines.sense.extractors.docflow_review import (
+from tools.extensions.builtins.sense.models import Signal, Extraction, Changelog, ChangelogEntry
+from tools.extensions.builtins.sense.synthesizer import Synthesizer
+from tools.extensions.builtins.sense.extractors.docflow_review import (
     ExternalChange,
     ChangeType,
     DivergenceReport,
     DocFormat,
 )
-from tools.docflow.state import DocumentState, PublicationRecord
+from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
 
 # ============================================================================
@@ -219,7 +219,7 @@ def baseline_document_state() -> DocumentState:
     """Published Advanced Analytics PRD at v2.0.0."""
     return DocumentState(
         doc_id="advanced-analytics-prd",
-        source_path="docs/prd/advanced-analytics-prd.md",
+        source_path="docs/requirements/prd_advanced-analytics.md",
         status="published",
         published=PublicationRecord(
             storage_id="advanced-analytics-prd.docx",
@@ -290,7 +290,7 @@ def divergence_report(external_changes: list[ExternalChange]) -> DivergenceRepor
     
     return DivergenceReport(
         prd_id="advanced-analytics-prd",
-        md_path=Path("docs/prd/advanced-analytics-prd.md"),
+        md_path=Path("docs/requirements/prd_advanced-analytics.md"),
         external_uri="sharepoint://tenant/sites/docs/advanced-analytics-prd.docx",
         external_format=DocFormat.MS_WORD,
         md_hash=md_hash,

@@ -34,7 +34,7 @@ class Action:
     """A typed, serializable intent.
 
     Examples:
-        Action(name="doc.publish", params={"source": "docs/prd/foo.md"})
+        Action(name="doc.publish", params={"source": "docs/requirements/prd_foo.md"})
         Action(name="sense.ingest", params={"source": "all"})
         Action(name="query_docs", params={}, category=ActionCategory.READ)
     """

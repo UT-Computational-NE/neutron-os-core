@@ -205,7 +205,7 @@ def _register_in_docflow(session: ReviewSession, approved_path: Path) -> None:
     ``neut doc publish`` can pick them up for delivery.
     """
     try:
-        from tools.docflow.state import DocumentState, PublicationRecord, StateStore
+        from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord, StateStore
 
         repo_root = Path(__file__).resolve().parent.parent.parent.parent
         state_path = repo_root / ".neut" / ".doc-state.json"

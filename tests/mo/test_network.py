@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from tools.mo.network import (
+from tools.extensions.builtins.mo.network import (
     CallerStats,
     NetworkAnomaly,
     NetworkLedger,
@@ -124,7 +124,7 @@ class TestNetworkLedger:
 
     def test_shared_singleton(self):
         # Reset singleton for test isolation
-        import tools.mo.network as net_mod
+        import tools.extensions.builtins.mo.network as net_mod
         net_mod._shared_instance = None
 
         ledger1 = NetworkLedger.shared()

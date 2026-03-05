@@ -12,7 +12,7 @@ Usage:
     gate.submit(action)  # action.status == APPROVED
 
     # Write → pending human approval
-    action = create_action("doc_publish", {"source": "docs/prd/foo.md"})
+    action = create_action("doc_publish", {"source": "docs/requirements/prd_foo.md"})
     gate.submit(action)  # action.status == PENDING
     gate.pending()       # [action]
     gate.approve(action.action_id)  # action.status == APPROVED

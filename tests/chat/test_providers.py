@@ -4,10 +4,10 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from tools.setup.renderer import set_color_enabled
-from tools.agents.chat.providers.base import RenderProvider, InputProvider
-from tools.agents.chat.providers.ansi_render import AnsiRenderProvider
-from tools.agents.chat.providers.basic_input import BasicInputProvider
-from tools.agents.chat.provider_factory import (
+from tools.extensions.builtins.chat.providers.base import RenderProvider, InputProvider
+from tools.extensions.builtins.chat.providers.ansi_render import AnsiRenderProvider
+from tools.extensions.builtins.chat.providers.basic_input import BasicInputProvider
+from tools.extensions.builtins.chat.provider_factory import (
     create_render_provider,
     create_input_provider,
 )
@@ -67,24 +67,24 @@ class TestProviderFactory:
         assert isinstance(p, BasicInputProvider)
 
     def test_auto_detect_render_without_rich(self):
-        with patch("tools.agents.chat.provider_factory._rich_available", return_value=False):
+        with patch("tools.extensions.builtins.chat.provider_factory._rich_available", return_value=False):
             p = create_render_provider()
             assert isinstance(p, AnsiRenderProvider)
 
     def test_auto_detect_input_without_ptk(self):
-        with patch("tools.agents.chat.provider_factory._ptk_available", return_value=False):
+        with patch("tools.extensions.builtins.chat.provider_factory._ptk_available", return_value=False):
             p = create_input_provider()
             assert isinstance(p, BasicInputProvider)
 
     def test_force_rich_falls_back_on_import_error(self):
         # When rich is explicitly requested but import fails
         with patch(
-            "tools.agents.chat.provider_factory._rich_available",
+            "tools.extensions.builtins.chat.provider_factory._rich_available",
             return_value=True,
         ):
             # Mock the import to fail
             with patch(
-                "tools.agents.chat.providers.rich_render.RichRenderProvider",
+                "tools.extensions.builtins.chat.providers.rich_render.RichRenderProvider",
                 side_effect=ImportError("no rich"),
             ):
                 p = create_render_provider(force="rich")

@@ -4,7 +4,7 @@ import json
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock
 
-from tools.agents.chat.agent import ChatAgent, _BASE_SYSTEM_PROMPT
+from tools.extensions.builtins.chat.agent import ChatAgent, _BASE_SYSTEM_PROMPT
 from tools.infra.orchestrator.bus import EventBus
 from tools.infra.orchestrator.session import Session
 from tools.infra.gateway import (

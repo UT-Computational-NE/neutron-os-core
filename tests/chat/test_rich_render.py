@@ -3,7 +3,7 @@
 import pytest
 from io import StringIO
 
-from tools.agents.chat.providers.markdown_utils import (
+from tools.extensions.builtins.chat.providers.markdown_utils import (
     terminal_width,
     is_diff,
     extract_code_blocks,
@@ -73,13 +73,13 @@ class TestRichRenderProvider:
     @pytest.fixture
     def rich_provider(self):
         try:
-            from tools.agents.chat.providers.rich_render import RichRenderProvider
+            from tools.extensions.builtins.chat.providers.rich_render import RichRenderProvider
             return RichRenderProvider()
         except ImportError:
             pytest.skip("rich not installed")
 
     def test_is_render_provider(self, rich_provider):
-        from tools.agents.chat.providers.base import RenderProvider
+        from tools.extensions.builtins.chat.providers.base import RenderProvider
         assert isinstance(rich_provider, RenderProvider)
 
     def test_stream_text(self, rich_provider):

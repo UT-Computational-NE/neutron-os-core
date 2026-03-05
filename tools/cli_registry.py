@@ -144,13 +144,29 @@ def _get_parser_for_module(module_path: str) -> Optional[argparse.ArgumentParser
 # Registry
 # ---------------------------------------------------------------------------
 
-# Known CLI modules and their namespaces
-CLI_MODULES = {
-    "sense": "tools.pipelines.sense.cli",
-    "doc": "tools.docflow.cli",
+# Core CLI modules (always available)
+_CORE_CLI_MODULES = {
     "config": "tools.setup.cli",
-    "chat": "tools.agents.chat.cli",
+    "ext": "tools.extensions.cli",
 }
+
+
+def _get_cli_modules() -> dict[str, str]:
+    """Build CLI_MODULES from core + extension discovery (lazy, cached)."""
+    modules = dict(_CORE_CLI_MODULES)
+    try:
+        from tools.extensions.discovery import discover_cli_commands
+
+        for noun, info in discover_cli_commands().items():
+            if noun not in modules:
+                modules[noun] = info["module"]
+    except Exception:
+        pass
+    return modules
+
+
+# Backwards-compatible name
+CLI_MODULES = _get_cli_modules()
 
 # Cache for discovered commands
 _command_cache: dict[str, CLINamespace] = {}
@@ -264,7 +280,8 @@ def execute_command(
     Returns:
         Dict with 'success', 'output', 'error' keys
     """
-    module_path = CLI_MODULES.get(namespace)
+    modules = _get_cli_modules()
+    module_path = modules.get(namespace)
     if not module_path:
         return {"success": False, "error": f"Unknown namespace: {namespace}"}
 

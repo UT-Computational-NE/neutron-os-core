@@ -78,6 +78,7 @@ class Extension:
 
     # Runtime state
     enabled: bool = True
+    builtin: bool = False  # True for extensions shipped inside tools/extensions/builtins/
     skills: list[Skill] = field(default_factory=list)
 
     @property
@@ -139,6 +140,7 @@ def parse_manifest(manifest_path: Path) -> Extension:
         description=ext_section.get("description", ""),
         author=ext_section.get("author", ""),
         root=root,
+        builtin=ext_section.get("builtin", False),
     )
 
     # Chat tools
@@ -240,6 +242,7 @@ def validate_extension(ext: Extension) -> list[str]:
     """Validate an extension's manifest and file structure.
 
     Returns a list of issues (empty = valid).
+    Builtins verify importability; user extensions verify filesystem paths.
     """
     issues: list[str] = []
 
@@ -253,29 +256,43 @@ def validate_extension(ext: Extension) -> list[str]:
     if not ext.manifest_path.exists():
         issues.append(f"Manifest not found: {ext.manifest_path}")
 
-    # Check chat tools module exists
-    if ext.chat_tools_module:
-        tools_dir = ext.root / ext.chat_tools_module.replace(".", "/")
-        if not tools_dir.is_dir():
-            issues.append(f"Chat tools module dir not found: {tools_dir}")
+    if ext.builtin:
+        # Builtins: verify CLI modules are importable
+        import importlib.util
 
-    # Check CLI command modules exist
-    for cmd in ext.cli_commands:
-        mod_path = ext.root / cmd.module.replace(".", "/")
-        if not mod_path.with_suffix(".py").exists() and not (mod_path / "__init__.py").exists():
-            issues.append(f"CLI module not found: {cmd.module}")
+        for cmd in ext.cli_commands:
+            try:
+                spec = importlib.util.find_spec(cmd.module)
+            except (ModuleNotFoundError, ValueError):
+                spec = None
+            if spec is None:
+                issues.append(f"Builtin CLI module not importable: {cmd.module}")
+    else:
+        # User extensions: verify filesystem paths
 
-    # Check provider modules exist
-    for prov in ext.providers:
-        mod_path = ext.root / prov.module.replace(".", "/")
-        if not mod_path.with_suffix(".py").exists():
-            issues.append(f"Provider module not found: {prov.module}")
+        # Check chat tools module exists
+        if ext.chat_tools_module:
+            tools_dir = ext.root / ext.chat_tools_module.replace(".", "/")
+            if not tools_dir.is_dir():
+                issues.append(f"Chat tools module dir not found: {tools_dir}")
 
-    # Check extractor modules exist
-    for extr in ext.extractors:
-        mod_path = ext.root / extr.module.replace(".", "/")
-        if not mod_path.with_suffix(".py").exists():
-            issues.append(f"Extractor module not found: {extr.module}")
+        # Check CLI command modules exist
+        for cmd in ext.cli_commands:
+            mod_path = ext.root / cmd.module.replace(".", "/")
+            if not mod_path.with_suffix(".py").exists() and not (mod_path / "__init__.py").exists():
+                issues.append(f"CLI module not found: {cmd.module}")
+
+        # Check provider modules exist
+        for prov in ext.providers:
+            mod_path = ext.root / prov.module.replace(".", "/")
+            if not mod_path.with_suffix(".py").exists():
+                issues.append(f"Provider module not found: {prov.module}")
+
+        # Check extractor modules exist
+        for extr in ext.extractors:
+            mod_path = ext.root / extr.module.replace(".", "/")
+            if not mod_path.with_suffix(".py").exists():
+                issues.append(f"Extractor module not found: {extr.module}")
 
     # Check skills have SKILL.md
     skills_path = ext.root / ext.skills_dir

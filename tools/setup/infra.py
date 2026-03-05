@@ -363,7 +363,7 @@ def create_cluster() -> bool:
     """Create and start the neut-local K3D cluster with PostgreSQL."""
     try:
         # Use the existing k3d_up function which handles everything
-        from tools.pipelines.sense.pgvector_store import k3d_up
+        from tools.extensions.builtins.sense.pgvector_store import k3d_up
         return k3d_up()
     except ImportError:
         print("Error: Could not import k3d_up. Run from project root.")

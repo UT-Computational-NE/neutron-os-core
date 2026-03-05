@@ -4,8 +4,8 @@ import json
 import pytest
 from pathlib import Path
 
-from tools.docflow.state import LinkEntry
-from tools.docflow.registry import LinkRegistry
+from tools.extensions.builtins.docflow.state import LinkEntry
+from tools.extensions.builtins.docflow.registry import LinkRegistry
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ class TestLinkRegistry:
     def test_add_entry(self, registry):
         entry = LinkEntry(
             doc_id="test-doc",
-            source_path="docs/prd/test-doc.md",
+            source_path="docs/requirements/prd_test-doc.md",
             published_url="file:///output/test-doc.docx",
             storage_id="local/test-doc.docx",
             version="v1",
@@ -38,14 +38,14 @@ class TestLinkRegistry:
         reg1 = LinkRegistry(path)
         reg1.update(LinkEntry(
             doc_id="alpha",
-            source_path="docs/prd/alpha.md",
+            source_path="docs/requirements/prd_alpha.md",
             published_url="https://example.com/alpha.docx",
         ))
 
         # Create new instance from same file
         reg2 = LinkRegistry(path)
         assert reg2.count == 1
-        assert reg2.get("docs/prd/alpha.md") is not None
+        assert reg2.get("docs/requirements/prd_alpha.md") is not None
 
     def test_get_by_source_path(self, registry):
         registry.update(LinkEntry(
@@ -60,12 +60,12 @@ class TestLinkRegistry:
     def test_get_by_doc_id(self, registry):
         registry.update(LinkEntry(
             doc_id="my-doc",
-            source_path="docs/prd/my-doc.md",
+            source_path="docs/requirements/prd_my-doc.md",
             published_url="file:///my-doc.docx",
         ))
         result = registry.get_by_doc_id("my-doc")
         assert result is not None
-        assert result.source_path == "docs/prd/my-doc.md"
+        assert result.source_path == "docs/requirements/prd_my-doc.md"
 
     def test_get_nonexistent(self, registry):
         assert registry.get("nonexistent.md") is None
@@ -88,16 +88,16 @@ class TestLinkRegistry:
         """Link map provides multiple key formats for matching."""
         registry.update(LinkEntry(
             doc_id="experiment-prd",
-            source_path="docs/prd/experiment-prd.md",
+            source_path="docs/requirements/prd_experiment.md",
             published_url="https://sharepoint.com/experiment-prd.docx",
         ))
 
         link_map = registry.build_link_map()
 
         # Should have full path, filename, and stem+.md entries
-        assert "docs/prd/experiment-prd.md" in link_map
-        assert "experiment-prd.md" in link_map
-        assert link_map["docs/prd/experiment-prd.md"] == "https://sharepoint.com/experiment-prd.docx"
+        assert "docs/requirements/prd_experiment.md" in link_map
+        assert "prd_experiment.md" in link_map
+        assert link_map["docs/requirements/prd_experiment.md"] == "https://sharepoint.com/experiment-prd.docx"
 
     def test_link_map_excludes_empty_urls(self, registry):
         """Entries without published_url are excluded from link map."""

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.pipelines.sense.serve import create_server, InboxHandler, ROUTE_MAP
+from tools.extensions.builtins.sense.serve import create_server, InboxHandler, ROUTE_MAP
 
 
 @pytest.fixture

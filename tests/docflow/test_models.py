@@ -1,7 +1,7 @@
 """Unit tests for docflow data models."""
 
 import pytest
-from tools.docflow.state import (
+from tools.extensions.builtins.docflow.state import (
     Comment,
     LinkEntry,
     PublicationRecord,
@@ -56,7 +56,7 @@ class TestLinkEntry:
     def test_construction(self):
         entry = LinkEntry(
             doc_id="test-doc",
-            source_path="docs/prd/test-doc.md",
+            source_path="docs/requirements/prd_test-doc.md",
             published_url="https://example.com/test-doc.docx",
         )
         assert entry.version == "v1"
@@ -129,7 +129,7 @@ class TestDocumentState:
         )
         original = DocumentState(
             doc_id="test-doc",
-            source_path="docs/prd/test-doc.md",
+            source_path="docs/requirements/prd_test-doc.md",
             status="published",
             published=pub,
             last_commit="abc",

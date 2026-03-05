@@ -10,9 +10,9 @@ from unittest.mock import patch
 
 import pytest
 
-from tools.mo.manifest import Manifest, ScratchEntry
-from tools.mo.manager import MoManager
-from tools.mo.paths import resolve_base_dir
+from tools.extensions.builtins.mo.manifest import Manifest, ScratchEntry
+from tools.extensions.builtins.mo.manager import MoManager
+from tools.extensions.builtins.mo.paths import resolve_base_dir
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ class TestResolveBaseDir:
     def test_macos_default(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("NEUT_SCRATCH_DIR", None)
-            with patch("tools.mo.paths.sys") as mock_sys:
+            with patch("tools.extensions.builtins.mo.paths.sys") as mock_sys:
                 mock_sys.platform = "darwin"
                 result = resolve_base_dir()
                 assert "Library/Caches/neut/mo" in str(result)
@@ -37,7 +37,7 @@ class TestResolveBaseDir:
             "XDG_RUNTIME_DIR": str(tmp_path / "xdg"),
         }):
             os.environ.pop("NEUT_SCRATCH_DIR", None)
-            with patch("tools.mo.paths.sys") as mock_sys:
+            with patch("tools.extensions.builtins.mo.paths.sys") as mock_sys:
                 mock_sys.platform = "linux"
                 result = resolve_base_dir()
                 assert "neut/mo" in str(result)
@@ -256,11 +256,11 @@ class TestMoManager:
 
 class TestPublicAPI:
     def test_acquire_and_manager(self, tmp_path):
-        import tools.mo as mo
+        import tools.extensions.builtins.mo as mo
         # Reset singleton
         mo._instance = None
 
-        with patch("tools.mo.MoManager") as MockMgr:
+        with patch("tools.extensions.builtins.mo.MoManager") as MockMgr:
             instance = MockMgr.return_value
             instance.acquire_file.return_value = tmp_path / "test.txt"
             instance.acquire_dir.return_value = tmp_path / "testdir"
@@ -275,10 +275,10 @@ class TestPublicAPI:
         mo._instance = None
 
     def test_scratch_file_context_manager(self, tmp_path):
-        import tools.mo as mo
+        import tools.extensions.builtins.mo as mo
         mo._instance = None
 
-        with patch("tools.mo.MoManager") as MockMgr:
+        with patch("tools.extensions.builtins.mo.MoManager") as MockMgr:
             instance = MockMgr.return_value
             test_path = tmp_path / "ctx.txt"
             instance.acquire_file.return_value = test_path
@@ -292,10 +292,10 @@ class TestPublicAPI:
         mo._instance = None
 
     def test_scratch_dir_context_manager(self, tmp_path):
-        import tools.mo as mo
+        import tools.extensions.builtins.mo as mo
         mo._instance = None
 
-        with patch("tools.mo.MoManager") as MockMgr:
+        with patch("tools.extensions.builtins.mo.MoManager") as MockMgr:
             instance = MockMgr.return_value
             test_path = tmp_path / "ctxdir"
             instance.acquire_dir.return_value = test_path

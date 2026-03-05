@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.demo.runner import Act, DemoRunner, Scenario
+from tools.extensions.builtins.demo.runner import Act, DemoRunner, Scenario
 
 
 def _make_scenario(num_acts: int = 3) -> Scenario:

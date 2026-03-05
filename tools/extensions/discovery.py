@@ -3,19 +3,22 @@
 Scans extension directories for valid packages with neut-extension.toml,
 loads chat tools, skills, CLI commands, and provider registrations.
 
-Discovery order (matches OpenClaw precedence):
-  1. Project extensions:  .neut/extensions/  (repo-local)
+Discovery order (highest precedence first):
+  1. Project extensions:  .neut/extensions/  (repo-local, found by walking cwd)
   2. User extensions:     ~/.neut/extensions/ (personal, cross-project)
+  3. Builtin extensions:  tools/extensions/builtins/ (shipped with package)
 
 Key design choice: uses importlib.util.spec_from_file_location() to load
-extension modules directly from file paths — no pip install, no sys.path
-manipulation, no __pycache__ pollution, reloaded on each scan.
+user extension modules directly from file paths — no pip install, no sys.path
+manipulation. Builtin extensions use importlib.import_module() since they are
+part of the installed package.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import logging
+import os
 import types
 from pathlib import Path
 from typing import Any
@@ -34,10 +37,38 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _project_extensions_dir() -> Path:
-    """Project-local extensions: .neut/extensions/ relative to repo root."""
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    return repo_root / ".neut" / "extensions"
+def _builtin_extensions_dir() -> Path:
+    """Builtin extensions shipped inside the package.
+
+    Always relative to this file — works in source checkout AND installed wheel.
+    """
+    return Path(__file__).resolve().parent / "builtins"
+
+
+def _project_extensions_dir() -> Path | None:
+    """Project-local extensions: .neut/extensions/ relative to project root.
+
+    Resolution order:
+      1. NEUT_ROOT env var (explicit override)
+      2. Walk up from cwd looking for a .neut/ directory
+
+    Returns None if no project root is found (e.g. clean dir, no .neut/).
+    """
+    env_root = os.environ.get("NEUT_ROOT")
+    if env_root:
+        candidate = Path(env_root).resolve() / ".neut" / "extensions"
+        if candidate.is_dir():
+            return candidate
+        return None
+
+    path = Path.cwd().resolve()
+    while path != path.parent:
+        candidate = path / ".neut" / "extensions"
+        if candidate.is_dir():
+            return candidate
+        path = path.parent
+
+    return None
 
 
 def _user_extensions_dir() -> Path:
@@ -48,15 +79,19 @@ def _user_extensions_dir() -> Path:
 def get_extension_dirs() -> list[Path]:
     """Return extension directories in discovery order.
 
-    Project-local extensions take precedence over user-level ones.
+    Project-local takes precedence over user-level over builtins.
+    Earlier entries win when names collide (user can override builtins).
     """
     dirs = []
     project_dir = _project_extensions_dir()
-    if project_dir.is_dir():
+    if project_dir is not None and project_dir.is_dir():
         dirs.append(project_dir)
     user_dir = _user_extensions_dir()
     if user_dir.is_dir():
         dirs.append(user_dir)
+    builtin_dir = _builtin_extensions_dir()
+    if builtin_dir.is_dir():
+        dirs.append(builtin_dir)
     return dirs
 
 
@@ -207,12 +242,12 @@ def execute_extension_tool(
 # ---------------------------------------------------------------------------
 
 
-def discover_cli_commands(*search_dirs: Path) -> dict[str, dict[str, str]]:
+def discover_cli_commands(*search_dirs: Path) -> dict[str, dict[str, Any]]:
     """Discover CLI commands from all extensions.
 
-    Returns dict mapping noun -> {module: str, description: str, extension: str}.
+    Returns dict mapping noun -> {module, description, extension, root, builtin}.
     """
-    commands: dict[str, dict[str, str]] = {}
+    commands: dict[str, dict[str, Any]] = {}
     for ext in discover_extensions(*search_dirs):
         if not ext.enabled:
             continue
@@ -223,6 +258,7 @@ def discover_cli_commands(*search_dirs: Path) -> dict[str, dict[str, str]]:
                     "description": cmd.description,
                     "extension": ext.name,
                     "root": str(ext.root),
+                    "builtin": ext.builtin,
                 }
     return commands
 
@@ -327,7 +363,7 @@ Each `.py` file in the `tools_ext/` directory exports:
 - `execute(name: str, params: dict) -> dict`: handler function
 
 ```python
-from tools.agents.chat.tools import ToolDef
+from tools.extensions.builtins.chat.tools import ToolDef
 from tools.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
@@ -432,13 +468,13 @@ def main():
 
 ## 4. Docflow Provider Contracts
 
-Providers implement abstract base classes from `tools.docflow.providers.base`:
+Providers implement abstract base classes from `tools.extensions.builtins.docflow.providers.base`:
 
 ### GenerationProvider
 
 ```python
 from pathlib import Path
-from tools.docflow.providers.base import (
+from tools.extensions.builtins.docflow.providers.base import (
     GenerationProvider,
     GenerationOptions,
     GenerationResult,
@@ -472,12 +508,12 @@ See `tools/docflow/providers/base.py` for all five provider ABCs.
 
 ## 5. Extractor Contract
 
-Extractors inherit from `tools.pipelines.sense.extractors.base.BaseExtractor`:
+Extractors inherit from `tools.extensions.builtins.sense.extractors.base.BaseExtractor`:
 
 ```python
 from pathlib import Path
-from tools.pipelines.sense.extractors.base import BaseExtractor
-from tools.pipelines.sense.models import Extraction, Signal
+from tools.extensions.builtins.sense.extractors.base import BaseExtractor
+from tools.extensions.builtins.sense.models import Extraction, Signal
 
 class ReactorLogExtractor(BaseExtractor):
     @property

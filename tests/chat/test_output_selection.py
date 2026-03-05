@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
 
-from tools.agents.chat.fullscreen import (
+from tools.extensions.builtins.chat.fullscreen import (
     _ScrollableBufferControl,
     _OutputLexer,
     _apply_selection_overlay,

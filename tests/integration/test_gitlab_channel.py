@@ -78,7 +78,7 @@ class TestGitLabExport:
 
     def test_extractor_on_existing_export(self, tmp_path):
         """If a GitLab export JSON exists, the extractor processes it."""
-        from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
 
         # Check if real exports exist
         exports_dir = Path(__file__).resolve().parents[2] / "tools" / "exports"

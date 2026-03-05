@@ -5,7 +5,7 @@ import sys
 import pytest
 
 from tools.setup.renderer import set_color_enabled
-from tools.agents.chat.renderer import (
+from tools.extensions.builtins.chat.renderer import (
     format_markdown_line,
     stream_text,
     render_message,
@@ -186,6 +186,6 @@ class TestFormatParams:
         assert "file=test.md" in result
 
     def test_multiple_params(self):
-        result = _format_params({"source": "docs/prd/foo.md", "draft": True})
+        result = _format_params({"source": "docs/requirements/prd_foo.md", "draft": True})
         assert "source=" in result
         assert "draft=" in result

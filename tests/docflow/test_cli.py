@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 import sys
 
-from tools.docflow import cli
+from tools.extensions.builtins.docflow import cli
 
 
 class TestCmdPull:
@@ -33,7 +33,7 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "Specify a doc_id or use --all" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_pull_single_doc_no_changes(self, mock_engine_cls, capsys):
         """Pull single doc with no changes reports 'No changes'."""
         mock_engine = MagicMock()
@@ -54,13 +54,13 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "No changes" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_pull_single_doc_with_changes(self, mock_engine_cls, capsys):
         """Pull single doc with changes reports the update."""
         mock_engine = MagicMock()
         mock_engine.pull.return_value = {
             "changed": True,
-            "source_path": "docs/prd/test.md",
+            "source_path": "docs/requirements/prd_test.md",
             "diff": "--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new",
             "comments": [],
         }
@@ -78,9 +78,9 @@ class TestCmdPull:
 
         captured = capsys.readouterr()
         assert "Updated" in captured.out
-        assert "docs/prd/test.md" in captured.out
+        assert "docs/requirements/prd_test.md" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_pull_dry_run_shows_diff(self, mock_engine_cls, capsys):
         """Pull with --dry-run shows diff without updating."""
         mock_engine = MagicMock()
@@ -107,7 +107,7 @@ class TestCmdPull:
         assert "--- local" in captured.out
         assert "+new line" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_pull_with_comments(self, mock_engine_cls, capsys):
         """Pull with --comments extracts and reports comments."""
         mock_engine = MagicMock()
@@ -136,10 +136,10 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "2 comment(s)" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_pull_all_docs(self, mock_engine_cls, capsys):
         """Pull --all iterates over all tracked documents."""
-        from tools.docflow.state import DocumentState, PublicationRecord
+        from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
         mock_engine = MagicMock()
         mock_engine.status.return_value = [
@@ -189,10 +189,10 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "Pulling 2 document(s)" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_pull_all_handles_errors(self, mock_engine_cls, capsys):
         """Pull --all continues on individual errors."""
-        from tools.docflow.state import DocumentState, PublicationRecord
+        from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
         mock_engine = MagicMock()
         mock_engine.status.return_value = [
@@ -291,7 +291,7 @@ class TestMainParser:
 class TestCmdPublish:
     """Tests for the `neut doc publish` command."""
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_publish_file(self, mock_engine_cls, tmp_path):
         """Publish a specific file."""
         mock_engine = MagicMock()
@@ -332,7 +332,7 @@ class TestCmdPublish:
 class TestCmdStatus:
     """Tests for the `neut doc status` command."""
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_status_no_docs(self, mock_engine_cls, capsys):
         """Status with no tracked docs prints message."""
         mock_engine = MagicMock()
@@ -346,16 +346,16 @@ class TestCmdStatus:
         captured = capsys.readouterr()
         assert "No tracked documents" in captured.out
 
-    @patch("tools.docflow.engine.DocFlowEngine")
+    @patch("tools.extensions.builtins.docflow.engine.DocFlowEngine")
     def test_status_lists_docs(self, mock_engine_cls, capsys):
         """Status lists all tracked documents."""
-        from tools.docflow.state import DocumentState, PublicationRecord
+        from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
         mock_engine = MagicMock()
         mock_engine.status.return_value = [
             DocumentState(
                 doc_id="test-prd",
-                source_path="docs/prd/test.md",
+                source_path="docs/requirements/prd_test.md",
                 status="published",
                 published=PublicationRecord(
                     storage_id="id1",

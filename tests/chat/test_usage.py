@@ -2,7 +2,7 @@
 
 import pytest
 
-from tools.agents.chat.usage import (
+from tools.extensions.builtins.chat.usage import (
     UsageTracker,
     TurnUsage,
     compute_cost,

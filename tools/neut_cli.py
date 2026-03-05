@@ -3,14 +3,14 @@
 neut — Neutron OS CLI dispatcher (Python prototype)
 
 Routes subcommands to their respective handlers:
-  neut sense ...     → tools/pipelines/sense/cli.py
-  neut doc ...       → tools/docflow/cli.py
-  neut docflow ...   → tools/docflow/cli.py  (alias)
-  neut db ...        → tools/db/cli.py
-  neut infra ...     → tools/setup/infra.py (Docker, K3D setup)
-  neut test ...      → tools/test/cli.py
-  neut update ...    → tools/update/cli.py
-  neut status ...    → tools/status/cli.py
+  neut config ...    → tools/setup/cli.py (core)
+  neut ext ...       → tools/extensions/cli.py (core)
+  neut infra ...     → tools/setup/infra.py (core)
+  neut doctor ...    → built-in diagnostic (core)
+  neut sense ...     → tools/extensions/builtins/sense/cli.py (builtin ext)
+  neut doc/docflow   → tools/extensions/builtins/docflow/cli.py (builtin ext)
+  neut chat/code     → tools/extensions/builtins/chat/cli.py (builtin ext)
+  + mo, demo, status, db, test, update (builtin extensions)
 
 The production neut CLI will be Rust (see docs/specs/neut-cli-spec.md).
 This Python entry point serves developer tooling during early development.
@@ -28,9 +28,11 @@ import sys
 import os
 from pathlib import Path
 
-# Ensure repo root is on sys.path so imports resolve
+# Ensure repo root is on sys.path when running from source checkout.
+# Skip when installed as a wheel (inside site-packages).
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if REPO_ROOT not in sys.path:
+_in_site_packages = "site-packages" in os.path.abspath(__file__)
+if not _in_site_packages and REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 
@@ -63,7 +65,7 @@ _load_dotenv()
 def _show_pending_changelog() -> None:
     """Display pending changelog from a recent update, then clear it."""
     try:
-        from tools.update.version_check import read_pending_changelog, clear_pending_changelog
+        from tools.extensions.builtins.update.version_check import read_pending_changelog, clear_pending_changelog
         changelog = read_pending_changelog()
         if not changelog or changelog.get("shown"):
             return
@@ -97,38 +99,28 @@ def _show_pending_changelog() -> None:
         pass  # Never crash the CLI for changelog display
 
 
+# Core commands — platform infrastructure that is NOT an extension.
+# Everything else is discovered via the extension system (builtins + user).
 SUBCOMMANDS = {
     "config": "tools.setup.cli",
-    "sense": "tools.pipelines.sense.cli",
-    "doc": "tools.docflow.cli",
-    "docflow": "tools.docflow.cli",
-    "chat": "tools.agents.chat.cli",
-    "code": "tools.agents.chat.cli",  # Alias for chat
-    "db": "tools.db.cli",  # PostgreSQL + pgvector infrastructure
-    "infra": "tools.setup.infra",  # Infrastructure setup (Docker, K3D)
-    "test": "tools.test.cli",  # Test orchestration
-    "update": "tools.update.cli",  # Dependency and migration updates
-    "status": "tools.status.cli",  # System health dashboard
-    "mo": "tools.mo.cli",  # M-O resource steward
-    "serve-mcp": "tools.mcp_server.server",
-    "ext": "tools.extensions.cli",  # Extension management
-    "demo": "tools.demo.cli",  # Guided demonstrations
+    "ext": "tools.extensions.cli",
+    "infra": "tools.setup.infra",
     "doctor": None,  # Built-in, handled specially
 }
 
 
-def _merge_extension_commands() -> dict[str, str]:
-    """Discover CLI commands from user-space extensions.
+def _merge_extension_commands() -> dict[str, dict]:
+    """Discover CLI commands from all extensions (builtin + user).
 
-    Returns dict mapping noun -> module path for dynamic dispatch.
-    Extension commands are loaded from file paths, not Python packages.
+    Returns dict mapping noun -> {module, description, extension, root, builtin}.
+    Core SUBCOMMANDS take precedence over extension commands.
     """
     try:
         from tools.extensions.discovery import discover_cli_commands
 
         ext_cmds = discover_cli_commands()
         return {
-            noun: info["module"]
+            noun: info
             for noun, info in ext_cmds.items()
             if noun not in SUBCOMMANDS  # Core commands take precedence
         }
@@ -377,23 +369,10 @@ Rules:
         return None
 
 
-# Help text for subcommands without get_parser()
+# Help text for core subcommands (extensions provide their own descriptions)
 _SUBCOMMAND_HELP = {
     "config": "Interactive onboarding wizard",
-    "sense": "Agentic signal ingestion pipeline",
-    "doc": "Document lifecycle management",
-    "docflow": "Document lifecycle management (alias for doc)",
-    "chat": "Interactive agent with tool calling",
-    "code": "Interactive agent with tool calling",
-    "db": "PostgreSQL + pgvector infrastructure",
-    "infra": "Infrastructure setup (Docker, K3D)",
-    "test": "Test orchestration",
-    "update": "Dependency and migration updates",
-    "status": "System health dashboard",
-    "mo": "M-O resource steward (scratch, vitals, cleanup)",
-    "serve-mcp": "Start the MCP server for IDE integration",
-    "ext": "Manage user-space extensions",
-    "demo": "Guided demonstrations and walkthroughs",
+    "ext": "Manage extensions (builtin + user)",
     "doctor": "AI-powered environment diagnostics",
 }
 
@@ -490,10 +469,10 @@ def _copy_top_level_args(
 def get_parser() -> argparse.ArgumentParser:
     """Build top-level parser for argcomplete and help generation.
 
-    This mirrors the SUBCOMMANDS dict with real argparse subparsers so that
-    argcomplete can provide tab completion.  The actual command dispatch still
-    uses the existing SUBCOMMANDS + importlib approach — argparse is used only
-    for completion and ``--help``.
+    This mirrors SUBCOMMANDS + discovered extension commands with real argparse
+    subparsers so that argcomplete can provide tab completion.  The actual
+    command dispatch still uses importlib — argparse is used only for
+    completion and ``--help``.
     """
     import importlib
 
@@ -504,13 +483,14 @@ def get_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="subcommand")
 
     seen = set()
+
+    # Core commands
     for name, module_path in SUBCOMMANDS.items():
         if name in seen:
             continue
         seen.add(name)
 
         if module_path is None:
-            # Built-in (e.g. doctor)
             subparsers.add_parser(name, help=_SUBCOMMAND_HELP.get(name, ""))
             continue
 
@@ -524,14 +504,44 @@ def get_parser() -> argparse.ArgumentParser:
                     help=child_parser.description or _SUBCOMMAND_HELP.get(name, ""),
                     description=child_parser.description,
                 )
-                # Attach child subparsers (e.g. sense status, sense ingest)
                 _copy_subparsers(child_parser, sub)
-                # Attach top-level flags (e.g. chat --resume, chat --model)
                 _copy_top_level_args(child_parser, sub)
             else:
                 subparsers.add_parser(name, help=_SUBCOMMAND_HELP.get(name, ""))
         except ImportError:
             subparsers.add_parser(name, help=_SUBCOMMAND_HELP.get(name, ""))
+
+    # Extension commands (builtin + user)
+    ext_cmds = _merge_extension_commands()
+    for name, info in ext_cmds.items():
+        if name in seen:
+            continue
+        seen.add(name)
+
+        module_path = info["module"]
+        description = info.get("description", "")
+
+        if info.get("builtin"):
+            # Builtin: importable module, try to get parser for tab completion
+            try:
+                mod = importlib.import_module(module_path)
+                _get = getattr(mod, "get_parser", None) or getattr(mod, "build_parser", None)
+                if _get:
+                    child_parser = _get()
+                    sub = subparsers.add_parser(
+                        name,
+                        help=child_parser.description or description,
+                        description=child_parser.description,
+                    )
+                    _copy_subparsers(child_parser, sub)
+                    _copy_top_level_args(child_parser, sub)
+                else:
+                    subparsers.add_parser(name, help=description)
+            except ImportError:
+                subparsers.add_parser(name, help=description)
+        else:
+            # User extension: just add stub parser with description
+            subparsers.add_parser(name, help=description)
 
     return parser
 
@@ -541,38 +551,37 @@ def print_usage(show_all: bool = False):
     print()
     print("Usage: neut <command> [args...]")
     print()
+
+    ext_cmds = _merge_extension_commands()
+
+    # Categorise builtin vs user extensions
+    builtins = {n: i for n, i in ext_cmds.items() if i.get("builtin")}
+    user_exts = {n: i for n, i in ext_cmds.items() if not i.get("builtin")}
+
+    # Always-visible commands
     print("Commands:")
-    print("  status    System health dashboard")
+    # Core
+    print("  config    Interactive onboarding wizard")
     print("  doctor    Diagnose environment issues")
-    print("  update    Check for updates and apply them")
-    print("  config    First-time configuration")
+    print("  ext       Manage extensions (builtin + user)")
+    # Show a few key builtins even in short mode
+    for noun in ("status", "update", "chat"):
+        if noun in builtins:
+            print(f"  {noun:<10}{builtins[noun]['description']}")
 
     if show_all:
         print()
-        print("Tools:")
-        print("  sense     Agentic signal ingestion pipeline")
-        print("  doc       Document lifecycle management (alias: docflow)")
-        print("  chat      Interactive agent with tool calling")
-        print("  code      Interactive agent with tool calling (alias for chat)")
-        print("  mo        M-O resource steward (scratch, vitals, cleanup)")
-        print("  ext       Manage user-space extensions")
-        print("  demo      Guided demonstrations and walkthroughs")
-        print()
-        print("Infrastructure:")
-        print("  db        PostgreSQL + pgvector database management")
-        print("  infra     Infrastructure setup (Docker, K3D)")
-        print()
-        print("Development:")
-        print("  test      Test orchestration")
-        print("  serve-mcp Start the MCP server for IDE integration")
+        print("Builtins:")
+        for noun, info in sorted(builtins.items()):
+            if noun in ("status", "update", "chat"):
+                continue  # Already shown above
+            print(f"  {noun:<12}{info['description']}")
 
-        # Show extension commands if any
-        ext_cmds = _merge_extension_commands()
-        if ext_cmds:
+        if user_exts:
             print()
-            print("Extensions:")
-            for noun, module in sorted(ext_cmds.items()):
-                print(f"  {noun:<12}{module}")
+            print("User Extensions:")
+            for noun, info in sorted(user_exts.items()):
+                print(f"  {noun:<12}{info['description']}")
     else:
         print()
         print("Type 'neut' with no args for interactive mode.")
@@ -584,6 +593,55 @@ def _suggest_command(cmd: str, valid_commands: list[str]) -> str | None:
     from difflib import get_close_matches
     matches = get_close_matches(cmd, valid_commands, n=1, cutoff=0.6)
     return matches[0] if matches else None
+
+
+def _dispatch_extension(subcommand: str, ext_info: dict) -> None:
+    """Dispatch to an extension command (builtin or user).
+
+    Builtins use importlib.import_module() (they are part of the package).
+    User extensions use spec_from_file_location() (loaded from arbitrary paths).
+    """
+    module_path = ext_info["module"]
+    is_builtin = ext_info.get("builtin", False)
+
+    try:
+        if is_builtin:
+            import importlib
+            mod = importlib.import_module(module_path)
+            mod.main()
+        else:
+            # User extension — load from file path
+            ext_root = Path(ext_info.get("root", ""))
+            mod_rel = ext_info.get("module", "")
+            mod_file = ext_root / mod_rel.replace(".", "/")
+            # Try as .py file or as package
+            if mod_file.with_suffix(".py").exists():
+                mod_file = mod_file.with_suffix(".py")
+            elif (mod_file / "__init__.py").exists():
+                mod_file = mod_file / "__init__.py"
+            else:
+                print(f"neut: extension module not found: {mod_rel}")
+                sys.exit(1)
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                f"neut_ext.{subcommand}", str(mod_file)
+            )
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                mod.main()
+            else:
+                print(f"neut: cannot load extension module: {mod_file}")
+                sys.exit(1)
+    except KeyboardInterrupt:
+        print()
+        sys.exit(130)
+    except ImportError as e:
+        print(f"neut: failed to load {subcommand}: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"neut: command '{subcommand}' failed: {e}")
+        sys.exit(1)
 
 
 def main():
@@ -612,12 +670,16 @@ def main():
 
     if len(sys.argv) < 2:
         if sys.stdin.isatty() and sys.stdout.isatty():
+            # Bare `neut` → interactive chat, dispatched through extensions
             sys.argv = ["neut chat", "--bare"]
-            try:
-                from tools.agents.chat.cli import main as chat_main
-                chat_main()
-            except KeyboardInterrupt:
-                print()
+            ext_cmds = _merge_extension_commands()
+            if "chat" in ext_cmds:
+                try:
+                    _dispatch_extension("chat", ext_cmds["chat"])
+                except SystemExit:
+                    pass
+            else:
+                print("neut: chat extension not found")
             sys.exit(0)
         else:
             print_usage()
@@ -646,7 +708,7 @@ def main():
 
     module_path = SUBCOMMANDS.get(subcommand)
 
-    # Check extension commands if not a core command
+    # Check extension commands (builtin + user) if not a core command
     ext_cmd_info = None
     if not module_path:
         ext_cmds = _merge_extension_commands()
@@ -666,38 +728,7 @@ def main():
     sys.argv = [f"neut {subcommand}"] + sys.argv[2:]
 
     if ext_cmd_info:
-        # Extension CLI command — load from file path
-        try:
-            from tools.extensions.discovery import discover_cli_commands
-            cmd_info = discover_cli_commands().get(subcommand, {})
-            ext_root = Path(cmd_info.get("root", ""))
-            mod_rel = cmd_info.get("module", "")
-            mod_file = ext_root / mod_rel.replace(".", "/")
-            # Try as .py file or as package
-            if mod_file.with_suffix(".py").exists():
-                mod_file = mod_file.with_suffix(".py")
-            elif (mod_file / "__init__.py").exists():
-                mod_file = mod_file / "__init__.py"
-            else:
-                print(f"neut: extension module not found: {mod_rel}")
-                sys.exit(1)
-            import importlib.util
-            spec = importlib.util.spec_from_file_location(
-                f"neut_ext.{subcommand}", str(mod_file)
-            )
-            if spec and spec.loader:
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                mod.main()
-            else:
-                print(f"neut: cannot load extension module: {mod_file}")
-                sys.exit(1)
-        except KeyboardInterrupt:
-            print()
-            sys.exit(130)
-        except Exception as e:
-            print(f"neut: extension command '{subcommand}' failed: {e}")
-            sys.exit(1)
+        _dispatch_extension(subcommand, ext_cmd_info)
     else:
         try:
             import importlib

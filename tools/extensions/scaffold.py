@@ -131,7 +131,7 @@ def _chat_tool_template(ext_name: str) -> str:
 Example chat tool — modify this for your own data sources.
 """
 
-from tools.agents.chat.tools import ToolDef
+from tools.extensions.builtins.chat.tools import ToolDef
 from tools.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
@@ -233,7 +233,7 @@ from typing import Any
 class PptxGenerationProvider:
     """Docflow GenerationProvider for PowerPoint output.
 
-    Implements the same contract as tools.docflow.providers.base.GenerationProvider
+    Implements the same contract as tools.extensions.builtins.docflow.providers.base.GenerationProvider
     without importing it (keeps extension dependency-free).
     """
 
@@ -339,7 +339,7 @@ from pathlib import Path
 class ReactorLogExtractor:
     """Sense extractor for reactor operation logs.
 
-    Implements the same contract as tools.pipelines.sense.extractors.base.BaseExtractor
+    Implements the same contract as tools.extensions.builtins.sense.extractors.base.BaseExtractor
     without importing it (keeps extension dependency-free).
     """
 

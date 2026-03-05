@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from tools.setup.renderer import set_color_enabled
-from tools.agents.chat.commands import (
+from tools.extensions.builtins.chat.commands import (
     cmd_help,
     cmd_status,
     cmd_sense,
@@ -15,7 +15,7 @@ from tools.agents.chat.commands import (
     get_slash_commands,
     CHAT_META_COMMANDS,
 )
-from tools.agents.chat.cli import _handle_slash_command
+from tools.extensions.builtins.chat.cli import _handle_slash_command
 
 
 @pytest.fixture(autouse=True)
@@ -42,8 +42,8 @@ class TestSlashCommands:
         assert "Sense" in result or "sense" in result
 
     def test_cmd_status(self):
-        from tools.agents.chat.agent import ChatAgent
-        from tools.agents.chat.usage import UsageTracker
+        from tools.extensions.builtins.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.usage import UsageTracker
         from tools.infra.orchestrator.session import Session
         from tools.infra.gateway import Gateway
 
@@ -60,8 +60,8 @@ class TestSlashCommands:
         assert "stub mode" in result
 
     def test_cmd_status_with_provider(self):
-        from tools.agents.chat.agent import ChatAgent
-        from tools.agents.chat.usage import UsageTracker
+        from tools.extensions.builtins.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.usage import UsageTracker
         from tools.infra.orchestrator.session import Session
         from tools.infra.gateway import Gateway
 
@@ -106,7 +106,7 @@ class TestSlashCommands:
 
     def test_cmd_resume_found(self):
         from tools.infra.orchestrator.session import SessionStore, Session
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
         session = Session(session_id="abc123")
@@ -122,7 +122,7 @@ class TestSlashCommands:
 
     def test_cmd_resume_not_found(self):
         from tools.infra.orchestrator.session import SessionStore
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
         store.load.return_value = None
@@ -133,7 +133,7 @@ class TestSlashCommands:
 
     def test_cmd_new(self):
         from tools.infra.orchestrator.session import SessionStore, Session
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
         new_session = Session()
@@ -204,7 +204,7 @@ class TestSessionsSubcommands:
 
     def test_dispatch_sessions_rename(self):
         from tools.infra.orchestrator.session import SessionStore, Session
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session(session_id="abc123")
@@ -216,7 +216,7 @@ class TestSessionsSubcommands:
 
     def test_dispatch_sessions_archive(self):
         from tools.infra.orchestrator.session import SessionStore, Session
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session(session_id="current_id")
@@ -237,7 +237,7 @@ class TestSessionsSubcommands:
 
     def test_rename_backward_compat(self):
         from tools.infra.orchestrator.session import SessionStore, Session
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session(session_id="abc123")
@@ -249,7 +249,7 @@ class TestSessionsSubcommands:
 
     def test_archive_backward_compat(self):
         from tools.infra.orchestrator.session import SessionStore, Session
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session(session_id="current_id")
@@ -282,14 +282,14 @@ class TestBannerRendering:
     """Test that the salamander banner shows when show_banner=True."""
 
     def test_render_welcome_with_banner(self, capsys):
-        from tools.agents.chat.providers.ansi_render import AnsiRenderProvider
+        from tools.extensions.builtins.chat.providers.ansi_render import AnsiRenderProvider
         p = AnsiRenderProvider()
         p.render_welcome(show_banner=True)
         captured = capsys.readouterr()
         assert "N E U T R O N  O S" in captured.out
 
     def test_render_welcome_without_banner(self, capsys):
-        from tools.agents.chat.providers.ansi_render import AnsiRenderProvider
+        from tools.extensions.builtins.chat.providers.ansi_render import AnsiRenderProvider
         p = AnsiRenderProvider()
         p.render_welcome(show_banner=False)
         captured = capsys.readouterr()
@@ -298,13 +298,13 @@ class TestBannerRendering:
 
     def test_bare_flag_in_parser(self):
         """--bare flag exists but is suppressed from help."""
-        from tools.agents.chat.cli import get_parser
+        from tools.extensions.builtins.chat.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["--bare"])
         assert args.bare is True
 
     def test_bare_flag_default_false(self):
-        from tools.agents.chat.cli import get_parser
+        from tools.extensions.builtins.chat.cli import get_parser
         parser = get_parser()
         args = parser.parse_args([])
         assert args.bare is False

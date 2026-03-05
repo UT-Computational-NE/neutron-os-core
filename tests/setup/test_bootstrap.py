@@ -123,7 +123,7 @@ class TestProjectStructure:
         tools_dir = REPO_ROOT / "tools"
         assert tools_dir.exists()
         assert (tools_dir / "neut_cli.py").exists()
-        assert (tools_dir / "docflow").is_dir()
+        assert (tools_dir / "extensions" / "builtins").is_dir()
         assert (tools_dir / "agents").is_dir()
 
     def test_claude_md_exists(self):
@@ -165,7 +165,7 @@ class TestDevelopmentSetup:
 
         if venv_python.exists():
             result = subprocess.run(
-                [str(venv_python), "-m", "tools.pipelines.sense.cli", "status"],
+                [str(venv_python), "-m", "tools.extensions.builtins.sense.cli", "status"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),

@@ -51,15 +51,23 @@ def _cmd_list() -> None:
         print("  neut ext docs                 # View extension contracts")
         return
 
-    print(f"{'Name':<20} {'Version':<10} {'Capabilities'}")
-    print("-" * 60)
+    print(f"{'Name':<20} {'Version':<10} {'Type':<10} {'Capabilities'}")
+    print("-" * 70)
     for ext in extensions:
         caps = ", ".join(ext.capabilities) if ext.capabilities else "(empty)"
-        status = "" if ext.enabled else " [disabled]"
-        print(f"{ext.name:<20} {ext.version:<10} {caps}{status}")
+        tag = "[builtin]" if ext.builtin else "[user]"
+        status = " [disabled]" if not ext.enabled else ""
+        print(f"{ext.name:<20} {ext.version:<10} {tag:<10} {caps}{status}")
 
+    n_builtin = sum(1 for e in extensions if e.builtin)
+    n_user = len(extensions) - n_builtin
+    parts = []
+    if n_builtin:
+        parts.append(f"{n_builtin} builtin")
+    if n_user:
+        parts.append(f"{n_user} user")
     print()
-    print(f"{len(extensions)} extension(s) installed.")
+    print(f"{len(extensions)} extension(s) installed ({', '.join(parts)}).")
 
 
 def _cmd_init(args: argparse.Namespace) -> None:
