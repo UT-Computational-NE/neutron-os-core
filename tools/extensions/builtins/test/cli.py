@@ -217,7 +217,7 @@ class TestRunner:
 
         # Find test directories that exist
         test_dirs = []
-        for d in ["tests/", "tools/pipelines/sense/tests/", "tools/cost_estimation_tool/"]:
+        for d in ["tests/", "tools/pipelines/sense/tests/", "tools/cost_estimation/"]:
             if (self.repo_root / d).exists():
                 test_dirs.append(d)
 

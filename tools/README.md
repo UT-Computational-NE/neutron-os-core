@@ -6,7 +6,7 @@ Purpose
 Guidelines
 - Place production-ready Python packages under `tools/<package_name>/`.
 - Avoid duplicate copies of the same package elsewhere in the repo. If a legacy copy exists, archive or remove it and prefer the `tools/` location.
-- If a package must remain available at the repo root for compatibility, provide a small shim that re-exports the canonical package (see `cost_estimation_tool/__init__.py`).
+- If a package must remain available at the repo root for compatibility, provide a small shim that re-exports the canonical package (see `cost_estimation/__init__.py`).
 
 CI and Automation
 - CI should import packages from `tools/` when running tests or publishing packages.
