@@ -1,8 +1,8 @@
 """Unit tests for the entity correlator."""
 
 import pytest
-from tools.pipelines.sense.correlator import Correlator, Person, Initiative
-from tools.pipelines.sense.models import Signal
+from tools.extensions.builtins.sense.correlator import Correlator, Person, Initiative
+from tools.extensions.builtins.sense.models import Signal
 
 
 class TestPersonParsing:

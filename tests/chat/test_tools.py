@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from tools.agents.chat.tools import (
+from tools.extensions.builtins.chat.tools import (
     TOOL_REGISTRY,
     get_tool_definitions,
     execute_tool,
@@ -62,7 +62,7 @@ class TestToolExecution:
         """Write a note to a temp inbox."""
         # Patch INBOX_RAW at the source module (deferred import in execute_tool)
         monkeypatch.setattr(
-            "tools.pipelines.sense.cli.INBOX_RAW",
+            "tools.extensions.builtins.sense.cli.INBOX_RAW",
             tmp_path,
         )
         result = execute_tool("write_inbox_note", {"text": "Test note content"})

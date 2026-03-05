@@ -7,7 +7,7 @@ They test the interface, not implementation details.
 import pytest
 from pathlib import Path
 
-from tools.docflow.providers.base import (
+from tools.extensions.builtins.docflow.providers.base import (
     GenerationProvider,
     StorageProvider,
     FeedbackProvider,
@@ -24,7 +24,7 @@ class TestLocalStorageContract:
 
     @pytest.fixture
     def provider(self, tmp_path):
-        from tools.docflow.providers.storage.local import LocalStorageProvider
+        from tools.extensions.builtins.docflow.providers.storage.local import LocalStorageProvider
 
         return LocalStorageProvider({"base_dir": str(tmp_path / "output")})
 
@@ -94,7 +94,7 @@ class TestTerminalNotificationContract:
 
     @pytest.fixture
     def provider(self):
-        from tools.docflow.providers.notification.terminal import TerminalNotificationProvider
+        from tools.extensions.builtins.docflow.providers.notification.terminal import TerminalNotificationProvider
 
         return TerminalNotificationProvider({})
 
@@ -129,7 +129,7 @@ class TestDocxFeedbackContract:
 
     @pytest.fixture
     def provider(self):
-        from tools.docflow.providers.feedback.docx_comments import DocxFeedbackProvider
+        from tools.extensions.builtins.docflow.providers.feedback.docx_comments import DocxFeedbackProvider
 
         return DocxFeedbackProvider({})
 
@@ -162,7 +162,7 @@ class TestPandocDocxContract:
 
     @pytest.fixture
     def provider(self):
-        from tools.docflow.providers.generation.pandoc_docx import PandocDocxProvider
+        from tools.extensions.builtins.docflow.providers.generation.pandoc_docx import PandocDocxProvider
 
         return PandocDocxProvider({})
 

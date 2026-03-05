@@ -1,6 +1,9 @@
 # Personal learning space (not shared)
 ben-learning/
 
+# Experimental prototypes (contributor-specific sandbox)
+spikes/
+
 # Bazel
 bazel-*
 .bazelrc.user
@@ -112,6 +115,9 @@ docs/_tools/test/
 docs/**/*.docx
 !docs/proposals/NEUP_2026/**/*.docx
 
+# Analysis scratch (agent-managed, not source-controlled)
+docs/analysis/
+
 # Personal AI assistant context (contributor-specific)
 .claude/
 
@@ -144,6 +150,7 @@ speaker_profiles.json
 .doc-registry.json
 .doc-state.json
 .doc-workflow.yaml
+.docflow.json
 
 # Mermaid diagram cache
 docs/_tools/.diagram_cache.json

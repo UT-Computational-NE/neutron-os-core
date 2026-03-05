@@ -140,14 +140,14 @@ class TestDocflowFullPipeline:
 
     def _make_engine(self, workspace):
         """Create an engine rooted at the workspace."""
-        from tools.docflow.config import load_config
+        from tools.extensions.builtins.docflow.config import load_config
 
         config = load_config(workspace / ".doc-workflow.yaml")
         config.repo_root = workspace
         config.git.publish_branches = ["*"]
         config.git.require_clean = False
 
-        from tools.docflow.engine import DocFlowEngine
+        from tools.extensions.builtins.docflow.engine import DocFlowEngine
         return DocFlowEngine(config)
 
     def test_generate_creates_docx(self, workspace):

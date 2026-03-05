@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from tools.pipelines.sense.blocker_tracker import BlockerTracker, TrackedBlocker, _blocker_id
-from tools.pipelines.sense.models import Signal
+from tools.extensions.builtins.sense.blocker_tracker import BlockerTracker, TrackedBlocker, _blocker_id
+from tools.extensions.builtins.sense.models import Signal
 
 
 @pytest.fixture

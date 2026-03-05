@@ -1,7 +1,7 @@
 """Unit tests for neut sense data models."""
 
 import pytest
-from tools.pipelines.sense.models import Signal, Extraction, ChangelogEntry, Changelog
+from tools.extensions.builtins.sense.models import Signal, Extraction, ChangelogEntry, Changelog
 
 
 class TestSignal:

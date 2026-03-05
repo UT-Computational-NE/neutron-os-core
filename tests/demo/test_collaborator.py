@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from tools.demo.runner import DemoRunner
-from tools.demo.scenarios.collaborator import build_scenario, FIXTURES_DIR
+from tools.extensions.builtins.demo.runner import DemoRunner
+from tools.extensions.builtins.demo.scenarios.collaborator import build_scenario, FIXTURES_DIR
 
 
 class TestCollaboratorScenario:
@@ -89,7 +89,7 @@ class TestCollaboratorScenario:
 class TestScenarioRegistry:
     def test_list_scenarios(self):
         """Scenario registry lists collaborator."""
-        from tools.demo.scenarios import list_scenarios
+        from tools.extensions.builtins.demo.scenarios import list_scenarios
 
         scenarios = list_scenarios()
         assert len(scenarios) >= 1
@@ -98,7 +98,7 @@ class TestScenarioRegistry:
 
     def test_scenarios_have_metadata(self):
         """Each scenario entry has required fields."""
-        from tools.demo.scenarios import list_scenarios
+        from tools.extensions.builtins.demo.scenarios import list_scenarios
 
         for s in list_scenarios():
             assert "slug" in s

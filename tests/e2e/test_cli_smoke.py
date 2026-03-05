@@ -50,16 +50,16 @@ class TestNeutCoreCommands:
         assert "--help-all" in result.stdout
 
     def test_neut_help_all(self):
-        """neut --help-all exits 0 and shows all commands including extended."""
+        """neut --help-all exits 0 and shows all commands including builtins."""
         result = run_neut("--help-all")
         assert result.returncode == 0
         assert "sense" in result.stdout
         assert "doc" in result.stdout
         assert "chat" in result.stdout
         assert "code" in result.stdout
-        assert "serve-mcp" in result.stdout
         assert "test" in result.stdout
         assert "infra" in result.stdout
+        assert "Builtins" in result.stdout
 
     def test_neut_unknown_subcommand(self):
         """neut <unknown> exits non-zero with helpful message."""

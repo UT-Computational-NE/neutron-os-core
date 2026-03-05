@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from pathlib import Path
 
-from tools.pipelines.sense.multipart import (
+from tools.extensions.builtins.sense.multipart import (
     MultipartDetector,
     RecordingPart,
     RecordingGroup,

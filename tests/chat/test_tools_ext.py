@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.agents.chat.tools import get_all_tools, _scan_extensions, _ext_cache
+from tools.extensions.builtins.chat.tools import get_all_tools, _scan_extensions, _ext_cache
 
 
 class TestExtensionDiscovery:
@@ -35,7 +35,7 @@ class TestExtensionDiscovery:
         pkg_dir.mkdir()
         (pkg_dir / "__init__.py").touch()
         (pkg_dir / "my_tool.py").write_text(
-            'from tools.agents.chat.tools import ToolDef\n'
+            'from tools.extensions.builtins.chat.tools import ToolDef\n'
             'from tools.infra.orchestrator.actions import ActionCategory\n'
             '\n'
             'TOOLS = [ToolDef(name="my_tool", description="Test tool", '
@@ -44,11 +44,11 @@ class TestExtensionDiscovery:
             'def execute(name, params):\n'
             '    return {"result": "ok"}\n'
         )
-        monkeypatch.setattr("tools.agents.chat.tools._EXT_DIR", pkg_dir)
+        monkeypatch.setattr("tools.extensions.builtins.chat.tools._EXT_DIR", pkg_dir)
         _ext_cache.clear()
 
         # Clean up any stale module references
-        mod_name = "tools.agents.chat.tools_ext.my_tool"
+        mod_name = "tools.extensions.builtins.chat.tools_ext.my_tool"
         sys.modules.pop(mod_name, None)
 
         try:
@@ -63,7 +63,7 @@ class TestExtensionDiscovery:
         ext_dir.mkdir()
         (ext_dir / "__init__.py").touch()
         (ext_dir / "broken.py").write_text("raise ImportError('bad')")
-        monkeypatch.setattr("tools.agents.chat.tools._EXT_DIR", ext_dir)
+        monkeypatch.setattr("tools.extensions.builtins.chat.tools._EXT_DIR", ext_dir)
         _ext_cache.clear()
 
         tools = get_all_tools()
@@ -73,7 +73,7 @@ class TestExtensionDiscovery:
 
     def test_no_ext_dir(self, tmp_path, monkeypatch):
         """Missing tools_ext/ directory doesn't crash."""
-        monkeypatch.setattr("tools.agents.chat.tools._EXT_DIR", tmp_path / "nonexistent")
+        monkeypatch.setattr("tools.extensions.builtins.chat.tools._EXT_DIR", tmp_path / "nonexistent")
         _ext_cache.clear()
 
         ext = _scan_extensions()
@@ -84,18 +84,18 @@ class TestReadFileTool:
     """Test the read_file extension tool."""
 
     def test_read_existing_file(self):
-        from tools.agents.chat.tools import execute_tool
+        from tools.extensions.builtins.chat.tools import execute_tool
         result = execute_tool("read_file", {"path": "pyproject.toml"})
         assert "content" in result
         assert "neutron-os" in result["content"]
 
     def test_read_nonexistent_file(self):
-        from tools.agents.chat.tools import execute_tool
+        from tools.extensions.builtins.chat.tools import execute_tool
         result = execute_tool("read_file", {"path": "nonexistent_file_xyz.txt"})
         assert "error" in result
 
     def test_path_traversal_blocked(self):
-        from tools.agents.chat.tools import execute_tool
+        from tools.extensions.builtins.chat.tools import execute_tool
         result = execute_tool("read_file", {"path": "../../../etc/passwd"})
         assert "error" in result
         assert "outside" in result["error"].lower()
@@ -105,17 +105,17 @@ class TestListFilesTool:
     """Test the list_files extension tool."""
 
     def test_list_root(self):
-        from tools.agents.chat.tools import execute_tool
+        from tools.extensions.builtins.chat.tools import execute_tool
         result = execute_tool("list_files", {"path": "."})
         assert "files" in result
         assert "directories" in result
 
     def test_list_specific_dir(self):
-        from tools.agents.chat.tools import execute_tool
+        from tools.extensions.builtins.chat.tools import execute_tool
         result = execute_tool("list_files", {"path": "tools"})
         assert "files" in result or "directories" in result
 
     def test_list_nonexistent_dir(self):
-        from tools.agents.chat.tools import execute_tool
+        from tools.extensions.builtins.chat.tools import execute_tool
         result = execute_tool("list_files", {"path": "nonexistent_dir_xyz"})
         assert "error" in result

@@ -1,8 +1,8 @@
 """Unit tests for document state persistence."""
 
 import pytest
-from tools.docflow.state import DocumentState, PublicationRecord
-from tools.docflow.state import StateStore
+from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
+from tools.extensions.builtins.docflow.state import StateStore
 
 
 @pytest.fixture
@@ -29,8 +29,8 @@ class TestStateStore:
         assert result.source_path == "docs/alpha.md"
 
     def test_get_by_path(self, store):
-        store.update(DocumentState(doc_id="beta", source_path="docs/prd/beta.md"))
-        result = store.get_by_path("docs/prd/beta.md")
+        store.update(DocumentState(doc_id="beta", source_path="docs/requirements/prd_beta.md"))
+        result = store.get_by_path("docs/requirements/prd_beta.md")
         assert result is not None
         assert result.doc_id == "beta"
 

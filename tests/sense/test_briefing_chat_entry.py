@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from tools.agents.chat.entry import _format_briefing_context, enter_chat
+from tools.extensions.builtins.chat.entry import _format_briefing_context, enter_chat
 from tools.infra.orchestrator.session import Session
 
 
@@ -102,13 +102,13 @@ class TestFormatBriefingContext:
 class TestEnterChat:
     """Test enter_chat() by mocking its dependencies at module level."""
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=False)
-    @patch("tools.agents.chat.entry.run_repl")
-    @patch("tools.agents.chat.entry.create_input_provider")
-    @patch("tools.agents.chat.entry.create_render_provider")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=False)
+    @patch("tools.extensions.builtins.chat.entry.run_repl")
+    @patch("tools.extensions.builtins.chat.entry.create_input_provider")
+    @patch("tools.extensions.builtins.chat.entry.create_render_provider")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_session_created_with_context(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -130,13 +130,13 @@ class TestEnterChat:
         assert ctx["context_data"] == {"signal_count": 5}
         assert ctx["source"] == "neut_sense_brief"
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=False)
-    @patch("tools.agents.chat.entry.run_repl")
-    @patch("tools.agents.chat.entry.create_input_provider")
-    @patch("tools.agents.chat.entry.create_render_provider")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=False)
+    @patch("tools.extensions.builtins.chat.entry.run_repl")
+    @patch("tools.extensions.builtins.chat.entry.create_input_provider")
+    @patch("tools.extensions.builtins.chat.entry.create_render_provider")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_title_set_on_session(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -147,13 +147,13 @@ class TestEnterChat:
 
         assert session.title == "Briefing: blockers"
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=False)
-    @patch("tools.agents.chat.entry.run_repl")
-    @patch("tools.agents.chat.entry.create_input_provider")
-    @patch("tools.agents.chat.entry.create_render_provider")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=False)
+    @patch("tools.extensions.builtins.chat.entry.run_repl")
+    @patch("tools.extensions.builtins.chat.entry.create_input_provider")
+    @patch("tools.extensions.builtins.chat.entry.create_render_provider")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_repl_fallback_when_no_tty(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -163,13 +163,13 @@ class TestEnterChat:
 
         mock_repl.assert_called_once()
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=False)
-    @patch("tools.agents.chat.entry.run_repl")
-    @patch("tools.agents.chat.entry.create_input_provider")
-    @patch("tools.agents.chat.entry.create_render_provider")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=False)
+    @patch("tools.extensions.builtins.chat.entry.run_repl")
+    @patch("tools.extensions.builtins.chat.entry.create_input_provider")
+    @patch("tools.extensions.builtins.chat.entry.create_render_provider")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_session_saved_after_repl(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -181,13 +181,13 @@ class TestEnterChat:
 
         mock_store.save.assert_called_once_with(session)
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=False)
-    @patch("tools.agents.chat.entry.run_repl", side_effect=RuntimeError("boom"))
-    @patch("tools.agents.chat.entry.create_input_provider")
-    @patch("tools.agents.chat.entry.create_render_provider")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=False)
+    @patch("tools.extensions.builtins.chat.entry.run_repl", side_effect=RuntimeError("boom"))
+    @patch("tools.extensions.builtins.chat.entry.create_input_provider")
+    @patch("tools.extensions.builtins.chat.entry.create_render_provider")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_session_saved_even_on_repl_crash(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -200,13 +200,13 @@ class TestEnterChat:
 
         mock_store.save.assert_called_once_with(session)
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=False)
-    @patch("tools.agents.chat.entry.run_repl")
-    @patch("tools.agents.chat.entry.create_input_provider")
-    @patch("tools.agents.chat.entry.create_render_provider")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=False)
+    @patch("tools.extensions.builtins.chat.entry.run_repl")
+    @patch("tools.extensions.builtins.chat.entry.create_input_provider")
+    @patch("tools.extensions.builtins.chat.entry.create_render_provider")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_empty_optionals_excluded_from_context(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -219,11 +219,11 @@ class TestEnterChat:
         assert "context_data" not in ctx
         assert "source" not in ctx
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=True)
-    @patch("tools.agents.chat.entry.FullScreenChat")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=True)
+    @patch("tools.extensions.builtins.chat.entry.FullScreenChat")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_fullscreen_used_when_tty(
         self, MockStore, MockBus, MockGw, MockTui, mock_tty,
     ):
@@ -237,11 +237,11 @@ class TestEnterChat:
         MockTui.return_value.run.assert_called_once()
         mock_store.save.assert_called_once()
 
-    @patch("tools.agents.chat.entry._is_tty", return_value=True)
-    @patch("tools.agents.chat.entry.FullScreenChat")
-    @patch("tools.agents.chat.entry.Gateway")
-    @patch("tools.agents.chat.entry.EventBus")
-    @patch("tools.agents.chat.entry.SessionStore")
+    @patch("tools.extensions.builtins.chat.entry._is_tty", return_value=True)
+    @patch("tools.extensions.builtins.chat.entry.FullScreenChat")
+    @patch("tools.extensions.builtins.chat.entry.Gateway")
+    @patch("tools.extensions.builtins.chat.entry.EventBus")
+    @patch("tools.extensions.builtins.chat.entry.SessionStore")
     def test_suggestions_injected_for_fullscreen(
         self, MockStore, MockBus, MockGw, MockTui, mock_tty,
     ):
@@ -286,7 +286,7 @@ class TestEnticementTtyGuard:
 
 class TestSystemPromptInjection:
     def test_context_markdown_in_system_prompt(self):
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         session = Session(context={"context_markdown": "# My Briefing\nSome content"})
         agent = ChatAgent(session=session)
@@ -297,7 +297,7 @@ class TestSystemPromptInjection:
         assert "reference" in prompt.lower()
 
     def test_no_context_markdown_no_injection(self):
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         session = Session(context={})
         agent = ChatAgent(session=session)
@@ -306,7 +306,7 @@ class TestSystemPromptInjection:
         assert "Context from terminal command" not in prompt
 
     def test_context_markdown_truncated_at_6000_chars(self):
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         long_md = "x" * 10000
         session = Session(context={"context_markdown": long_md})
@@ -319,7 +319,7 @@ class TestSystemPromptInjection:
         assert "x" * 6001 not in prompt
 
     def test_context_coexists_with_file_content(self):
-        from tools.agents.chat.agent import ChatAgent
+        from tools.extensions.builtins.chat.agent import ChatAgent
 
         session = Session(context={
             "file_content": "file stuff here",

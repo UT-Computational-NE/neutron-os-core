@@ -7,9 +7,9 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from tools.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
-from tools.docflow.engine import DocFlowEngine
-from tools.docflow.state import DocumentState, PublicationRecord
+from tools.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+from tools.extensions.builtins.docflow.engine import DocFlowEngine
+from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
 
 @pytest.fixture

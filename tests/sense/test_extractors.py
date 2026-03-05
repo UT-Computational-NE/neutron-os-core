@@ -4,11 +4,11 @@ import json
 import pytest
 from pathlib import Path
 
-from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
-from tools.pipelines.sense.extractors.freetext import FreetextExtractor
-from tools.pipelines.sense.extractors.voice import VoiceExtractor
-from tools.pipelines.sense.extractors.transcript import TranscriptExtractor
-from tools.pipelines.sense.correlator import Correlator
+from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
+from tools.extensions.builtins.sense.extractors.freetext import FreetextExtractor
+from tools.extensions.builtins.sense.extractors.voice import VoiceExtractor
+from tools.extensions.builtins.sense.extractors.transcript import TranscriptExtractor
+from tools.extensions.builtins.sense.correlator import Correlator
 from tools.infra.gateway import Gateway
 
 

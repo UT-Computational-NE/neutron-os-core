@@ -8,16 +8,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.mo.manager import MoManager
-from tools.mo.manifest import ScratchEntry
-from tools.mo.vitals import (
+from tools.extensions.builtins.mo.manager import MoManager
+from tools.extensions.builtins.mo.manifest import ScratchEntry
+from tools.extensions.builtins.mo.vitals import (
     LeakSignal,
     PressureLevel,
     VitalsMonitor,
     VitalsSnapshot,
     VitalsThresholds,
 )
-from tools.mo.network import NetworkLedger
+from tools.extensions.builtins.mo.network import NetworkLedger
 
 
 # ---------------------------------------------------------------------------

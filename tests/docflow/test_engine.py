@@ -7,8 +7,8 @@ ensuring all components work together correctly.
 import pytest
 from pathlib import Path
 
-from tools.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
-from tools.docflow.engine import DocFlowEngine
+from tools.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+from tools.extensions.builtins.docflow.engine import DocFlowEngine
 
 
 @pytest.fixture
@@ -124,16 +124,16 @@ class TestEngineProviderAgnostic:
     def test_engine_has_no_provider_imports(self):
         """Verify engine.py doesn't import specific providers."""
         import inspect
-        from tools.docflow import engine
+        from tools.extensions.builtins.docflow import engine
 
         source = inspect.getsource(engine)
 
         # Should NOT import from any specific provider module
-        assert "from tools.docflow.providers.generation." not in source
-        assert "from tools.docflow.providers.storage." not in source
-        assert "from tools.docflow.providers.feedback." not in source
-        assert "from tools.docflow.providers.notification.terminal" not in source
-        assert "from tools.docflow.providers.embedding." not in source
+        assert "from tools.extensions.builtins.docflow.providers.generation." not in source
+        assert "from tools.extensions.builtins.docflow.providers.storage." not in source
+        assert "from tools.extensions.builtins.docflow.providers.feedback." not in source
+        assert "from tools.extensions.builtins.docflow.providers.notification.terminal" not in source
+        assert "from tools.extensions.builtins.docflow.providers.embedding." not in source
 
     def test_swapping_storage_provider(self, tmp_path):
         """Changing storage provider in config changes behavior."""
