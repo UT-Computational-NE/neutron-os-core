@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Optional
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 CORRECTIONS_DIR = _AGENTS_DIR / "inbox" / "corrections"
 

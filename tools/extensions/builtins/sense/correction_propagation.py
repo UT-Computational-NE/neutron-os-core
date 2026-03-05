@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Callable
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 PROPAGATION_QUEUE = _AGENTS_DIR / "inbox" / "corrections" / "propagation_queue.json"
 PROPAGATION_LOG = _AGENTS_DIR / "inbox" / "corrections" / "propagation_log.jsonl"

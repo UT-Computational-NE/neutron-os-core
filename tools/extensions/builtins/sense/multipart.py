@@ -319,7 +319,7 @@ def concatenate_audio_files(paths: list[Path], output_path: Path) -> bool:
 def get_multipart_detector(inbox_path: Optional[Path] = None) -> MultipartDetector:
     """Get a multipart detector for the inbox."""
     if inbox_path is None:
-        _repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        _repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
         _agents_dir = _repo_root / "tools" / "agents"
         inbox_path = _agents_dir / "inbox" / "raw"
     return MultipartDetector(inbox_path)

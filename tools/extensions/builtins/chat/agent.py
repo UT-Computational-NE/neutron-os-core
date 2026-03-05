@@ -36,7 +36,7 @@ from tools.infra.gateway import (
     StreamChunk,
 )
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 _BASE_SYSTEM_PROMPT = """\
 You are neut, an AI assistant for Neutron OS — a digital platform for nuclear facilities.

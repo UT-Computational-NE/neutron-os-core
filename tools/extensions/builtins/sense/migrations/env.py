@@ -24,7 +24,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Add parent paths for imports
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent.parent))
 
 # Import models for autogenerate support
 from ..db_models import Base

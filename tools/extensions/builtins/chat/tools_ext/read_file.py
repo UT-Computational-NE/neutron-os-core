@@ -7,7 +7,7 @@ from pathlib import Path
 from ..tools import ToolDef
 from tools.infra.orchestrator.actions import ActionCategory
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 
 TOOLS = [
     ToolDef(

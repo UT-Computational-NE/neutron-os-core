@@ -33,7 +33,7 @@ except ImportError:
 from .models import Signal
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 CONFIG_DIR = _AGENTS_DIR / "config"
 TRANSIT_LOG = _AGENTS_DIR / "inbox" / "processed" / "transit_log.json"

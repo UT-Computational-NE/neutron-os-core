@@ -40,7 +40,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 BRIEFING_STATE_PATH = _AGENTS_DIR / "inbox" / "state" / "briefing_state.json"
 PROCESSED_DIR = _AGENTS_DIR / "inbox" / "processed"

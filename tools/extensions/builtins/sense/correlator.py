@@ -12,7 +12,7 @@ from typing import Optional
 
 # Config directory: tools/agents/config/ (gitignored, real data)
 # Falls back to tools/agents/config.example/ if config/ doesn't exist
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 CONFIG_DIR = _AGENTS_DIR / "config"
 CONFIG_EXAMPLE_DIR = _AGENTS_DIR / "config.example"

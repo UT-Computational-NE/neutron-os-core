@@ -216,8 +216,8 @@ class FolderSyncProvider(ABC):
         self._credentials = credentials or ProviderCredentials.from_env(self.slug)
         # Local cache: inbox/raw/docflow/{slug}/
         self._local_root = local_root or (
-            Path(__file__).resolve().parent.parent.parent.parent
-            / "inbox" / "raw" / "docflow" / self.slug
+            Path(__file__).resolve().parent.parent.parent.parent.parent.parent.parent
+            / "tools" / "agents" / "inbox" / "raw" / "docflow" / self.slug
         )
 
     @property

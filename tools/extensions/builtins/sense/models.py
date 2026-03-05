@@ -138,7 +138,7 @@ class SignalManifest:
 
     def __init__(self, manifest_path: "Path | None" = None):
         from pathlib import Path
-        _repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        _repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
         _agents_dir = _repo_root / "tools" / "agents"
         self.manifest_path = manifest_path or (_agents_dir / "inbox" / "processed" / "signal_manifest.json")
         self._reported: dict[str, ReportedSignal] = {}

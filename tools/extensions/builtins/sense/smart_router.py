@@ -32,7 +32,7 @@ from tools.infra.gateway import Gateway
 from .models import Signal
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 PRD_DIR = _REPO_ROOT / "docs" / "prd"
 SUGGESTIONS_FILE = _AGENTS_DIR / "inbox" / "processed" / "prd_suggestions.json"

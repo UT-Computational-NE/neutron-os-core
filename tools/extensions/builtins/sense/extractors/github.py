@@ -352,7 +352,7 @@ def export_github_activity(
         List of paths to exported JSON files
     """
     extractor = GitHubExtractor()
-    output_dir = output_dir or Path(__file__).resolve().parent.parent.parent.parent / "exports"
+    output_dir = output_dir or Path(__file__).resolve().parent.parent.parent.parent.parent.parent / "tools" / "exports"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     exports = []

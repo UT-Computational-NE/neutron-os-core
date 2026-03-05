@@ -107,7 +107,7 @@ class TranscriptCorrector:
     }
 
     # User glossary location
-    _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+    _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
     _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
     USER_GLOSSARY_PATH = _AGENTS_DIR / "inbox" / "corrections" / "user_glossary.json"
 

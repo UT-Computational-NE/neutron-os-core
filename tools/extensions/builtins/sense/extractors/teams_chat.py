@@ -42,7 +42,7 @@ from ..models import Signal, Extraction
 from ..registry import register_source, SourceType
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 TOKEN_PATH = _AGENTS_DIR / "inbox" / "state" / "teams_chat_token.json"
 
@@ -595,7 +595,7 @@ def export_teams_chat(
         Path to exported JSON file
     """
     extractor = TeamsChatExtractor()
-    output_dir = output_dir or Path(__file__).resolve().parent.parent.parent.parent / "exports"
+    output_dir = output_dir or _REPO_ROOT / "tools" / "exports"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

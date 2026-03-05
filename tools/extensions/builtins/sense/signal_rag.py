@@ -31,7 +31,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 INDEX_PATH = _AGENTS_DIR / "inbox" / "cache" / "signal_index.json"
 EMBEDDINGS_PATH = _AGENTS_DIR / "inbox" / "cache" / "signal_embeddings.json"

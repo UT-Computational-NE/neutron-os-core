@@ -41,7 +41,7 @@ from .models import Signal
 
 
 _THIS_DIR = Path(__file__).parent
-_REPO_ROOT = _THIS_DIR.parent.parent.parent
+_REPO_ROOT = _THIS_DIR.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 ECHO_INDEX_DIR = _AGENTS_DIR / "inbox" / "state" / "echo_index"
 

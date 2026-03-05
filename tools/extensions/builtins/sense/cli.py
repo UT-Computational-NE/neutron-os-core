@@ -87,7 +87,7 @@ class SuggestingArgumentParser(argparse.ArgumentParser):
             super().error(message)
 
 # Resolve paths relative to tools/agents/
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 INBOX_RAW = _AGENTS_DIR / "inbox" / "raw"
 INBOX_PROCESSED = _AGENTS_DIR / "inbox" / "processed"

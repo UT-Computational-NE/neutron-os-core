@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _THIS_DIR = Path(__file__).parent
-_REPO_ROOT = _THIS_DIR.parent.parent.parent
+_REPO_ROOT = _THIS_DIR.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 INBOX_DIR = _AGENTS_DIR / "inbox"
 RAW_DIR = INBOX_DIR / "raw"

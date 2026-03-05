@@ -32,7 +32,7 @@ from typing import Optional
 from .models import DATETIME_FORMAT_COMPACT
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 CLIPS_DIR = _AGENTS_DIR / "inbox" / "corrections" / "audio_clips"
 REVIEW_STATE_FILE = _AGENTS_DIR / "inbox" / "corrections" / "review_state.json"
@@ -392,7 +392,7 @@ class GuidedCorrectionReview:
                 timestamps_path = proc_path
             else:
                 # Check alongside transcript
-                _repo_root = Path(__file__).resolve().parent.parent.parent.parent
+                _repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
                 _agents_dir = _repo_root / "tools" / "agents"
                 inbox_proc = _agents_dir / "inbox" / "processed"
                 inbox_path = inbox_proc / f"{stem}_timestamps.json"

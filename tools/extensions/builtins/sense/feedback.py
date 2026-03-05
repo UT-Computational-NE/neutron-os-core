@@ -45,7 +45,7 @@ from typing import Optional
 from .models import Signal
 
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 FEEDBACK_DIR = _AGENTS_DIR / "inbox" / "feedback"
 FEEDBACK_LOG = FEEDBACK_DIR / "feedback_log.json"

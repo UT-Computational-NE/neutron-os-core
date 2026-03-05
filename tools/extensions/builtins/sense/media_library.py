@@ -35,7 +35,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Literal
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _AGENTS_DIR = _REPO_ROOT / "tools" / "agents"
 MEDIA_INDEX_PATH = _AGENTS_DIR / "inbox" / "cache" / "media_index.json"
 MEDIA_EMBEDDINGS_PATH = _AGENTS_DIR / "inbox" / "cache" / "media_embeddings.json"

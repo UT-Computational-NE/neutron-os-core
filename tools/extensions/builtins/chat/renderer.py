@@ -37,7 +37,7 @@ _FILE_PATH_RE = re.compile(
 )
 
 # Repository root for resolving relative paths to absolute
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 
 def _make_path_clickable(match: re.Match) -> str:

@@ -28,7 +28,7 @@ from pathlib import Path
 
 # Add parent to path for imports
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from ..cleanup import apply_cleanup
 from ..converters.pandoc import PandocConverter, ConversionOptions

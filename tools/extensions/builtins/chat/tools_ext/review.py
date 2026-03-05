@@ -30,7 +30,7 @@ from tools.review.adapters.draft_adapter import (
     write_approved_draft,
 )
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 
 # Module-level store — lazily initialized
 _store: ReviewSessionStore | None = None
