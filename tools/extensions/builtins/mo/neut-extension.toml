@@ -1,6 +1,6 @@
 [extension]
 name = "mo"
-version = "0.2.3"
+version = "0.3.0"
 description = "M-O resource steward (scratch, vitals, cleanup)"
 author = "NeutronOS"
 builtin = true

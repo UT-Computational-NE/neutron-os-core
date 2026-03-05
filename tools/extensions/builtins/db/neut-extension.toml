@@ -1,6 +1,6 @@
 [extension]
 name = "db"
-version = "0.2.3"
+version = "0.3.0"
 description = "PostgreSQL + pgvector infrastructure"
 author = "NeutronOS"
 builtin = true

@@ -1,6 +1,6 @@
 [extension]
 name = "status"
-version = "0.2.3"
+version = "0.3.0"
 description = "System health dashboard"
 author = "NeutronOS"
 builtin = true

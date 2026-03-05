@@ -1,6 +1,6 @@
 [extension]
 name = "test"
-version = "0.2.3"
+version = "0.3.0"
 description = "Test orchestration"
 author = "NeutronOS"
 builtin = true

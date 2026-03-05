@@ -1,6 +1,6 @@
 [extension]
 name = "chat"
-version = "0.2.3"
+version = "0.3.0"
 description = "Interactive agent with tool calling"
 author = "NeutronOS"
 builtin = true
