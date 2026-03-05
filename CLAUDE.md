@@ -16,9 +16,9 @@ data management, operations tracking, experiment scheduling, and analytics. It
 replaces fragmented workflows (paper logs, spreadsheets, phone calls) with
 integrated digital tools.
 
-- **Executive PRD:** `docs/prd/neutron-os-executive-prd.md`
+- **Executive PRD:** `docs/requirements/prd_neutron-os-executive.md`
 - **Master Tech Spec:** `docs/specs/neutron-os-master-tech-spec.md`
-- **CLI Design:** `docs/prd/neut-cli-prd.md` + `docs/specs/neut-cli-spec.md`
+- **CLI Design:** `docs/requirements/prd_neut-cli.md` + `docs/specs/neut-cli-spec.md`
 
 ### Key Design Principles
 
@@ -32,9 +32,8 @@ integrated digital tools.
 ```
 Neutron_OS/
   docs/
-    prd/                    # Product requirements, strategy, OKRs
+    requirements/           # PRDs (prd_*), ADRs (adr_*), strategy, OKRs
     specs/                  # Technical specs, design, standards
-    adr/                    # Architecture decision records
     research/               # Surveys, analyses, use-case scenarios
     analysis/               # Data and cost analyses
     proposals/              # Grant portfolio (NEUP 2026)
@@ -53,7 +52,7 @@ Neutron_OS/
     mcp_server/             # IDE integration (MCP)
     exports/                # GitLab/GitHub weekly data exports
     repo_sensing/           # Multi-source repo analytics
-    cost_estimation_tool/   # Infrastructure cost models
+    cost_estimation/        # Infrastructure cost models
     neut_cli.py             # CLI entry point
   tests/                    # Test suites (unit + integration)
   infra/                    # Terraform, Helm, k8s configs
@@ -82,7 +81,7 @@ to the appropriate doc and link from others.
 ### When to Update Documentation
 
 1. **Add a new tool/language?** → Update .gitignore + add pattern reference to CONTRIBUTING.md
-2. **New architectural decision?** → Create ADR in `docs/adr/` + link from `docs/README.md`
+2. **New architectural decision?** → Create ADR in `docs/requirements/adr_*.md` + link from `docs/README.md`
 3. **New terminology or naming convention?** → Add to CLAUDE.md → link from CONTRIBUTING.md if relevant
 4. **New publishing workflow?** → Update PUBLISHER_USAGE.md → link from CONTRIBUTING.md
 
@@ -204,7 +203,7 @@ Nouns:
   infra     Infrastructure management
 ```
 
-Each noun has its own verb set. See `docs/prd/neut-cli-prd.md` for full spec.
+Each noun has its own verb set. See `docs/requirements/prd_neut-cli.md` for full spec.
 
 ---
 
@@ -409,9 +408,9 @@ that **never imports any specific provider**.
 ### CLI Commands
 
 ```bash
-neut doc publish docs/prd/foo.md           # Generate + publish
+neut doc publish docs/requirements/prd_foo.md    # Generate + publish
 neut doc publish --storage local foo.md    # Override storage provider
-neut doc generate docs/prd/foo.md          # Generate locally only
+neut doc generate docs/requirements/prd_foo.md   # Generate locally only
 neut doc status                            # All doc states
 neut doc check-links                       # Verify cross-doc links
 neut doc diff                              # Changed since last publish
