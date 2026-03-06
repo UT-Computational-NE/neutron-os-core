@@ -37,11 +37,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+from neutron_os import REPO_ROOT as _REPO_ROOT
+
 from .models import Signal
 
-
-_THIS_DIR = Path(__file__).parent
-_REPO_ROOT = _THIS_DIR.parent.parent.parent.parent
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 ECHO_INDEX_DIR = _RUNTIME_DIR / "inbox" / "state" / "echo_index"
 
