@@ -124,9 +124,12 @@ docs/analysis/
 runtime/config/
 !runtime/config.example/
 runtime/inbox/
+runtime/sessions/
 runtime/drafts/
 runtime/approved/
 runtime/subscribers/
+runtime/logs/
+runtime/doctor/
 
 # Voice memo and meeting recording files
 *.m4a
