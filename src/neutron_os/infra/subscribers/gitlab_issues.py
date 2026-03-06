@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from neutron_os.platform.subscribers.issue_provider import IssueProvider, IssueProviderFactory
+from neutron_os.infra.subscribers.issue_provider import IssueProvider, IssueProviderFactory
 
 _DEFAULT_URL = "https://rsicc-gitlab.tacc.utexas.edu"
 _DEFAULT_PROJECT = "ut-computational-ne/neutron-os-core"
