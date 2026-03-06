@@ -157,6 +157,28 @@ class TestPRDIntegrity:
         )
 
 
+class TestNoManualRepoRoot:
+    """Files should use 'from neutron_os import REPO_ROOT', not Path(__file__) chains."""
+
+    def test_no_parent_chain_repo_root(self):
+        violations = []
+        for py in _py_files("src"):
+            if "__pycache__" in str(py) or py.name == "__init__.py":
+                continue
+            text = py.read_text(errors="replace")
+            for i, line in enumerate(text.splitlines(), 1):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                # Catch patterns like _REPO_ROOT = _THIS_DIR.parent.parent...
+                if "_REPO_ROOT" in stripped and ".parent.parent" in stripped:
+                    violations.append(f"{py.relative_to(REPO_ROOT)}:{i}: {stripped}")
+        assert violations == [], (
+            "Use 'from neutron_os import REPO_ROOT' instead of Path(__file__) chains:\n"
+            + "\n".join(f"  {v}" for v in violations)
+        )
+
+
 class TestRootDirPolicy:
     """Only approved directories should exist at repo root."""
 

@@ -58,8 +58,8 @@ if TYPE_CHECKING:
 # Paths
 # ---------------------------------------------------------------------------
 
-_THIS_DIR = Path(__file__).parent
-_REPO_ROOT = _THIS_DIR.parent.parent.parent.parent
+from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INBOX_DIR = _RUNTIME_DIR / "inbox"
 RAW_DIR = INBOX_DIR / "raw"
