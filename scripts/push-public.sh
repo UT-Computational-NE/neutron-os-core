@@ -12,7 +12,8 @@
 #   .claude.example/  internal AI assistant context templates
 #   .gitlab-ci.yml    CI internals
 #   .mcp.json         internal MCP config
-#   src/neutron_os/extensions/builtins/web_api/  facility-specific web app
+#   src/neutron_os/extensions/builtins/web_api/           facility-specific web app
+#   src/neutron_os/extensions/builtins/cost_estimation/   internal financial/budget tooling
 #
 # Usage:
 #   ./scripts/push-public.sh              # dry run (shows what would be removed)
@@ -44,6 +45,7 @@ INTERNAL_PATHS=(
     .gitlab-ci.yml
     .mcp.json
     src/neutron_os/extensions/builtins/web_api
+    src/neutron_os/extensions/builtins/cost_estimation
 )
 
 echo "==> Checking requirements..."
