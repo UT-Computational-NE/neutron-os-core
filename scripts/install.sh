@@ -2,7 +2,7 @@
 # Neutron OS — One-Line Installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/UT-Computational-NE/neutron-os-core/main/scripts/install.sh | bash
 #
 # What this does:
 #   1. Installs the `neut` CLI from PyPI

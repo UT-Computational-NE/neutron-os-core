@@ -184,7 +184,7 @@ class TestScriptDryRun:
 class TestGitHubMirrorReachability:
     """Requires GITHUB_TOKEN env var with repo read access."""
 
-    GITHUB_REPO = "benjaminbooth/neutron-os-core"
+    GITHUB_REPO = "UT-Computational-NE/neutron-os-core"
     API_BASE = "https://api.github.com"
 
     @pytest.fixture(autouse=True)

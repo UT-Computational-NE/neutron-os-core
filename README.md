@@ -17,7 +17,7 @@ A modular digital platform for nuclear facilities that unifies data management, 
 
 ```bash
 # Clone
-git clone https://github.com/benjaminbooth/neutron-os-core.git
+git clone https://github.com/UT-Computational-NE/neutron-os-core.git
 cd neutron-os-core
 pip install -e ".[all]"
 
