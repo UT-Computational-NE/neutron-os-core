@@ -149,11 +149,11 @@ def _review_file(fpath: Path, repo_root: Path, gateway) -> FileReview:
 
         prompt = f"File: {rel}\n\n```\n{content}\n```"
         response = gateway.complete(
+            prompt=prompt,
             system=SENSITIVITY_PROMPT,
-            user=prompt,
             max_tokens=512,
         )
-        return _parse_response(rel, response)
+        return _parse_response(rel, response.text if hasattr(response, "text") else str(response))
     except Exception as e:
         return FileReview(path=rel, verdict="REVIEW_NEEDED", error=str(e),
                           recommendation="Could not review — inspect manually.")

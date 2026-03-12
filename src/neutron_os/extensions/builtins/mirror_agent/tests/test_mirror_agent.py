@@ -14,6 +14,8 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 # ---------------------------------------------------------------------------
 # reviewer.py — unit tests
@@ -179,6 +181,73 @@ def test_handle_commit_skips_missing_sha():
 # ---------------------------------------------------------------------------
 # EventBus wiring — heartbeat published during chat REPL
 # ---------------------------------------------------------------------------
+
+
+def test_review_file_uses_gateway_prompt_kwarg(tmp_path):
+    """_review_file calls gateway.complete with 'prompt=' not 'user=' (regression)."""
+    from neutron_os.extensions.builtins.mirror_agent.reviewer import _review_file
+
+    target = tmp_path / "clean.py"
+    target.write_text("x = 1")
+
+    gateway = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "VERDICT: CLEAR\nFINDINGS:\n- None\nRECOMMENDATION: All clear."
+    gateway.complete.return_value = mock_response
+
+    _review_file(target, tmp_path, gateway)
+
+    call_kwargs = gateway.complete.call_args.kwargs
+    assert "prompt" in call_kwargs, "gateway.complete must be called with 'prompt=' kwarg"
+    assert "user" not in call_kwargs, "'user=' kwarg not accepted by Gateway.complete"
+
+
+def test_ci_mode_exits_nonzero_on_findings(tmp_path, monkeypatch):
+    """--ci flag causes sys.exit(1) when review finds issues."""
+    import sys
+    import argparse
+    from neutron_os.extensions.builtins.mirror_agent import cli as mirror_cli
+
+    # Build a fake flagged result
+    from neutron_os.extensions.builtins.mirror_agent.reviewer import MirrorReview, FileReview
+    flagged_result = MirrorReview(
+        files_reviewed=1,
+        files_flagged=1,
+        reviews=[FileReview(path="bad.py", verdict="REVIEW_NEEDED", findings=["Contains PII"])],
+    )
+
+    monkeypatch.setattr(mirror_cli, "_repo_root", lambda: tmp_path)
+
+    from neutron_os.infra.gateway import Gateway
+    monkeypatch.setattr(Gateway, "active_provider", property(lambda self: True))
+
+    import neutron_os.extensions.builtins.mirror_agent.reviewer as rev
+    monkeypatch.setattr(rev, "review_mirror_content", lambda **kw: flagged_result)
+
+    args = argparse.Namespace(mirror_cmd="review", all=True, since=None, ci=True)
+    with pytest.raises(SystemExit) as exc:
+        mirror_cli._cmd_review(args)
+    assert exc.value.code == 1
+
+
+def test_ci_mode_does_not_exit_on_clear(tmp_path, monkeypatch):
+    """--ci flag does not exit when review is clean."""
+    import argparse
+    from neutron_os.extensions.builtins.mirror_agent import cli as mirror_cli
+    from neutron_os.extensions.builtins.mirror_agent.reviewer import MirrorReview
+
+    clean_result = MirrorReview(files_reviewed=3, files_flagged=0)
+
+    monkeypatch.setattr(mirror_cli, "_repo_root", lambda: tmp_path)
+
+    from neutron_os.infra.gateway import Gateway
+    monkeypatch.setattr(Gateway, "active_provider", property(lambda self: True))
+
+    import neutron_os.extensions.builtins.mirror_agent.reviewer as rev
+    monkeypatch.setattr(rev, "review_mirror_content", lambda **kw: clean_result)
+
+    args = argparse.Namespace(mirror_cmd="review", all=True, since=None, ci=True)
+    mirror_cli._cmd_review(args)  # Should not raise
 
 
 def test_eventbus_heartbeat_triggers_mirror_subscriber():

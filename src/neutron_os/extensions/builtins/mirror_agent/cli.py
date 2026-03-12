@@ -274,6 +274,23 @@ def _pattern_review(repo_root: Path) -> None:
     print()
 
 
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(prog="neut mirror", description="Public mirror management")
+    sub = parser.add_subparsers(dest="mirror_cmd")
+
+    r = sub.add_parser("review", help=COMMANDS["review"])
+    r.add_argument("--all", action="store_true", help="Review all public files, not just changed ones")
+    r.add_argument("--since", metavar="REF", help="Review files changed since this git ref")
+    r.add_argument("--ci", action="store_true", help="CI mode: exit 1 if anything flagged")
+
+    sub.add_parser("push", help=COMMANDS["push"])
+    sub.add_parser("status", help=COMMANDS["status"])
+
+    args = parser.parse_args()
+    _dispatch(args)
+
+
 def _print_review_result(result) -> None:
     from .reviewer import MirrorReview
 

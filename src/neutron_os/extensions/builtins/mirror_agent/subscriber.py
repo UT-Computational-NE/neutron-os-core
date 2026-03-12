@@ -110,7 +110,8 @@ def _regenerate_scrub_list() -> None:
                 "facility-specific identifiers. Output one term per line, no bullets, no headers.\n\n"
                 + content
             )
-            response = gateway.complete(system="You extract private identifiers from text.", user=prompt, max_tokens=800)
+            resp = gateway.complete(prompt=prompt, system="You extract private identifiers from text.", max_tokens=800)
+            response = resp.text if hasattr(resp, "text") else str(resp)
             terms = [l.strip() for l in response.splitlines() if l.strip() and not l.startswith("#")]
         else:
             terms = _extract_terms_heuristic(content)
