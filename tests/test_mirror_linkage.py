@@ -200,7 +200,8 @@ class TestGitHubMirrorReachability:
         }
 
     def _get(self, path: str) -> dict:
-        import urllib.request, json
+        import urllib.request
+        import json
         url = f"{self.API_BASE}{path}"
         req = urllib.request.Request(url, headers=self.headers)
         with urllib.request.urlopen(req, timeout=10) as resp:

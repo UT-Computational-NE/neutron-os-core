@@ -10,7 +10,6 @@ this in the public repo, the gate worked.
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -204,7 +203,6 @@ def test_review_file_uses_gateway_prompt_kwarg(tmp_path):
 
 def test_ci_mode_exits_nonzero_on_findings(tmp_path, monkeypatch):
     """--ci flag causes sys.exit(1) when review finds issues."""
-    import sys
     import argparse
     from neutron_os.extensions.builtins.mirror_agent import cli as mirror_cli
 

@@ -10,7 +10,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 
 
 def get_parser() -> argparse.ArgumentParser:

@@ -133,7 +133,6 @@ class TestScenarioRegistry:
 class TestDemoCLI:
     def test_run_requires_scenario_flag(self):
         """neut demo run without a flag exits with usage message."""
-        import argparse
         from neutron_os.extensions.builtins.demo.cli import get_parser
 
         parser = get_parser()

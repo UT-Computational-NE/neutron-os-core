@@ -112,7 +112,7 @@ def _regenerate_scrub_list() -> None:
             )
             resp = gateway.complete(prompt=prompt, system="You extract private identifiers from text.", max_tokens=800)
             response = resp.text if hasattr(resp, "text") else str(resp)
-            terms = [l.strip() for l in response.splitlines() if l.strip() and not l.startswith("#")]
+            terms = [line.strip() for line in response.splitlines() if line.strip() and not line.startswith("#")]
         else:
             terms = _extract_terms_heuristic(content)
     except Exception:
@@ -184,7 +184,7 @@ def _public_files_changed(repo_root: Path, from_ref: str, to_ref: str) -> list[s
             ["git", "diff", "--name-only", from_ref, to_ref],
             cwd=repo_root, text=True, stderr=subprocess.DEVNULL,
         )
-        changed = [l.strip() for l in out.splitlines() if l.strip()]
+        changed = [line.strip() for line in out.splitlines() if line.strip()]
         return [
             f for f in changed
             if any(f.startswith(p) for p in PUBLIC_PATHS)

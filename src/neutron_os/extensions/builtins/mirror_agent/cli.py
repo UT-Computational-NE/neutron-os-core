@@ -294,7 +294,6 @@ def main():
 
 
 def _print_review_result(result) -> None:
-    from .reviewer import MirrorReview
 
     total = result.files_reviewed
     flagged = result.files_flagged
