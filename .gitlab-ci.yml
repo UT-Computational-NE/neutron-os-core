@@ -54,7 +54,7 @@ variables:
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
-    - pip install --quiet -e ".[dev,docflow,chat]" requests
+    - pip install --quiet -e ".[dev,docflow,chat]" requests git-filter-repo
 
 # =============================================================================
 # Test Stage

@@ -171,10 +171,10 @@ class TestBuiltinManifests:
                 )
 
     def test_builtin_count(self):
-        """Sanity: we expect 12 builtins (infra is a core SUBCOMMAND, not an extension)."""
+        """Sanity: we expect 14 builtins (infra is a core SUBCOMMAND, not an extension)."""
         builtins_dir = _builtin_extensions_dir()
         manifests = list(builtins_dir.glob("*/neut-extension.toml"))
-        assert len(manifests) == 12
+        assert len(manifests) == 14
 
 
 # ---------------------------------------------------------------------------
@@ -304,7 +304,7 @@ class TestCLIDispatch:
     def test_ext_list_shows_builtin_count(self):
         result = _run_neut("ext")
         assert result.returncode == 0
-        assert "12 builtin" in result.stdout
+        assert "14 builtin" in result.stdout
 
     def test_help_all_shows_builtins_section(self):
         result = _run_neut("--help-all")
