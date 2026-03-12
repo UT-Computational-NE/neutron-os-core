@@ -14,6 +14,12 @@
 #   .mcp.json         internal MCP config
 #   src/neutron_os/extensions/builtins/web_api/           facility-specific web app
 #   src/neutron_os/extensions/builtins/cost_estimation/   internal financial/budget tooling
+#   src/neutron_os/extensions/builtins/sense_agent/infra/ internal deployment config
+#   src/neutron_os/infra/subscribers/                     internal GitLab integration
+#   scripts/com.utcomputational.gitlab-export.plist       internal launchd config with local paths
+#   scripts/run_gitlab_export.sh                          internal export automation
+#   .github/CODEOWNERS                                    internal team handles
+#   src/neutron_os/extensions/builtins/demo/fixtures/     contains staff names and internal program data
 #
 # Usage:
 #   ./scripts/push-public.sh              # dry run (shows what would be removed)
@@ -46,6 +52,12 @@ INTERNAL_PATHS=(
     .mcp.json
     src/neutron_os/extensions/builtins/web_api
     src/neutron_os/extensions/builtins/cost_estimation
+    src/neutron_os/extensions/builtins/sense_agent/infra
+    src/neutron_os/infra/subscribers
+    scripts/com.utcomputational.gitlab-export.plist
+    scripts/run_gitlab_export.sh
+    .github/CODEOWNERS
+    src/neutron_os/extensions/builtins/demo/fixtures
 )
 
 echo "==> Checking requirements..."
