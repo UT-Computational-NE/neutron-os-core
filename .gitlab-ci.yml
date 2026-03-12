@@ -384,10 +384,7 @@ build:wheel:
   script:
     - pip install --quiet build
     - python -m build
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 week
+    - ls -lh dist/
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH == "main"
@@ -434,7 +431,8 @@ publish:release:
   extends: .python-setup
   stage: publish
   script:
-    - pip install --quiet twine
+    - pip install --quiet build twine
+    - python -m build
     - |
       TWINE_PASSWORD=${CI_JOB_TOKEN} \
       TWINE_USERNAME=gitlab-ci-token \
@@ -443,8 +441,6 @@ publish:release:
         dist/*
   rules:
     - if: $CI_COMMIT_TAG
-  needs:
-    - build:wheel
 
 # =============================================================================
 # AI Review Stage — Claude Code
