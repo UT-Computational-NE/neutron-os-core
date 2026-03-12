@@ -234,7 +234,7 @@ def build_scenario() -> Scenario:
                 ],
                 validator=_check_extension_exists,
                 fallback_message=(
-                    "Extension not detected. Run 'neut ext init triga-tools' to create it."
+                    "Extension not detected. Run 'neut ext init reactor-tools' to create it."
                 ),
             ),
         ],
