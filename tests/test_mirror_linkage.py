@@ -98,7 +98,17 @@ class TestAllowlistIntegrity:
         if not fixtures_dir.exists():
             pytest.skip("fixtures dir not present")
 
-        forbidden = ["TRIGA", "TACC", "Jeongwon", "Clarno", "Ben Booth", "NETL"]
+        # Base set — safe to publish in a public test file.
+        # Personal names and internal codenames live in the private scrub list.
+        forbidden = ["TRIGA", "TACC", "NETL"]
+
+        # Augment from gitignored private scrub list if present.
+        scrub_file = REPO_ROOT / "runtime/config/mirror_scrub_terms.txt"
+        if scrub_file.exists():
+            for line in scrub_file.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    forbidden.append(line)
         for md_file in fixtures_dir.glob("*.md"):
             content = md_file.read_text()
             for term in forbidden:
