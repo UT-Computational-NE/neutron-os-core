@@ -385,18 +385,18 @@
     <div class="vs-grid">
       <div class="vs-card" onclick="this.classList.toggle('expanded')" style="cursor:pointer;">
         <h4 style="color:var(--red)">Databricks</h4>
-        <p>Data analytics platform. No autonomous agents. No PXI hardware integration. No NRC compliance layer. No offline/edge capability. <strong>Not available in GovCloud.</strong> Vendor lock-in (Delta Lake). UT owns nothing.</p>
-        <div class="cost-tag red">~$65,700/yr &middot; $218K / 3 years</div>
+        <p>Data analytics platform. No autonomous agents. No PXI hardware integration. No NRC compliance layer. No offline/edge capability. <strong>GovCloud available at 2&ndash;3&times; cost premium with reduced feature parity.</strong> Vendor lock-in risk (proprietary extensions, Unity Catalog). UT owns nothing.</p>
+        <div class="cost-tag red">~$1,500/mo base &middot; scales to $5,000&ndash;$6,000/mo</div>
         <div class="agent-detail">
-          <strong>Cost breakdown:</strong> Databricks Pro @ $0.55/DBU, estimated 250 DBU-hours/day for lakehouse + ML + SQL analytics = ~$4,125/mo. Plus AWS compute underneath (~$1,350/mo). Total ~$5,475/mo / $65,700/yr.<br><br>
+          <strong>Cost basis:</strong> DBU-based pricing scales with usage. Published rates: SQL Warehouse $0.70/DBU, Jobs $0.15/DBU. Research-scale starting estimate ~$1,500/mo; grows to $5,000&ndash;$6,000/mo as data volumes and query load increase. GovCloud deployments carry a 2&ndash;3&times; multiplier on these rates.<br><br>
           <strong>What you'd still have to build on top:</strong><br>
-          &bull; Autonomous agent runtime (Doctor, Mo, DT Orchestrator, Sense, Calibration, Provenance) &mdash; Databricks has no agent framework<br>
+          &bull; Autonomous infrastructure agent runtime (Doctor, Mo, DT Orchestrator, Sense, Calibration, Provenance) &mdash; Databricks Mosaic AI is a model-serving framework, not a purpose-built ops agent runtime<br>
           &bull; PXI hardware ingestion &mdash; no NI instrument integration pathway<br>
           &bull; NRC compliance layer &mdash; no 10 CFR awareness, no tamper-evident audit trails, no 50.59 screening<br>
           &bull; Offline/air-gapped operation &mdash; Databricks is cloud-only<br>
           &bull; Cost-effective GovCloud deployment &mdash; Databricks GovCloud carries a 2&ndash;3&times; cost premium with reduced feature parity<br>
           &bull; Digital twin lifecycle management &mdash; no model corral, no calibration tracking, no twin vitals<br><br>
-          <strong>Lock-in risk:</strong> Delta Lake is Databricks-proprietary. Migration to another platform requires rewriting the entire data layer. Apache Iceberg (NeutronOS) is an open standard supported by AWS, Snowflake, Google, and Dremio.
+          <strong>Lock-in risk:</strong> Delta Lake is open-source, but Databricks' proprietary extensions (Unity Catalog, Delta Sharing, managed runtimes) create significant migration friction. Apache Iceberg (NeutronOS) is a fully open standard supported by AWS, Snowflake, Google, and Dremio &mdash; no vendor dependency.
         </div>
       </div>
       <div class="vs-card" onclick="this.classList.toggle('expanded')" style="cursor:pointer;">
@@ -411,7 +411,7 @@
           &bull; <strong>PXI instrument integration</strong> &mdash; nightly sync now, real-time streaming at High tier<br>
           &bull; <strong>NRC compliance</strong> &mdash; tamper-evident ops log, 50.59 screening, surveillance scheduling, audit trails<br>
           &bull; <strong>GovCloud-ready</strong> &mdash; add $250/mo for ITAR compliance<br><br>
-          <strong>IP ownership:</strong> Every dollar invested builds UT-owned intellectual property. The code, architecture, agent state, and institutional knowledge are licensable to the nuclear industry. 3-year Databricks spend ($218K) buys nothing you own.
+          <strong>IP ownership:</strong> Every dollar invested builds UT-owned intellectual property. The code, architecture, agent state, and institutional knowledge are licensable to the nuclear industry. Years of Databricks spend buy nothing you own.
         </div>
       </div>
     </div>
