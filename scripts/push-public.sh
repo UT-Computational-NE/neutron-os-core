@@ -1,28 +1,13 @@
 #!/usr/bin/env bash
 # push-public.sh — Push a stripped copy of main to the public GitHub mirror.
 #
-# Removes internal-only paths before pushing:
-#   docs/        design intent, research, grant proposals, ADRs, PRDs, OKRs
-#   infra/       Terraform/Helm — infrastructure topology
-#   data/        schemas and seed data
-#   spikes/      experimental/unreviewed code
-#   archive/     retired code
-#   runtime/     facility config examples
-#   .neut/       local extension state
-#   .claude.example/  internal AI assistant context templates
-#   .gitlab-ci.yml    CI internals
-#   .mcp.json         internal MCP config
-#   src/neutron_os/extensions/builtins/web_api/           facility-specific web app
-#   src/neutron_os/extensions/builtins/cost_estimation/   internal financial/budget tooling
-#   src/neutron_os/extensions/builtins/sense_agent/infra/ internal deployment config
-#   src/neutron_os/infra/subscribers/                     internal GitLab integration
-#   scripts/com.utcomputational.gitlab-export.plist       internal launchd config with local paths
-#   scripts/run_gitlab_export.sh                          internal export automation
-#   .github/CODEOWNERS                                    internal team handles
-#   src/neutron_os/extensions/builtins/demo/fixtures/     contains staff names and internal program data
+# Uses an ALLOWLIST: only explicitly approved paths are published.
+# Everything else is private by default — new files don't leak.
+#
+# To add something to the public mirror, add it to PUBLIC_PATHS below.
 #
 # Usage:
-#   ./scripts/push-public.sh              # dry run (shows what would be removed)
+#   ./scripts/push-public.sh              # dry run (shows what would be published)
 #   ./scripts/push-public.sh --push       # actually push to GitHub
 #
 # Requires: git-filter-repo (pip install git-filter-repo)
@@ -38,26 +23,45 @@ if [[ "${1:-}" == "--push" ]]; then
     DRY_RUN=false
 fi
 
-# Paths to strip from the public mirror
-INTERNAL_PATHS=(
-    docs
-    infra
-    data
-    spikes
-    archive
-    runtime
-    .neut
-    ".claude.example"
-    .gitlab-ci.yml
-    .mcp.json
+# ALLOWLIST — only these paths go to GitHub. Everything else stays internal.
+# To publish something new, add it here and get it reviewed.
+PUBLIC_PATHS=(
+    # Root files
+    .env.example
+    .envrc
+    .gitignore
+    .github/workflows
+    CLAUDE.md
+    CONTRIBUTING.md
+    LICENSE
+    Makefile
+    README.md
+    conftest.py
+    pyproject.toml
+
+    # Bootstrap scripts (no internal paths or identifiers)
+    scripts/bootstrap.sh
+    scripts/install.sh
+    scripts/neut
+    scripts/neut-doctor
+    scripts/push-public.sh
+    scripts/README.md
+
+    # Platform source (generic, no facility-specific data)
+    src/neutron_os
+
+    # Tests
+    tests
+)
+
+# Paths within src/neutron_os to EXCLUDE even though src/neutron_os is allowed.
+# These are subtracted after the allowlist is applied.
+EXCLUDE_FROM_SRC=(
     src/neutron_os/extensions/builtins/web_api
     src/neutron_os/extensions/builtins/cost_estimation
     src/neutron_os/extensions/builtins/sense_agent/infra
-    src/neutron_os/infra/subscribers
-    scripts/com.utcomputational.gitlab-export.plist
-    scripts/run_gitlab_export.sh
-    .github/CODEOWNERS
     src/neutron_os/extensions/builtins/demo/fixtures
+    src/neutron_os/infra/subscribers
 )
 
 echo "==> Checking requirements..."
@@ -68,11 +72,20 @@ command -v git-filter-repo >/dev/null 2>&1 || {
 
 if $DRY_RUN; then
     echo ""
-    echo "DRY RUN — paths that would be stripped from public mirror:"
-    for p in "${INTERNAL_PATHS[@]}"; do
+    echo "DRY RUN — paths published to public mirror (allowlist):"
+    for p in "${PUBLIC_PATHS[@]}"; do
         count=$(git -C "$REPO_ROOT" ls-files "$p" 2>/dev/null | wc -l | tr -d ' ')
-        echo "  $p  ($count files)"
+        echo "  + $p  ($count files)"
     done
+    echo ""
+    echo "Excluded from src/neutron_os:"
+    for p in "${EXCLUDE_FROM_SRC[@]}"; do
+        count=$(git -C "$REPO_ROOT" ls-files "$p" 2>/dev/null | wc -l | tr -d ' ')
+        echo "  - $p  ($count files)"
+    done
+    echo ""
+    total=$(git -C "$REPO_ROOT" ls-files | wc -l | tr -d ' ')
+    echo "  Total tracked files: $total"
     echo ""
     echo "Run with --push to publish: ./scripts/push-public.sh --push"
     exit 0
@@ -85,12 +98,19 @@ trap 'rm -rf "$TMPDIR"' EXIT
 git clone --no-local "$REPO_ROOT" "$TMPDIR/public-mirror" --branch "$BRANCH" --single-branch
 cd "$TMPDIR/public-mirror"
 
-echo "==> Stripping internal paths..."
+echo "==> Applying allowlist (keeping only approved paths)..."
 FILTER_ARGS=()
-for p in "${INTERNAL_PATHS[@]}"; do
+for p in "${PUBLIC_PATHS[@]}"; do
     FILTER_ARGS+=(--path "$p")
 done
-git filter-repo "${FILTER_ARGS[@]}" --invert-paths --force
+git filter-repo "${FILTER_ARGS[@]}" --force
+
+echo "==> Removing excluded subtrees..."
+EXCLUDE_ARGS=()
+for p in "${EXCLUDE_FROM_SRC[@]}"; do
+    EXCLUDE_ARGS+=(--path "$p")
+done
+git filter-repo "${EXCLUDE_ARGS[@]}" --invert-paths --force
 
 echo "==> Adding GitHub remote..."
 git remote add github "$(git -C "$REPO_ROOT" remote get-url $GITHUB_REMOTE)"
