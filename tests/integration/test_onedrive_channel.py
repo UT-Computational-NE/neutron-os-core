@@ -11,7 +11,11 @@ Requires: MS_GRAPH_CLIENT_ID, MS_GRAPH_CLIENT_SECRET, MS_GRAPH_TENANT_ID
 
 import pytest
 
-pytestmark = [pytest.mark.integration, pytest.mark.onedrive]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.onedrive,
+    pytest.mark.skip(reason="MS 365 integration not yet configured — enable when MS_GRAPH credentials are active"),
+]
 
 
 class TestOneDriveAuth:

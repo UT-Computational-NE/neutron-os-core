@@ -18,7 +18,11 @@ from pathlib import Path
 import pytest
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.onedrive]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.onedrive,
+    pytest.mark.skip(reason="MS 365 integration not yet configured — enable when MS_GRAPH credentials are active"),
+]
 
 
 class TestOutlookCalendarProvider:

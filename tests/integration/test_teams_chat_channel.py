@@ -18,7 +18,11 @@ import json
 import pytest
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.teams]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.teams,
+    pytest.mark.skip(reason="MS 365 integration not yet configured — enable when MS_GRAPH credentials are active"),
+]
 
 
 class TestTeamsChatExtractor:
