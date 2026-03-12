@@ -330,6 +330,18 @@ claude:review:
 #   GITHUB_TOKEN   — GitHub PAT with `repo` scope for benjaminbooth/neutron-os-core
 #                    (Settings → CI/CD → Variables, masked + protected)
 
+mirror:canary:
+  # Red-team gate — verifies the LLM reviewer catches known-bad content.
+  # If any canary fails, the reviewer is broken and we must not push.
+  stage: mirror
+  extends: .python-setup
+  script:
+    - pytest src/neutron_os/extensions/builtins/mirror_agent/tests/test_canary_detection.py
+        -v --tb=short -m "integration"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  allow_failure: false  # Broken canary = broken gate = no push
+
 mirror:review:
   # LLM sensitivity gate — runs BEFORE push.
   # Scans all allowlisted public files using the mirror_agent reviewer.
@@ -342,6 +354,8 @@ mirror:review:
     - neut mirror review --all --ci
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - mirror:canary
   allow_failure: false  # Hard gate — no push if review flags anything
 
 mirror:github:
