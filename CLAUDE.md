@@ -175,7 +175,7 @@ to the appropriate doc and link from others.
 | Object storage | MinIO | S3-compatible, on-premise |
 | Database | PostgreSQL | All environments (never SQLite) |
 | Infrastructure | Terraform | AWS/Azure/GCP |
-| Compute | TACC Lonestar 6 | A100 GPU nodes, UT allocation |
+| Compute | HPC cluster | A100 GPU nodes |
 
 ---
 

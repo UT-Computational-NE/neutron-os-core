@@ -30,6 +30,8 @@ EXCLUDE_PATHS = [
     "src/neutron_os/extensions/builtins/cost_estimation",
     "src/neutron_os/extensions/builtins/sense_agent/infra",
     "src/neutron_os/infra/subscribers",
+    # Meta-documentation reviewed manually when updated; intentionally public.
+    "CONTRIBUTING.md",
 ]
 
 COMMANDS = {

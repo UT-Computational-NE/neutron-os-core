@@ -5,7 +5,8 @@ Shell scripts and system configs that operate at the repo or system level.
 ## Contents
 
 - `bootstrap.sh` — One-command dev environment setup
-- `com.utcomputational.gitlab-export.plist` — macOS launchd config for exports
+- `install.sh` — End-user one-line installer (published via GitHub)
+- `push-public.sh` — Mirrors the public subset of the repo to GitHub
 
 ## What belongs here
 

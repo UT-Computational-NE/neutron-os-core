@@ -81,7 +81,6 @@ echo
 
 python3 -m pip install --user --upgrade \
     --index-url "${PACKAGE_INDEX}" \
-
     "${PACKAGE_NAME}" \
     2>&1 | while IFS= read -r line; do dim "  $line"; done
 

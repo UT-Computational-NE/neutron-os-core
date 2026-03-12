@@ -22,14 +22,23 @@ Review the following file content and identify anything that should NOT be publi
 publicly for a nuclear research program.
 
 Flag any of the following if present:
-- Staff names, researcher names, or personal identifiers
-- Internal project names, program names, or initiative codenames
+- Staff names, researcher names, or personal identifiers (first names + last names together)
+- Internal project codenames that are not the public product name
 - Budget figures, cost estimates, or financial data
-- Facility-specific configuration (hostnames, IP addresses, internal URLs)
+- Facility-specific configuration (internal hostnames, IP addresses, internal URLs)
 - Institutional credentials, tokens, or access details
 - Grant proposal details, pre-decisional documents, or strategic roadmaps
 - Personally identifiable information (PII)
 - Anything that reveals internal organizational structure or personnel
+
+Do NOT flag the following — these are public and expected in this codebase:
+- "Neutron OS" or "NeutronOS" — this is the public product name
+- Generic nuclear physics terms: TRIGA (reactor type), Cherenkov radiation, neutron flux,
+  Monte Carlo, OpenMC, fission, criticality, isotopes, dose rates, etc.
+- Standard open-source tooling: GitLab, GitHub, Linear, Docker, Terraform, etc.
+- Generic technical terms that appear in any software project
+- Public URLs and usernames in those URLs (github.com, pypi.org, anthropic.com, etc.)
+- GitHub/GitLab usernames or organization names in clone URLs — these are already public
 
 Respond in this exact format:
 VERDICT: CLEAR or REVIEW_NEEDED
@@ -38,7 +47,8 @@ FINDINGS:
 - <finding 2>
 RECOMMENDATION: <one sentence>
 
-Be conservative — if in doubt, flag it. False positives are far less costly than leaks.
+Be conservative for actual sensitive data — if in doubt about a real person's name or
+internal identifier, flag it. But do not flag generic domain terminology.
 """
 
 
