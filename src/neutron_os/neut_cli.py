@@ -116,8 +116,6 @@ def _do_self_update(old_version: str) -> None:
         from importlib.metadata import version as pkg_version
         new_version = pkg_version("neutron-os")
         updater = Updater()
-        # Get commits between old HEAD and new HEAD (best-effort)
-        old_ref = result.stdout  # not a ref — we'll just note version change
         updater._stash_changelog(old_version, new_version, [])
     except Exception:
         pass
