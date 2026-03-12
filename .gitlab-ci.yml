@@ -22,6 +22,7 @@
 # See Makefile for local equivalents of each stage.
 
 stages:
+  - preflight
   - test
   - build
   - publish
@@ -55,6 +56,111 @@ variables:
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
     - pip install --quiet -e ".[dev,docflow,chat]" requests git-filter-repo
+
+# =============================================================================
+# Preflight Stage — Verify external credentials before doing any work
+# =============================================================================
+# Checks all external service tokens up front so failures are immediate
+# and obvious rather than surfacing deep inside downstream jobs.
+#
+# Required checks (hard fail):   GitLab token, GitHub token
+# Optional checks (warn only):   MS Graph, Anthropic API
+
+preflight:connections:
+  stage: preflight
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet --break-system-packages requests
+  script:
+    - |
+      python3 << 'EOF'
+      import os, sys, requests
+
+      PASS = "\033[32m✓\033[0m"
+      FAIL = "\033[31m✗\033[0m"
+      WARN = "\033[33m⚠\033[0m"
+      errors = []
+
+      # --- GitLab token (required) ---
+      token = os.environ.get("GITLAB_TOKEN", "")
+      if not token:
+          print(f"{FAIL} GITLAB_TOKEN not set")
+          errors.append("GITLAB_TOKEN missing")
+      else:
+          r = requests.get(
+              "https://rsicc-gitlab.tacc.utexas.edu/api/v4/user",
+              headers={"PRIVATE-TOKEN": token}, timeout=10
+          )
+          if r.status_code == 200:
+              print(f"{PASS} GitLab token valid (user: {r.json().get('username')})")
+          else:
+              print(f"{FAIL} GitLab token invalid (HTTP {r.status_code}) — update GITLAB_TOKEN CI variable")
+              errors.append(f"GITLAB_TOKEN rejected: HTTP {r.status_code}")
+
+      # --- GitHub token (required for mirror) ---
+      gh_token = os.environ.get("GITHUB_TOKEN", "")
+      if not gh_token:
+          print(f"{FAIL} GITHUB_TOKEN not set")
+          errors.append("GITHUB_TOKEN missing")
+      else:
+          r = requests.get(
+              "https://api.github.com/repos/benjaminbooth/neutron-os-core",
+              headers={"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"},
+              timeout=10
+          )
+          if r.status_code == 200:
+              print(f"{PASS} GitHub token valid (repo: {r.json().get('full_name')})")
+          else:
+              print(f"{FAIL} GitHub token invalid (HTTP {r.status_code}) — update GITHUB_TOKEN CI variable")
+              errors.append(f"GITHUB_TOKEN rejected: HTTP {r.status_code}")
+
+      # --- MS Graph (optional — warn only) ---
+      ms_id = os.environ.get("MS_GRAPH_CLIENT_ID", "")
+      ms_secret = os.environ.get("MS_GRAPH_CLIENT_SECRET", "")
+      ms_tenant = os.environ.get("MS_GRAPH_TENANT_ID", "common")
+      if not ms_id or not ms_secret:
+          print(f"{WARN} MS Graph credentials not set — MS 365 integration tests will be skipped")
+      else:
+          r = requests.post(
+              f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/token",
+              data={"client_id": ms_id, "client_secret": ms_secret,
+                    "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"},
+              timeout=10
+          )
+          if r.status_code == 200 and "access_token" in r.json():
+              print(f"{PASS} MS Graph credentials valid")
+          else:
+              print(f"{WARN} MS Graph credentials rejected (HTTP {r.status_code}) — integration tests will skip")
+
+      # --- Anthropic API (optional — warn only) ---
+      anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+      if not anthropic_key:
+          print(f"{WARN} ANTHROPIC_API_KEY not set — AI review job will be limited")
+      else:
+          r = requests.post(
+              "https://api.anthropic.com/v1/messages",
+              headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
+                       "content-type": "application/json"},
+              json={"model": "claude-haiku-4-5-20251001", "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}]},
+              timeout=10
+          )
+          if r.status_code == 200:
+              print(f"{PASS} Anthropic API key valid")
+          else:
+              print(f"{WARN} Anthropic API key rejected (HTTP {r.status_code})")
+
+      if errors:
+          print(f"\nPreflight failed: {len(errors)} required credential(s) invalid")
+          sys.exit(1)
+      else:
+          print(f"\nAll required credentials verified.")
+      EOF
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
 
 # =============================================================================
 # Test Stage
@@ -91,6 +197,7 @@ test:unit:
 test:integration:
   extends: .python-setup
   stage: test
+  needs: [preflight:connections]
   script:
     - pip install --quiet python-gitlab requests PyGithub
     - pytest tests/integration/ -v --tb=short -m "integration"
@@ -346,6 +453,7 @@ mirror:canary:
   # If any canary fails, the reviewer is broken and we must not push.
   stage: mirror
   extends: .python-setup
+  needs: [preflight:connections]
   script:
     - pytest src/neutron_os/extensions/builtins/mirror_agent/tests/test_canary_detection.py
         -v --tb=short -m "integration"
@@ -377,24 +485,13 @@ mirror:github:
     - git config --global user.email "ci@neutron-os"
     - git config --global user.name "Neutron OS CI"
   script:
-    # Fast-fail: verify GitHub token and repo access before doing any work
-    - |
-      echo "==> Verifying GitHub token and repo access..."
-      HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
-        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-        -H "Accept: application/vnd.github+json" \
-        "https://api.github.com/repos/benjaminbooth/neutron-os-core")
-      if [ "$HTTP" != "200" ]; then
-        echo "ERROR: GitHub API returned HTTP $HTTP — check GITHUB_TOKEN CI variable"
-        exit 1
-      fi
-      echo "GitHub token valid (HTTP $HTTP)"
     - GITHUB_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/benjaminbooth/neutron-os-core.git"
     - git remote add github "$GITHUB_REMOTE_URL" || git remote set-url github "$GITHUB_REMOTE_URL"
     - bash scripts/push-public.sh --push --yes
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
+    - preflight:connections
     - mirror:review
   allow_failure: true
 
