@@ -92,7 +92,7 @@ test:integration:
   extends: .python-setup
   stage: test
   script:
-    - pip install --quiet python-gitlab requests
+    - pip install --quiet python-gitlab requests PyGithub
     - pytest tests/integration/ -v --tb=short -m "integration"
   variables:
     # These come from GitLab CI/CD Variables (masked, protected)

@@ -27,7 +27,6 @@ import threading
 import time
 import traceback
 from datetime import datetime, timezone
-from http import HTTPStatus
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Optional
@@ -342,17 +341,17 @@ class NeutAPIServer:
         auth_status = "enabled" if self.api_key else "disabled"
         origins_str = ", ".join(self.origins)
 
-        print(f"neut API server")
+        print("neut API server")
         print(f"  Listening:  http://{self.host}:{self.port}")
         print(f"  Auth:       {auth_status}")
         print(f"  CORS:       {origins_str}")
         print(f"  Read-only:  {self.read_only}")
         print()
         print("Endpoints:")
-        print(f"  POST /chat     Send a message")
-        print(f"  POST /reset    Reset session")
-        print(f"  GET  /health   Health check")
-        print(f"  GET  /context  Knowledge sources")
+        print("  POST /chat     Send a message")
+        print("  POST /reset    Reset session")
+        print("  GET  /health   Health check")
+        print("  GET  /context  Knowledge sources")
         print()
 
         try:
