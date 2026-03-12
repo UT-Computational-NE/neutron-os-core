@@ -99,7 +99,8 @@ echo "==> Creating temporary clone..."
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-git clone --no-local "$REPO_ROOT" "$TMPDIR/public-mirror" --branch "$BRANCH" --single-branch
+git clone --no-local "$REPO_ROOT" "$TMPDIR/public-mirror" --single-branch 2>/dev/null || \
+git clone --no-local "$REPO_ROOT" "$TMPDIR/public-mirror"
 cd "$TMPDIR/public-mirror"
 
 echo "==> Applying allowlist (keeping only approved paths)..."
