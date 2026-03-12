@@ -46,13 +46,13 @@ class GitHubProvider(RepoSourceProvider):
             print(f"  GitHub: {self.token_env} not set")
             return False
         try:
-            from github import Github  # type: ignore[import-untyped]
+            from github import Auth, Github  # type: ignore[import-untyped]
         except ImportError:
             print("  GitHub: PyGithub not installed (pip install PyGithub)")
             return False
 
         try:
-            client = Github(token)
+            client = Github(auth=Auth.Token(token))
             user = client.get_user()
             # Force a network call to validate the token
             _ = user.login

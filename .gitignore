@@ -149,3 +149,6 @@ speaker_profiles.json
 # Mermaid diagram cache
 docs/_tools/.diagram_cache.json
 src/runtime
+
+# Launchd export logs (local runtime artifact)
+tools/

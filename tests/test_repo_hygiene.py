@@ -190,6 +190,8 @@ class TestRootDirPolicy:
         ".venv", ".neut", ".pytest_cache", ".vscode",
         # Personal / CI (gitignored)
         "ben-learning", "dist", "__pycache__", ".pip-cache", ".ruff_cache",
+        # Runtime artifacts (gitignored)
+        "tools",
     }
 
     def test_no_unexpected_root_dirs(self):
