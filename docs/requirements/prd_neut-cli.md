@@ -135,7 +135,7 @@ neut ext validate ./my-extension.wasm
 
 ### 8. Interactive Chat Mode (`neut chat`)
 
-An agentic assistant for working with reactor systems — think Claude Code, but for nuclear facilities. Neut is the friendly AI that powers the interactive experience; Neut Sense, Neut DocFlow, and other capabilities are tools Neut can invoke on behalf of the user.
+An agentic assistant for working with reactor systems — think Claude Code, but for nuclear facilities. Neut is the friendly AI that powers the interactive experience; Neut Sense, Neut Publisher, and other capabilities are tools Neut can invoke on behalf of the user.
 
 ```bash
 # Start interactive session
@@ -231,6 +231,16 @@ neut chat --mode plan
 /agent   # Enter agent mode (requires confirmation on first use per session)
 ```
 
+#### Slash Commands
+
+Slash commands are the composable action layer inside `neut chat`. Each command is registered by an extension, follows a standard four-step flow (collect context → present choices → confirm intent → dispatch + report), and always shows the underlying `neut` CLI invocation it dispatched.
+
+This design serves two purposes: slash commands lower the barrier for new users by handling context discovery and confirmation; and they teach the machine API to users who will eventually script directly.
+
+Built-in slash commands at v0.5: `/pub`, `/draft`, `/review`, `/compile` (publisher); `/status` (system); `/model`, `/plan`, `/ask`, `/agent`, `/complete` (chat_agent). Extensions register additional slash commands via `neut-extension.toml`.
+
+Full design in `docs/specs/neut-cli-spec.md §Slash Commands`.
+
 #### Mode Guardrails
 
 | Guardrail | Behavior |
@@ -278,22 +288,22 @@ neut media share <id> ops-team
 
 See [Media Library PRD](media-library-prd.md) for full design.
 
-### 11. Document Lifecycle (`neut doc`)
+### 11. Document Lifecycle (`neut pub`)
 
-DocFlow manages document generation, publishing, and review cycles.
+Publisher manages document generation, publishing, and review cycles.
 
 ```bash
 # Publish a document
-neut doc publish docs/requirements/prd_foo.md
+neut pub publish docs/requirements/prd_foo.md
 
 # Check document status
-neut doc status
+neut pub status
 
 # Pull latest from storage
-neut doc pull --all
+neut pub pull --all
 ```
 
-See [DocFlow Specification](../specs/docflow-spec.md) for full design.
+See [Publisher Specification](../specs/docflow-spec.md) for full design.
 
 ---
 

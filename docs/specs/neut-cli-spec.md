@@ -81,61 +81,170 @@ path = "src/main.rs"
 
 ## Command Hierarchy
 
+`neut` uses a **noun-verb pattern**: `neut <noun> <verb> [args] [--flags]`. Each noun is registered by an extension via `neut-extension.toml`. The tree below reflects all builtin extensions as of v0.5.
+
 ```
 neut
-├── log                    # Ops log operations
-│   ├── query              # Query entries
-│   ├── entry              # Entry management
-│   │   ├── create         # Create new entry
-│   │   └── supplement     # Add supplement to existing
+│
+├── pub                    # Document lifecycle (publisher extension)
+│   ├── draft              # Scaffold new document
+│   ├── push               # Generate + push to endpoints
+│   ├── pull               # Retrieve published artifact
+│   ├── pull-source        # Pull remote doc; declare source-of-truth
+│   ├── assemble           # (plumbing) Assemble sections → markdown without pushing
+│   ├── generate           # Render locally, no upload
+│   ├── review             # Surface reviewer annotations
+│   ├── status             # Document state + provenance
+│   ├── diff               # Semantic diff vs last published
+│   ├── overview           # Dashboard of all tracked documents
+│   ├── scan               # Find tracked/untracked/stale/orphaned
+│   ├── check-links        # Verify cross-document registry
+│   ├── onboard            # Register document in manifest
+│   ├── types              # List document types
+│   ├── generators         # List generation providers
+│   ├── endpoints          # Show endpoint catalog
+│   ├── endpoint add       # Register new endpoint (wizard)
+│   ├── type add           # Register new document type (wizard)
+│   ├── template           # add / list / validate templates
+│   ├── migrate-state      # JSON → PostgreSQL state migration
+│   ├── export-state       # Export state to JSON
+│   └── agent              # Publisher agent subcommands
+│       ├── scan           # Drift scan
+│       ├── propose        # Generate update proposal
+│       ├── start/stop     # Control always-on service
+│       ├── status         # Agent health
+│       └── warmup         # Cold-start warm-up scan
+│
+├── sense                  # Signal ingestion (sense_agent extension)
+│   ├── status             # Inbox state + pending extractions
+│   ├── ingest             # Ingest a signal file
+│   ├── scan               # Scan inbox for unprocessed signals
+│   ├── draft              # Generate a draft from processed signals
+│   ├── review             # Present signals for human review
+│   └── flush              # Clear processed signals
+│
+├── chat                   # Interactive LLM session (chat_agent extension)
+│   └── [message]          # Start session; --model, --provider overrides
+│
+├── rag                    # RAG corpus management (rag extension)
+│   ├── load-community     # Load bundled community corpus
+│   ├── sync org           # Sync org corpus from rascal/S3
+│   ├── index [path]       # Index path into rag-internal
+│   ├── search <query>     # Hybrid search across all corpora
+│   ├── status             # Chunk counts per corpus tier
+│   └── reindex            # Re-embed a document
+│
+├── settings               # Settings management (settings extension)
+│   ├── [bare]             # Show all active settings
+│   ├── get <key>          # Get one value
+│   └── set <key> <val>    # Set value; --global for ~/.neut/
+│
+├── agents                 # Agent service management (agents extension)
+│   ├── [bare]             # List all agents + status
+│   ├── register-launchd   # Generate + load launchd plists (macOS)
+│   ├── register-systemd   # Generate + enable systemd units (Linux)
+│   ├── start/stop/restart # Control a specific agent
+│   ├── status             # Running/stopped + PID
+│   ├── logs               # Tail agent log
+│   └── unregister         # Remove service registrations
+│
+├── db                     # Database management (db extension)
+│   ├── migrate            # Run pending Alembic migrations
+│   ├── status             # Migration state
+│   └── seed               # Load seed data
+│
+├── repo                   # Repository analytics (repo extension)
+│   ├── status             # Git + extension health
+│   └── scan               # Discover unregistered extensions
+│
+├── ext                    # Extension management (ext extension)
+│   ├── list               # List installed extensions
+│   ├── init <name>        # Scaffold a new extension
+│   ├── check <name>       # Validate extension manifest
+│   └── docs               # Generate EXTENSION_CONTRACTS.md
+│
+├── log                    # Ops log (reactor-ops-log extension)
+│   ├── query              # Query log entries
+│   ├── entry create       # Create log entry
+│   ├── entry supplement   # Add supplement
 │   └── export             # Export for compliance
-├── data                   # Data platform
-│   ├── query              # SQL queries against lakehouse
-│   ├── pipeline           # Pipeline status/control
-│   │   ├── status         # Check pipeline health
-│   │   ├── trigger        # Manual trigger
-│   │   └── backfill       # Historical reprocessing
+│
+├── data                   # Data platform (data extension)
+│   ├── query              # SQL against lakehouse
+│   ├── pipeline status    # Pipeline health
 │   └── schema             # Schema inspection
-├── model                  # Surrogate model management
-│   ├── list               # List registered models
-│   ├── deploy             # Deploy model
-│   ├── validate           # Validate WASM model
-│   ├── test               # Run test suite
-│   └── retire             # Retire model version
-├── sim                    # Simulation orchestration
-│   ├── run                # Run scenario
-│   ├── list               # List scenarios
-│   ├── status             # Check run status
-│   └── cancel             # Cancel running sim
-├── twin                   # Digital twin state
-│   ├── state              # Get current state
-│   ├── sync               # Sync from sensors
-│   ├── predict            # Run prediction
-│   └── validate           # Compare prediction vs actual
-├── infra                  # Infrastructure (admin)
-│   ├── health             # Service health
-│   ├── logs               # Service logs
-│   ├── deploy             # Deploy services
-│   └── config             # View/update config
-├── ext                    # Extension management
-│   ├── list               # List extensions
-│   ├── install            # Install extension
-│   ├── validate           # Validate WASM
-│   └── remove             # Remove extension
-├── auth                   # Authentication
-│   ├── login              # Interactive login
-│   ├── logout             # Clear credentials
-│   ├── status             # Show auth status
-│   └── token              # Get/refresh token
-├── config                 # CLI configuration
-│   ├── init               # Initialize config
-│   ├── set                # Set config value
-│   ├── get                # Get config value
-│   └── list               # List all config
-├── chat                   # Interactive agentic mode
+│
+├── cost estimate          # Cost modeling (cost_estimation extension)
+├── demo [--collaborator]  # Guided demos (demo extension)
+├── config                 # Setup wizard
+├── doctor [--fix]         # System health check + auto-fix
+├── update                 # Check + apply dependency updates
+├── status                 # System-level health (status extension)
+├── test run [pattern]     # Extension test runner (test extension)
 ├── version                # Version info
 └── help                   # Help system
 ```
+
+### Design Philosophy
+
+The `neut` CLI is the **machine API** of NeutronOS. Every operation is discrete, deterministic, composable in scripts, and JSON-friendly with `--json`. Operations are idempotent where semantics allow.
+
+Slash commands (`/pub`, `/draft`, etc.) are the **human UX layer**. They live inside `neut chat` and handle conversational intent: collecting context, confirming before writes, dispatching underlying CLI calls. An experienced user in a pipeline uses the CLI directly. A new user uses slash commands. You never have to choose one.
+
+This distinction is the answer to "why not just do everything in chat?" — because chat is stateful, interactive, and model-dependent. CLI commands are stateless, scriptable, and model-independent. The system is designed so every slash command is a thin wrapper that dispatches real CLI calls, and shows you what it dispatched. Over time, users learn the CLI by watching slash commands work.
+
+---
+
+## Slash Commands
+
+Slash commands are registered by extensions and dispatched by the chat agent. All follow a consistent four-step pattern:
+
+```
+1. Collect context   — query workspace state silently (neut pub status --json, etc.)
+2. Present choices   — show what was found; ask the user to select or confirm
+3. Confirm intent    — for any write to a remote endpoint, require explicit confirmation
+4. Dispatch + report — run the underlying neut CLI command; show result and what was dispatched
+```
+
+### Registration
+
+Each extension registers its slash commands in `neut-extension.toml`:
+
+```toml
+[[cli.slash_commands]]
+name = "pub"
+module = "neutron_os.extensions.builtins.chat_agent.slash_commands.pub"
+description = "Publish a document to its configured endpoint"
+
+[[cli.slash_commands]]
+name = "draft"
+module = "neutron_os.extensions.builtins.chat_agent.slash_commands.draft"
+description = "Scaffold a new document from scratch or from notes"
+```
+
+The chat agent's dispatch layer loads all registered slash commands at startup and routes `/command` inputs to the correct handler.
+
+### Design Principles
+
+1. **No flag memorization** — slash commands discover context and present choices; users select, not configure.
+2. **Always confirm before remote writes** — any action writing to an endpoint shows the target and destination before proceeding. `--yes` bypasses confirmation for scripting.
+3. **One command for the common case** — `/pub` with no arguments handles 90% of single-document publishing.
+4. **Show the dispatch** — every slash command displays the underlying CLI invocation so users learn the machine API by using the conversational interface.
+5. **Graceful no-op** — if there is nothing to do, say so clearly. Do not fail silently.
+
+### Built-in Slash Commands (v0.5)
+
+| Command | Extension | Purpose |
+|---------|-----------|---------|
+| `/pub [path]` | publisher | Push a document to its endpoint |
+| `/draft <title>` | publisher | Scaffold a new document |
+| `/review [doc_id]` | publisher | Surface reviewer annotations |
+| `/pub [path]` (multi-section) | publisher | Push a directory — engine detects and assembles sections automatically |
+| `/status` | status | Inline system health check |
+| `/model [name]` | chat_agent | Switch LLM model mid-session |
+| `/complete` | chat_agent | Finalize the current review session |
+
+Extensions add slash commands by declaring them in their manifest. The full Publisher slash command examples are in `neutron-os-publisher-spec.md §18.2`.
 
 ---
 

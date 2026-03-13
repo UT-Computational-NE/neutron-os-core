@@ -1,7 +1,12 @@
-"""'The Silent Contributor' — 6-act guided demo scenario.
+"""'The Silent Contributor' — 9-act guided demo scenario.
 
 Walks a new user (Jay) through the full NeutronOS pipeline:
-  sensing -> review -> publish -> email -> extensions
+  sensing -> review -> publish -> publisher agent -> extensions
+
+Acts 1-7 cover the core sense/review/push pipeline.
+Acts 8-9 introduce the publisher agent using Jay's real work on the
+Triga DT documentation website — showing how Neut proactively
+discovers that a GitLab wiki is out of date and proposes an update.
 
 Each act alternates between raw CLI and chat-assisted mode to prove
 seamless context preservation across mode transitions.
@@ -34,11 +39,11 @@ def _check_sense_status() -> bool:
 
 
 def _check_doc_status() -> bool:
-    """Validate docflow is accessible."""
+    """Validate publisher is accessible."""
     try:
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
 
-        DocFlowEngine()
+        PublisherEngine()
         return True
     except Exception:
         return False
@@ -138,17 +143,17 @@ def build_scenario() -> Scenario:
                 number=3,
                 title="Orient",
                 description=(
-                    "What does the pipeline know? Check sense and docflow status "
+                    "What does the pipeline know? Check sense and publisher status "
                     "to understand the current state of your program."
                 ),
                 mode="cli",
                 commands=[
                     "neut sense status",
-                    "neut doc status",
+                    "neut pub status",
                 ],
                 hints=[
                     "sense status shows inbox/processed/draft counts.",
-                    "doc status shows tracked documents and their publish state.",
+                    "neut pub overview shows all tracked documents and their push state.",
                     "Transition: next we'll review the weekly draft — first in CLI, then in chat.",
                 ],
                 validator=_check_doc_status,
@@ -164,7 +169,7 @@ def build_scenario() -> Scenario:
                 ),
                 mode="cli",
                 commands=[
-                    f"neut doc review {WEEKLY_SUMMARY}",
+                    f"neut pub review {WEEKLY_SUMMARY}",
                 ],
                 hints=[
                     "The review framework supports quick (one-shot) and detailed (item-by-item) modes.",
@@ -183,7 +188,7 @@ def build_scenario() -> Scenario:
                 ),
                 mode="chat",
                 commands=[
-                    f"neut doc review --chat {WEEKLY_SUMMARY}",
+                    f"neut pub review --chat {WEEKLY_SUMMARY}",
                 ],
                 hints=[
                     "Falls back gracefully if no LLM is configured.",
@@ -194,21 +199,26 @@ def build_scenario() -> Scenario:
             ),
             Act(
                 number=6,
-                title="Publish",
+                title="Push",
                 description=(
-                    "Generate a .docx artifact from the approved draft and track it "
-                    "in the docflow pipeline. This proves the full document lifecycle: "
-                    "source (markdown) -> artifact (docx) -> state tracking."
+                    "Generate a .docx artifact from the approved draft and push it "
+                    "through the Publisher pipeline. This proves the full document lifecycle: "
+                    "source (markdown) → artifact (docx) → state tracking → destination.\n\n"
+                    "Notice that 'push' mirrors git semantics: you're sending to a remote endpoint, "
+                    "not making a final proclamation. A draft push and a production push use the "
+                    "same command — the --draft flag controls watermarking and endpoint routing."
                 ),
                 mode="cli",
                 commands=[
-                    f"neut doc generate {WEEKLY_SUMMARY}",
-                    "neut doc status",
+                    f"neut pub generate {WEEKLY_SUMMARY}",
+                    "neut pub push --draft",
+                    "neut pub status",
                 ],
                 hints=[
-                    "DocFlow uses the Factory/Provider pattern — swap pandoc for LaTeX, pptx, etc.",
-                    "The link registry (.doc-registry.json) maps docs to published URLs.",
-                    "Next: we'll draft an email from chat mode.",
+                    "Publisher uses the Factory/Provider pattern — swap pandoc for LaTeX, pptx, etc.",
+                    "neut pub endpoints shows all 19 built-in destinations with format support.",
+                    "The link registry (.publisher-registry.json) maps doc_ids to pushed URLs.",
+                    "Next: Jay has a Triga DT wiki that's gotten out of date. Let's fix it.",
                 ],
                 validator=_check_doc_status,
             ),
@@ -217,7 +227,7 @@ def build_scenario() -> Scenario:
                 title="Make It Yours",
                 description=(
                     "Scaffold a personal extension with a reactor log query tool, "
-                    "a weekly-slides SKILL.md, and a .pptx docflow provider stub. "
+                    "a weekly-slides SKILL.md, and a .pptx publisher provider stub. "
                     "Then verify it appears in chat immediately — no restart needed."
                 ),
                 mode="cli",
@@ -235,6 +245,67 @@ def build_scenario() -> Scenario:
                 validator=_check_extension_exists,
                 fallback_message=(
                     "Extension not detected. Run 'neut ext init reactor-tools' to create it."
+                ),
+            ),
+            Act(
+                number=8,
+                title="Triga DT — Wiki Drift",
+                description=(
+                    "Jay maintains the Triga Digital Twin documentation on a GitLab wiki. "
+                    "He hasn't updated it in months. Neut's publisher agent is about to "
+                    "notice that for him.\n\n"
+                    "We'll pull the wiki source, declare that the repo is authoritative, "
+                    "then let the agent scan for drift between what the wiki says and "
+                    "what the codebase actually does today."
+                ),
+                mode="cli",
+                commands=[
+                    # Pull the Triga DT wiki page into a local mirror
+                    "neut pub pull-source gitlab-wiki --doc triga-dt-overview",
+                    # Declare the authoritative source path
+                    "# > Authoritative source: src/neutron_os/extensions/ (Enter to confirm)",
+                    # Scan for drift
+                    "neut pub agent scan --endpoint gitlab-wiki",
+                ],
+                hints=[
+                    "pull-source asks: 'what is the authoritative source for this document?'",
+                    "Once declared, the agent enforces that relationship on every future scan.",
+                    "The agent uses RAG-indexed repo content to find current truth — not guesswork.",
+                    "Drift is surfaced as structured DriftFindings with confidence scores.",
+                ],
+                fallback_message=(
+                    "GitLab wiki not configured — demo shows fixture drift report. "
+                    "Set gitlab_token in neut config to use a real wiki."
+                ),
+            ),
+            Act(
+                number=9,
+                title="Triga DT — Approve & Push",
+                description=(
+                    "The agent found drift: the Triga DT overview page still references "
+                    "the old 'neut doc publish' command and an outdated sensor polling interval. "
+                    "It has generated a targeted update proposal — not a full rewrite, just "
+                    "the two specific corrections needed.\n\n"
+                    "Jay reviews the diff, approves, and the agent pushes the update "
+                    "to the GitLab wiki. Jay didn't have to find the problem, write the fix, "
+                    "or remember the wiki existed."
+                ),
+                mode="chat",
+                commands=[
+                    "neut pub agent propose triga-dt-overview",
+                    "# /review → Jay approves",
+                    "neut pub push --provider gitlab-wiki",
+                ],
+                hints=[
+                    "The proposal shows exactly what changed: wiki claim vs. current reality.",
+                    "Jay can approve as-is, edit the proposed markdown, or reject.",
+                    "The push uses the standard Publisher engine — same pipeline as any other document.",
+                    "After push, .publisher-state.json records the new wiki state for future drift detection.",
+                    "This is the 'pleasantly surprised' experience: the system found and fixed the problem.",
+                ],
+                fallback_message=(
+                    "No live wiki — demo shows the approval UX with fixture proposal. "
+                    "The push step is skipped in fixture mode."
                 ),
             ),
         ],

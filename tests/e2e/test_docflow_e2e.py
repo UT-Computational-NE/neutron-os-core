@@ -1,4 +1,4 @@
-"""End-to-end tests for the `neut doc` CLI.
+"""End-to-end tests for the `neut pub` CLI.
 
 These tests exercise the full stack: CLI argument parsing → engine → providers
 → filesystem side effects. They verify the user-facing behavior, not internals.
@@ -46,9 +46,9 @@ class TestCLISubprocess:
         assert "unknown" in result.stderr.lower() or "unknown" in result.stdout.lower()
 
     def test_doc_providers_subprocess(self):
-        """neut doc providers lists registered providers."""
+        """neut pub providers lists registered providers."""
         result = subprocess.run(
-            [sys.executable, NEUT_CLI, "doc", "providers"],
+            [sys.executable, NEUT_CLI, "pub", "providers"],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
         )
         assert result.returncode == 0
@@ -58,9 +58,9 @@ class TestCLISubprocess:
         assert "local" in result.stdout
 
     def test_doc_status_subprocess(self):
-        """neut doc status runs without error."""
+        """neut pub status runs without error."""
         result = subprocess.run(
-            [sys.executable, NEUT_CLI, "doc", "status"],
+            [sys.executable, NEUT_CLI, "pub", "status"],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
         )
         assert result.returncode == 0
@@ -68,12 +68,12 @@ class TestCLISubprocess:
         assert "document" in result.stdout.lower() or "Doc ID" in result.stdout
 
     def test_doc_generate_subprocess(self, tmp_path):
-        """neut doc generate produces a .docx file."""
+        """neut pub generate produces a .docx file."""
         source = tmp_path / "e2e-gen-test.md"
         source.write_text("# E2E Generate\n\nThis tests generation.\n")
 
         result = subprocess.run(
-            [sys.executable, NEUT_CLI, "doc", "generate", str(source)],
+            [sys.executable, NEUT_CLI, "pub", "generate", str(source)],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
         )
         assert result.returncode == 0
@@ -101,8 +101,8 @@ class TestDocflowFullPipeline:
     @pytest.fixture
     def workspace(self, tmp_path):
         """Set up an isolated workspace with config and source docs."""
-        # Create a .doc-workflow.yaml
-        config_yaml = tmp_path / ".doc-workflow.yaml"
+        # Create a .publisher.yaml
+        config_yaml = tmp_path / ".publisher.yaml"
         config_yaml.write_text(
             "git:\n"
             "  require_clean: false\n"
@@ -139,15 +139,15 @@ class TestDocflowFullPipeline:
 
     def _make_engine(self, workspace):
         """Create an engine rooted at the workspace."""
-        from neutron_os.extensions.builtins.docflow.config import load_config
+        from neutron_os.extensions.builtins.publisher.config import load_config
 
-        config = load_config(workspace / ".doc-workflow.yaml")
+        config = load_config(workspace / ".publisher.yaml")
         config.repo_root = workspace
         config.git.publish_branches = ["*"]
         config.git.require_clean = False
 
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        return DocFlowEngine(config)
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        return PublisherEngine(config)
 
     def test_generate_creates_docx(self, workspace):
         """Generate a .docx from markdown — file exists and has content."""
@@ -176,24 +176,24 @@ class TestDocflowFullPipeline:
         assert record.url.startswith("file://")
 
         # 2. State file updated (in .neut/ when no .git/ present)
-        state_file = workspace / ".neut" / ".doc-state.json"
+        state_file = workspace / ".neut" / ".publisher-state.json"
         if not state_file.exists():
-            state_file = workspace / ".doc-state.json"
+            state_file = workspace / ".publisher-state.json"
         assert state_file.exists()
         state_data = json.loads(state_file.read_text())
         doc_ids = [d["doc_id"] for d in state_data.get("documents", [])]
         assert "spec-a" in doc_ids
 
         # 3. Registry file updated
-        registry_file = workspace / ".neut" / ".doc-registry.json"
+        registry_file = workspace / ".neut" / ".publisher-registry.json"
         if not registry_file.exists():
-            registry_file = workspace / ".doc-registry.json"
+            registry_file = workspace / ".publisher-registry.json"
         assert registry_file.exists()
         registry_data = json.loads(registry_file.read_text())
         registry_ids = [e.get("doc_id", "") for e in registry_data.get("documents", [])]
         assert "spec-a" in registry_ids
 
-        # 4. Artifact exists in storage
+        # 4. Artifact exists in storage — publish mirrors docs/ subdir structure
         published_dir = workspace / "published"
         assert (published_dir / "spec-a.docx").exists()
 

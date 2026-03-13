@@ -13,10 +13,10 @@ class TestCollaboratorScenario:
         assert scenario.name == "The Silent Contributor"
         assert scenario.slug == "collaborator"
 
-    def test_has_seven_acts(self):
-        """Scenario has exactly 7 acts (Connect + 6 demo acts)."""
+    def test_has_nine_acts(self):
+        """Scenario has exactly 9 acts (Connect + 8 demo acts, including Triga DT wiki drift)."""
         scenario = build_scenario()
-        assert len(scenario.acts) == 7
+        assert len(scenario.acts) == 9
 
     def test_acts_numbered_sequentially(self):
         """Acts are numbered 1 through N."""

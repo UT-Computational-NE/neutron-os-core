@@ -365,7 +365,7 @@ priority = 1
 use_for = ["extraction", "synthesis", "correlation"]
 
 [[gateway.providers]]
-name = "qwen-tacc"
+name = "qwen-rascal"
 endpoint = "http://localhost:8000/v1"
 model = "qwen2.5-32b-instruct"
 priority = 2
@@ -414,6 +414,100 @@ def extract_signals(transcript, config):
     # 4. Parse structured output
     return parse_signals(response)
 ```
+
+---
+
+## Service Layer
+
+Always-on agents (`publisher_agent`, `sense_agent`, `doctor_agent`) each expose a `service.py` module with a `main()` entry point. The service layer handles OS registration, process lifecycle, and graceful shutdown — the agent's domain logic is unchanged whether it runs interactively or as a system service.
+
+### `service.py` Entry Point Pattern
+
+```python
+# src/neutron_os/extensions/builtins/<agent>/service.py
+import signal
+import sys
+
+_shutdown = False
+
+def _handle_sigterm(signum, frame):
+    global _shutdown
+    _shutdown = True
+
+def main():
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+    signal.signal(signal.SIGINT, _handle_sigterm)
+
+    agent = Agent()
+    agent.start()
+
+    while not _shutdown:
+        agent.tick()
+
+    agent.shutdown()   # flush queues, close DB connections, write state
+    sys.exit(0)
+```
+
+The `tick()` / `shutdown()` contract is the only interface the service layer requires from each agent. Agents must complete in-flight work before `shutdown()` returns. Maximum shutdown time is 10 seconds; after that the OS kills the process.
+
+### launchd Plist Structure (macOS)
+
+One plist per workspace, stored in `~/Library/LaunchAgents/`. Key fields:
+
+```xml
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.neutron-os.sense-agent.<workspace-hash></string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/path/to/.venv/bin/python</string>
+    <string>-m</string>
+    <string>neutron_os.extensions.builtins.sense_agent.service</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/path/to/workspace</string>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/path/to/workspace/runtime/logs/sense-agent.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/path/to/workspace/runtime/logs/sense-agent.stderr.log</string>
+</dict>
+</plist>
+```
+
+`ThrottleInterval` (seconds) is the minimum time between restarts. Set to 10 to prevent tight crash loops while still recovering quickly from transient failures.
+
+### systemd User Unit Structure (Linux)
+
+```ini
+# ~/.config/systemd/user/neutron-os-sense-agent-<workspace-hash>.service
+[Unit]
+Description=NeutronOS Sense Agent (<workspace-name>)
+After=network.target
+
+[Service]
+ExecStart=/path/to/.venv/bin/python -m neutron_os.extensions.builtins.sense_agent.service
+WorkingDirectory=/path/to/workspace
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/path/to/workspace/runtime/logs/sense-agent.stdout.log
+StandardError=append:/path/to/workspace/runtime/logs/sense-agent.stderr.log
+
+[Install]
+WantedBy=default.target
+```
+
+`WantedBy=default.target` ensures the unit starts at user login without requiring root. `Restart=on-failure` restarts only on non-zero exit; `_shutdown` path exits 0 (clean stop), so `neut agents stop` does not trigger a restart.
 
 ---
 

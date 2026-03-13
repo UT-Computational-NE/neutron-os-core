@@ -1,0 +1,33 @@
+# AWS Budget Proposal — Publisher Compilation Manifest
+#
+# Assemble all sections into a single publication artifact.
+# Run: neut pub compile docs/proposals/aws-budget/.compile.yaml
+
+output: aws-budget-proposal
+type: proposal
+title: "Cloud Compute Resources for Computational Nuclear Engineering Research"
+author: "UT Computational Nuclear Engineering"
+date: "2026-03"
+
+sources:
+  - 00-executive-summary.md
+  - 01-research-program.md
+  - 02-technical-requirements.md
+  - 03-budget-justification.md
+  - 04-timeline.md
+
+toc: true
+toc_depth: 2
+
+generation:
+  provider: pandoc-pdf       # primary: PDF for formal submission
+  fallback:
+    - pandoc-html            # secondary: web-facing version
+    - pandoc-docx            # tertiary: review and annotation
+
+storage:
+  - provider: local
+    output_path: docs/_tools/generated/
+
+notification:
+  provider: terminal
