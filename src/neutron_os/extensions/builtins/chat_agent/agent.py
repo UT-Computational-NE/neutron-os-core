@@ -40,7 +40,7 @@ from neutron_os import REPO_ROOT as _REPO_ROOT
 
 _BASE_SYSTEM_PROMPT = """\
 You are neut, an AI assistant for Neutron OS — a digital platform for nuclear facilities.
-You have access to tools for document management (docflow), signal ingestion (sense),
+You have access to tools for document management (publisher), signal ingestion (sense),
 and repository exploration (read_file, list_files).
 
 Available capabilities:
@@ -79,6 +79,9 @@ class ChatAgent:
         self._session_mode: str = "auto"  # overridden by --mode flag
         # Backward-compat: bare callback for tests
         self._renderer_callback: Optional[Callable[[Iterator[StreamChunk]], str]] = None
+        # RAG store — lazily initialized if rag.database_url is configured
+        self._rag_store: Optional[Any] = None
+        self._rag_init_attempted = False
 
     def set_renderer(self, callback: Callable[[Iterator[StreamChunk]], str]) -> None:
         """Set a streaming renderer callback (backward-compat)."""
@@ -460,6 +463,42 @@ class ChatAgent:
 
         return results
 
+    def _get_rag_store(self) -> Optional[Any]:
+        """Lazily initialize the RAG store from settings."""
+        if self._rag_init_attempted:
+            return self._rag_store
+        self._rag_init_attempted = True
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            url = SettingsStore().get("rag.database_url", "")
+            if not url:
+                return None
+            from neutron_os.rag.store import RAGStore
+            store = RAGStore(url)
+            store.connect()
+            self._rag_store = store
+        except Exception:
+            pass  # RAG not available — chat still works
+        return self._rag_store
+
+    def _rag_context(self, query: str, limit: int = 4) -> str:
+        """Retrieve relevant RAG chunks for *query*. Returns formatted string or ''."""
+        store = self._get_rag_store()
+        if store is None or not query.strip():
+            return ""
+        try:
+            results = store.search(query_text=query, limit=limit)
+            if not results:
+                return ""
+            parts = ["--- Relevant knowledge base context ---"]
+            for r in results:
+                parts.append(
+                    f"[{r.corpus}/{r.source_title or r.source_path}]\n{r.chunk_text[:600]}"
+                )
+            return "\n\n".join(parts)
+        except Exception:
+            return ""
+
     def _build_system_prompt(self) -> str:
         """Build dynamic system prompt with project context."""
         parts = [_BASE_SYSTEM_PROMPT]
@@ -496,6 +535,16 @@ class ChatAgent:
                 "Reference this content when answering.\n\n"
                 + ctx_md[:6000]
             )
+
+        # RAG context — retrieve relevant knowledge for the latest user message
+        last_user = ""
+        for msg in reversed(self.session.messages):
+            if msg.role == "user":
+                last_user = msg.content
+                break
+        rag_ctx = self._rag_context(last_user)
+        if rag_ctx:
+            parts.append(f"\n{rag_ctx}")
 
         return "\n".join(parts)
 
