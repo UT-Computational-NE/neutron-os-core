@@ -80,20 +80,29 @@ def cmd_index(args: argparse.Namespace) -> None:
     store = _get_store()
     try:
         if args.paths:
-            from .ingest import IngestStats, ingest_file, ingest_repo  # noqa: F811
+            from .ingest import IngestStats, ingest_file
+            from .extract import SUPPORTED_EXTENSIONS
             total = IngestStats()
             for raw in args.paths:
                 p = Path(raw).resolve()
                 if p.is_dir():
-                    s = ingest_repo(p, store, corpus=corpus)
+                    files = []
+                    for ext in SUPPORTED_EXTENSIONS:
+                        files.extend(p.rglob(f"*{ext}"))
+                    files = [f for f in files if "__MACOSX" not in str(f) and not f.name.startswith(".")]
+                    log.info("Found %d files under %s", len(files), p)
+                    for fpath in sorted(files):
+                        s = ingest_file(fpath, store, repo_root=p, corpus=corpus)
+                        total.files_indexed += s.files_indexed
+                        total.chunks_created += s.chunks_created
+                        total.files_skipped += s.files_skipped
                 elif p.is_file():
                     s = ingest_file(p, store, repo_root=p.parent, corpus=corpus)
+                    total.files_indexed += s.files_indexed
+                    total.chunks_created += s.chunks_created
+                    total.files_skipped += s.files_skipped
                 else:
                     print(f"WARNING: path not found: {p}", file=sys.stderr)
-                    continue
-                total.files_indexed += s.files_indexed
-                total.chunks_created += s.chunks_created
-                total.files_skipped += s.files_skipped
         else:
             total = ingest_repo(REPO_ROOT, store, corpus=corpus)
 

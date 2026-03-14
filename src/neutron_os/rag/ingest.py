@@ -86,12 +86,16 @@ def ingest_file(
         stats.files_skipped += 1
         return stats
 
-    # Generate embeddings (optional — works without OPENAI_API_KEY)
+    # Generate embeddings (optional — works without OPENAI_API_KEY or on API errors)
     texts = [c.text for c in chunks]
-    embeddings = embed_texts(texts)
+    try:
+        embeddings = embed_texts(texts)
+    except Exception as exc:
+        log.warning("Embedding skipped for %s: %s", rel_path, exc)
+        embeddings = None
 
     if embeddings is None:
-        log.info("Indexing %s (%d chunks, text-only — no embedding API key)", rel_path, len(chunks))
+        log.info("Indexing %s (%d chunks, text-only)", rel_path, len(chunks))
     else:
         log.info("Indexing %s (%d chunks, with embeddings)", rel_path, len(chunks))
 
