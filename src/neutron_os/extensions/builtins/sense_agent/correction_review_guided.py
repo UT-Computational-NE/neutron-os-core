@@ -29,6 +29,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+from neutron_os.infra.state import LockedJsonFile
+
 from .models import DATETIME_FORMAT_COMPACT
 
 
@@ -139,7 +141,8 @@ class GuidedCorrectionReview:
         """Load review state from disk."""
         if REVIEW_STATE_FILE.exists():
             try:
-                data = json.loads(REVIEW_STATE_FILE.read_text())
+                with LockedJsonFile(REVIEW_STATE_FILE) as f:
+                    data = f.read()
                 return ReviewState.from_dict(data)
             except (json.JSONDecodeError, KeyError):
                 pass
@@ -147,8 +150,8 @@ class GuidedCorrectionReview:
 
     def _save_state(self) -> None:
         """Save review state to disk."""
-        REVIEW_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        REVIEW_STATE_FILE.write_text(json.dumps(self._state.to_dict(), indent=2))
+        with LockedJsonFile(REVIEW_STATE_FILE, exclusive=True) as f:
+            f.write(self._state.to_dict())
 
     def _load_clips(self) -> dict[str, AudioClip]:
         """Load all clip metadata."""
@@ -156,7 +159,8 @@ class GuidedCorrectionReview:
         clips_index = CLIPS_DIR / "clips_index.json"
         if clips_index.exists():
             try:
-                data = json.loads(clips_index.read_text())
+                with LockedJsonFile(clips_index) as f:
+                    data = f.read()
                 for clip_data in data.get("clips", []):
                     clip = AudioClip.from_dict(clip_data)
                     clips[clip.clip_id] = clip
@@ -171,7 +175,8 @@ class GuidedCorrectionReview:
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "clips": [c.to_dict() for c in self._clips.values()],
         }
-        clips_index.write_text(json.dumps(data, indent=2))
+        with LockedJsonFile(clips_index, exclusive=True) as f:
+            f.write(data)
 
     def get_clip_for_correction(self, correction_id: str) -> Optional[AudioClip]:
         """Get existing clip for a correction ID (for deduplication)."""

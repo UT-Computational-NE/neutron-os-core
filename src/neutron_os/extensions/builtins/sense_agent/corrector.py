@@ -26,6 +26,8 @@ except ImportError:
     LANGEXTRACT_AVAILABLE = False
     lx = None
 
+from neutron_os.infra.state import LockedJsonFile
+
 from .correlator import Correlator
 
 
@@ -123,7 +125,8 @@ class TranscriptCorrector:
         # Load user-defined glossary (highest priority)
         if self.USER_GLOSSARY_PATH.exists():
             try:
-                user_data = json.loads(self.USER_GLOSSARY_PATH.read_text())
+                with LockedJsonFile(self.USER_GLOSSARY_PATH) as f:
+                    user_data = f.read()
                 # Merge all sections: terms, people, labs ("facilities" deprecated, use "labs")
                 for section in ["terms", "people", "labs", "facilities"]:
                     if section in user_data:

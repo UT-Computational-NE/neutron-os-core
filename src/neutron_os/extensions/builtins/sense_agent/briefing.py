@@ -40,6 +40,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+from neutron_os.infra.state import LockedJsonFile
+
 from neutron_os import REPO_ROOT as _REPO_ROOT
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 BRIEFING_STATE_PATH = _RUNTIME_DIR / "inbox" / "state" / "briefing_state.json"
@@ -253,7 +255,8 @@ class BriefingService:
         """Load state from disk."""
         if self.state_path.exists():
             try:
-                data = json.loads(self.state_path.read_text())
+                with LockedJsonFile(self.state_path) as f:
+                    data = f.read()
                 return BriefingState.from_dict(data)
             except (json.JSONDecodeError, KeyError):
                 pass
@@ -261,8 +264,8 @@ class BriefingService:
 
     def _save_state(self) -> None:
         """Persist state to disk."""
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.state_path.write_text(json.dumps(self.state.to_dict(), indent=2))
+        with LockedJsonFile(self.state_path, exclusive=True) as f:
+            f.write(self.state.to_dict())
 
     def record_consumption(
         self,

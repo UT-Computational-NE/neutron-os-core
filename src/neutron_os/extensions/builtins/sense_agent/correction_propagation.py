@@ -36,6 +36,8 @@ from pathlib import Path
 from typing import Callable
 
 
+from neutron_os.infra.state import LockedJsonFile
+
 from neutron_os import REPO_ROOT as _REPO_ROOT
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 PROPAGATION_QUEUE = _RUNTIME_DIR / "inbox" / "corrections" / "propagation_queue.json"
@@ -420,24 +422,19 @@ class CorrectionPropagator:
             job.error = "Missing original or corrected text"
             return False
 
-        # Load current glossary
-        glossary = {"terms": {}, "people": {}, "labs": {}}
-        if USER_GLOSSARY.exists():
-            try:
-                glossary = json.loads(USER_GLOSSARY.read_text())
-            except json.JSONDecodeError:
-                pass
+        # Load current glossary, update, and save atomically
+        with LockedJsonFile(USER_GLOSSARY, exclusive=True) as f:
+            glossary = f.read() or {"terms": {}, "people": {}, "labs": {}}
 
-        # Add to appropriate section ("labs" = National Labs/Orgs, not experiment facilities)
-        if category == "person_name":
-            glossary.setdefault("people", {})[original.lower()] = corrected
-        elif category in ("facility", "lab", "organization"):
-            glossary.setdefault("labs", {})[original.lower()] = corrected
-        else:
-            glossary.setdefault("terms", {})[original.lower()] = corrected
+            # Add to appropriate section ("labs" = National Labs/Orgs, not experiment facilities)
+            if category == "person_name":
+                glossary.setdefault("people", {})[original.lower()] = corrected
+            elif category in ("facility", "lab", "organization"):
+                glossary.setdefault("labs", {})[original.lower()] = corrected
+            else:
+                glossary.setdefault("terms", {})[original.lower()] = corrected
 
-        # Save
-        USER_GLOSSARY.write_text(json.dumps(glossary, indent=2))
+            f.write(glossary)
         return True
 
     def _handle_glossary_remove(self, job: PropagationJob) -> bool:
@@ -448,23 +445,24 @@ class CorrectionPropagator:
         if not USER_GLOSSARY.exists():
             return True  # Nothing to remove
 
-        try:
-            glossary = json.loads(USER_GLOSSARY.read_text())
-        except json.JSONDecodeError:
-            return True
+        with LockedJsonFile(USER_GLOSSARY, exclusive=True) as f:
+            try:
+                glossary = f.read()
+            except json.JSONDecodeError:
+                return True
 
-        # Check each section and remove if it matches the bad correction
-        modified = False
-        for section in ["terms", "people", "labs", "facilities"]:
-            if section not in glossary:
-                continue
-            key = original.lower()
-            if key in glossary[section] and glossary[section][key] == corrected:
-                del glossary[section][key]
-                modified = True
+            # Check each section and remove if it matches the bad correction
+            modified = False
+            for section in ["terms", "people", "labs", "facilities"]:
+                if section not in glossary:
+                    continue
+                key = original.lower()
+                if key in glossary[section] and glossary[section][key] == corrected:
+                    del glossary[section][key]
+                    modified = True
 
-        if modified:
-            USER_GLOSSARY.write_text(json.dumps(glossary, indent=2))
+            if modified:
+                f.write(glossary)
 
         return True
 
@@ -578,7 +576,8 @@ class CorrectionPropagator:
         if not PROPAGATION_QUEUE.exists():
             return []
         try:
-            data = json.loads(PROPAGATION_QUEUE.read_text())
+            with LockedJsonFile(PROPAGATION_QUEUE) as f:
+                data = f.read()
             return [PropagationJob.from_dict(j) for j in data.get("jobs", [])]
         except (json.JSONDecodeError, KeyError):
             return []
@@ -589,7 +588,8 @@ class CorrectionPropagator:
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "jobs": [j.to_dict() for j in jobs],
         }
-        PROPAGATION_QUEUE.write_text(json.dumps(data, indent=2))
+        with LockedJsonFile(PROPAGATION_QUEUE, exclusive=True) as f:
+            f.write(data)
 
     def _add_jobs_to_queue(self, new_jobs: list[PropagationJob]) -> None:
         """Add jobs to queue."""

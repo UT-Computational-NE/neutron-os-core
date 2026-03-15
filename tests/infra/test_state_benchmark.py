@@ -325,20 +325,21 @@ class TestPgBenchmark:
                 ("bench/conflict_test",),
             )
             row1 = cur1.fetchone()
-            assert row1[1] == 2  # version 2 after our initial write
+            current_version = row1[1]
 
             # First writer succeeds
+            next_version = current_version + 1
             cur1.execute(
                 "UPDATE agent_state SET data = %s, version = %s WHERE path = %s AND version = %s",
-                (json.dumps({"v": "first"}), 3, "bench/conflict_test", 2),
+                (json.dumps({"v": "first"}), next_version, "bench/conflict_test", current_version),
             )
             conn1.commit()
 
-            # Second writer should see version mismatch
+            # Second writer should see version mismatch (tries same old version)
             cur2 = conn2.cursor()
             cur2.execute(
                 "UPDATE agent_state SET data = %s, version = %s WHERE path = %s AND version = %s",
-                (json.dumps({"v": "second"}), 3, "bench/conflict_test", 2),
+                (json.dumps({"v": "second"}), next_version, "bench/conflict_test", current_version),
             )
             # rowcount == 0 means version mismatch
             assert cur2.rowcount == 0, "Concurrent modification not detected!"

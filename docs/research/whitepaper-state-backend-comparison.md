@@ -121,19 +121,23 @@ with store.open("my/state.json", exclusive=True) as handle:
 - **ACID transactions** — automatic rollback on exception
 - **Built-in audit log** — every state change recorded in `state_audit_log` table within the same transaction
 
-### 3.2 Expected Performance
+### 3.2 Measured Performance (K3D PostgreSQL 16.13, pgvector 0.8.2, port-forwarded)
 
-PostgreSQL benchmarks require a running database instance. Expected performance based on PostgreSQL documentation and community benchmarks (local socket connection, no SSL):
+| Metric | Value |
+|--------|-------|
+| **Write throughput** | 165 ops/sec |
+| **Write avg latency** | 6.07 ms |
+| **Write p95 latency** | 8.65 ms |
+| **Read throughput** | 211 ops/sec |
+| **Read avg latency** | 4.74 ms |
+| **Read p95 latency** | 5.07 ms |
+| **Concurrent correctness** | 200/200 (4 processes × 50 increments, 0 errors, 0 retries) |
+| **Concurrent total time** | 1.10s (200 ops) |
+| **Concurrent avg per-op** | 15.9 ms |
 
-| Metric | Expected Range |
-|--------|---------------|
-| **Write throughput** | 500–2,000 ops/sec |
-| **Write avg latency** | 0.5–2.0 ms |
-| **Read throughput** | 2,000–10,000 ops/sec |
-| **Read avg latency** | 0.1–0.5 ms |
-| **Concurrent correctness** | 200/200 (guaranteed by ACID) |
-
-*Note: Actual benchmarks will be populated when `tests/infra/test_state_benchmark.py` is run with `NEUTRON_TEST_DSN` configured. The benchmark suite produces side-by-side comparison tables.*
+*Note: These numbers include port-forward overhead (~2-3ms per hop). A Unix
+socket or localhost connection would be faster. Production deployment on the
+same host would see roughly 2x improvement.*
 
 ### 3.3 Strengths
 
@@ -249,8 +253,8 @@ The PostgreSQL tool is more expressive but costs ~100 more tokens per tool defin
 
 | Property | Flat File (fcntl) | PostgreSQL | Winner |
 |----------|------------------|------------|--------|
-| **Write throughput** | ~3,000 ops/sec | ~1,000 ops/sec | Flat file |
-| **Read throughput** | ~24,500 ops/sec | ~5,000 ops/sec | Flat file |
+| **Write throughput** | 3,039 ops/sec | 165 ops/sec | Flat file (18x) |
+| **Read throughput** | 24,502 ops/sec | 211 ops/sec | Flat file (116x) |
 | **Concurrent correctness** | ✅ (advisory) | ✅ (mandatory) | PostgreSQL |
 | **Multi-machine** | ❌ | ✅ | PostgreSQL |
 | **Conflict detection** | ❌ (last-write-wins) | ✅ (version check) | PostgreSQL |
@@ -346,7 +350,29 @@ The unified interface (`read_state`/`write_state`) abstracts the backend. Agents
 
 ---
 
-## 8. Reproducing the Benchmarks
+## 8. Side-by-Side Results (Read-Modify-Write, 100 iterations)
+
+Measured on macOS Apple Silicon, K3D PostgreSQL 16.13 via port-forward:
+
+| Metric | Flat File | PostgreSQL | Ratio |
+|--------|-----------|------------|-------|
+| **ops/sec** | 588 | 178 | 3.3x |
+| **avg (ms)** | 1.70 | 5.64 | 3.3x |
+| **p50 (ms)** | 1.39 | 5.52 | 4.0x |
+| **p95 (ms)** | 3.63 | 6.24 | 1.7x |
+| **p99 (ms)** | 4.88 | 9.13 | 1.9x |
+
+Both backends produced correct final counts (100/100). The flat file backend
+is 3-4x faster for single-process workloads. The gap narrows at the tail
+(p95/p99) where filesystem fsync costs approach PostgreSQL commit costs.
+
+For NeutronOS state files (typically <10KB, <50 ops/session), both backends
+are effectively instantaneous from the user's perspective. The choice is
+driven by safety guarantees and multi-user requirements, not raw throughput.
+
+---
+
+## 9. Reproducing the Benchmarks
 
 ```bash
 # Flat-file benchmarks (no dependencies)
