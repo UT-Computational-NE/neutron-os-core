@@ -156,3 +156,4 @@ tools/
 coverage.json
 runtime/knowledge/
 ben-learning/
+.neut/generated/
