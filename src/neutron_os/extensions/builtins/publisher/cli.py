@@ -1073,19 +1073,34 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             "headless": not headed,
         })
         dest_label = f"Box/{target_folder}"
-    else:
+        if not provider.has_session() and not headed:
+            print("\n  No saved session. Run with --headed for first-time login:")
+            print("    neut pub push --all --storage box-browser --headed\n")
+            sys.exit(1)
+    elif storage == "onedrive-graph":
+        from .providers.storage.onedrive_graph import OneDriveGraphStorageProvider
+        provider = OneDriveGraphStorageProvider({
+            "folder": target_folder,
+        })
+        dest_label = f"OneDrive/{target_folder} (Graph API)"
+    elif storage == "onedrive-browser":
         provider = OneDriveBrowserStorageProvider({
             "folder": target_folder + "/prd",
             "site_url": site_url,
             "headless": not headed,
         })
         dest_label = f"OneDrive/{target_folder}/prd"
-
-    if not provider.has_session() and not headed:
-        storage_name = "box-browser" if storage == "box-browser" else "onedrive-browser"
-        print(f"\n  No saved session. Run with --headed for first-time login:")
-        print(f"    neut pub push --all --storage {storage_name} --headed\n")
-        sys.exit(1)
+        if not provider.has_session() and not headed:
+            print("\n  No saved session. Run with --headed for first-time login:")
+            print("    neut pub push --all --storage onedrive-browser --headed\n")
+            sys.exit(1)
+    else:
+        # Default to Graph API (most reliable)
+        from .providers.storage.onedrive_graph import OneDriveGraphStorageProvider
+        provider = OneDriveGraphStorageProvider({
+            "folder": target_folder,
+        })
+        dest_label = f"OneDrive/{target_folder} (Graph API)"
 
     print(f"\n  Uploading {len(docx_files)} file(s) to {dest_label}...\n")
 
