@@ -267,7 +267,16 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         remote_name: str,
         target_folder: str,
     ) -> UploadResult:
-        """Navigate to OneDrive folder and upload a file."""
+        """Upload a file to OneDrive using Graph API with browser session cookies.
+
+        Instead of clicking UI elements (brittle), we:
+        1. Navigate to OneDrive to establish session + get auth tokens
+        2. Extract the access token from the browser's cookies/localStorage
+        3. Use the Graph API directly for file upload (reliable, no CSS selectors)
+        """
+        import json as _json
+        import urllib.request
+        import urllib.error
 
         onedrive_url = self._resolve_onedrive_url()
         page.goto(onedrive_url, wait_until="domcontentloaded", timeout=30000)
@@ -278,78 +287,135 @@ class OneDriveBrowserStorageProvider(StorageProvider):
 
         page.wait_for_timeout(3000)
 
-        # Navigate to target folder (create if needed)
-        self._navigate_to_folder(page, target_folder)
-
-        # Check if file already exists (update vs create)
-        existing = page.query_selector(
-            f"[data-automationid='FieldRenderer-name']:has-text('{remote_name}')"
-        )
-
-        if existing:
-            # File exists — delete old version first, then upload new
-            # (OneDrive web doesn't have a clean "replace" — upload creates duplicates)
-            existing.click(button="right")
-            page.wait_for_timeout(500)
-            delete_btn = page.query_selector(
-                "button:has-text('Delete'), [data-automationid='deleteCommand']"
-            )
-            if delete_btn:
-                delete_btn.click()
-                # Confirm deletion
-                confirm = page.query_selector(
-                    "button:has-text('Delete'), .ms-Dialog-action button"
-                )
-                if confirm:
-                    confirm.click()
-                page.wait_for_timeout(1000)
-
-        # Upload the file
-        # OneDrive web UI: click "Upload" → "Files" → file picker
-        upload_btn = page.query_selector(
-            "button:has-text('Upload'), "
-            "[data-automationid='uploadCommand'], "
-            "button[aria-label='Upload']"
-        )
-
-        if upload_btn:
-            upload_btn.click()
-            page.wait_for_timeout(500)
-
-            # Click "Files" option
-            files_option = page.query_selector(
-                "button:has-text('Files'), "
-                "[data-automationid='uploadFilesCommand']"
-            )
-            if files_option:
-                files_option.click()
-
-            # Handle file picker via Playwright's file chooser
-            with page.expect_file_chooser() as fc_info:
-                # The file chooser should already be triggered
-                pass
-            file_chooser = fc_info.value
-            file_chooser.set_files(str(local_path))
-
-            page.wait_for_timeout(3000)  # Wait for upload
-
-            # Get the URL of the uploaded file
-            url = self._get_file_url(page, remote_name)
-
+        # Extract access token from browser session
+        access_token = self._extract_access_token(page, context)
+        if not access_token:
             return UploadResult(
-                success=True,
-                url=url,
-                storage_id=remote_name,
-                metadata={"folder": target_folder, "method": "browser"},
+                success=False,
+                url="",
+                error="Could not extract access token from browser session. "
+                      "Try clearing session and re-authenticating: "
+                      "neut pub push --all --storage onedrive-browser --headed",
             )
 
-        # Fallback: drag-and-drop upload
-        # Some OneDrive views support this natively
-        return UploadResult(
-            success=False,
-            url="",
-            error="Upload button not found. OneDrive UI may have changed.",
+        # Build upload path: /me/drive/root:/{folder}/{filename}:/content
+        folder_path = target_folder.strip("/")
+        upload_url = (
+            f"https://graph.microsoft.com/v1.0/me/drive/root:"
+            f"/{folder_path}/{remote_name}:/content"
         )
+
+        # Read file content
+        file_content = local_path.read_bytes()
+
+        # Upload via Graph API PUT (simple upload for files < 4MB)
+        # For larger files, would need upload session — but .docx PRDs are typically < 1MB
+        try:
+            req = urllib.request.Request(
+                upload_url,
+                data=file_content,
+                method="PUT",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result_data = _json.loads(resp.read())
+                web_url = result_data.get("webUrl", "")
+                item_id = result_data.get("id", "")
+
+                return UploadResult(
+                    success=True,
+                    url=web_url,
+                    storage_id=item_id,
+                    metadata={
+                        "folder": folder_path,
+                        "name": remote_name,
+                        "method": "graph_api_via_browser_session",
+                        "size": len(file_content),
+                    },
+                )
+
+        except urllib.error.HTTPError as e:
+            error_body = ""
+            try:
+                error_body = e.read().decode()[:500]
+            except Exception:
+                pass
+            return UploadResult(
+                success=False,
+                url="",
+                error=f"Graph API upload failed ({e.code}): {error_body}",
+            )
+        except Exception as e:
+            return UploadResult(
+                success=False,
+                url="",
+                error=f"Upload failed: {e}",
+            )
+
+    def _extract_access_token(self, page, context) -> str | None:
+        """Extract a Graph API access token from the browser session.
+
+        OneDrive's web app stores tokens in sessionStorage/localStorage.
+        We can also get tokens by intercepting API calls the page makes.
+        """
+        # Method 1: Check localStorage for cached tokens
+        try:
+            token = page.evaluate("""() => {
+                // OneDrive stores tokens in various localStorage keys
+                for (const key of Object.keys(localStorage)) {
+                    const val = localStorage.getItem(key);
+                    if (val && val.includes('eyJ') && val.includes('access_token')) {
+                        try {
+                            const parsed = JSON.parse(val);
+                            if (parsed.access_token) return parsed.access_token;
+                            if (parsed.secret) return parsed.secret;
+                        } catch(e) {}
+                    }
+                }
+                // Check sessionStorage
+                for (const key of Object.keys(sessionStorage)) {
+                    const val = sessionStorage.getItem(key);
+                    if (val && val.includes('eyJ') && val.includes('access_token')) {
+                        try {
+                            const parsed = JSON.parse(val);
+                            if (parsed.access_token) return parsed.access_token;
+                            if (parsed.secret) return parsed.secret;
+                        } catch(e) {}
+                    }
+                }
+                return null;
+            }""")
+            if token:
+                return token
+        except Exception:
+            pass
+
+        # Method 2: Intercept a Graph API call that OneDrive makes
+        try:
+            # Navigate to trigger an API call, intercept the auth header
+            access_token = None
+
+            def handle_request(request):
+                nonlocal access_token
+                auth = request.headers.get("authorization", "")
+                if auth.startswith("Bearer ") and "graph.microsoft.com" in request.url:
+                    access_token = auth[7:]
+
+            page.on("request", handle_request)
+            # Trigger a navigation that causes OneDrive to make an API call
+            page.reload(wait_until="domcontentloaded")
+            page.wait_for_timeout(5000)
+            page.remove_listener("request", handle_request)
+
+            if access_token:
+                return access_token
+        except Exception:
+            pass
+
+        return None
 
     def _needs_login(self, page) -> bool:
         url = page.url
