@@ -1497,6 +1497,12 @@ def get_parser() -> SuggestingArgumentParser:
     # status
     subparsers.add_parser("status", help="Check pipeline health")
 
+    # watch — live change detection on connected endpoints
+    watch_parser = subparsers.add_parser("watch", help="Watch connected endpoints for changes")
+    watch_parser.add_argument("--source", default="onedrive", help="Source to watch (default: onedrive)")
+    watch_parser.add_argument("--interval", type=int, default=30, help="Poll interval in seconds (default: 30)")
+    watch_parser.add_argument("--once", action="store_true", help="Check once and exit")
+
     # ── Pipeline subcommand group ─────────────────────────────────
 
     pipeline_parser = subparsers.add_parser(
@@ -1625,6 +1631,27 @@ def _dispatch(args: argparse.Namespace) -> None:
     elif args.command == "db":
         print("'neut signal db' has moved to 'neut db'.")
         sys.exit(1)
+
+    elif args.command == "watch":
+        from .extractors.onedrive_watcher import poll_onedrive_folder, watch_onedrive
+        source = getattr(args, "source", "onedrive")
+        interval = getattr(args, "interval", 30)
+        once = getattr(args, "once", False)
+
+        if source != "onedrive":
+            print(f"Unknown watch source: {source}")
+            sys.exit(1)
+
+        if once:
+            changes = poll_onedrive_folder("NeutronOS")
+            if changes:
+                for c in changes:
+                    icon = {"modified": "✏️", "new": "📄", "deleted": "🗑️"}.get(c.event_type, "?")
+                    print(f"  {icon} {c.event_type}: {c.file_name} (by {c.editor})")
+            else:
+                print("  No changes detected.")
+        else:
+            watch_onedrive("NeutronOS", interval_seconds=interval)
 
     # ── No subcommand → custom help ──
     else:
