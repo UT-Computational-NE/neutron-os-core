@@ -31,8 +31,16 @@ CLUTTER_PATTERNS = [
     ("*.pyc", "glob", "Compiled Python bytecode"),
 ]
 
-# Directories to skip when scanning (works with or without .git)
-SKIP_DIRS = {".git", ".venv", "node_modules", ".neut", ".ruff_cache", ".pytest_cache"}
+# Directories to skip when scanning workspace (works with or without .git)
+SKIP_DIRS = {".git", ".venv", "node_modules", ".ruff_cache", ".pytest_cache"}
+
+# Expected .neut/ subdirectories (anything else is stale)
+EXPECTED_NEUT_DIRS = {
+    "archive", "credentials", "downloads", "extensions",
+    "generated", "publisher", "settings.toml", "setup-state.json",
+    "update-state.json", "restart-state.json", "review_state.json",
+    ".doc-state.json",
+}
 
 # Root-level items that are expected
 EXPECTED_ROOT_DIRS = {
@@ -66,6 +74,7 @@ def scan_repo_hygiene(root: Path) -> dict[str, Any]:
         "clutter": [],
         "unexpected_root": [],
         "empty_dirs": [],
+        "stale_neut": [],
     }
 
     # Scan for clutter
@@ -101,6 +110,13 @@ def scan_repo_hygiene(root: Path) -> dict[str, Any]:
         elif item.is_file() and item.name not in EXPECTED_ROOT_FILES:
             # Allow coverage.json etc. — they're gitignored
             pass
+
+    # Check .neut/ for stale subdirectories
+    neut_dir = root / ".neut"
+    if neut_dir.exists():
+        for item in neut_dir.iterdir():
+            if item.name not in EXPECTED_NEUT_DIRS:
+                findings["stale_neut"].append(item.name)
 
     # Find empty directories in src/ and tests/
     for scan_dir in [root / "src", root / "tests"]:

@@ -238,6 +238,19 @@ def _cmd_clean(args) -> int:
         else:
             print("Repo is clean.")
 
+        if findings.get("stale_neut"):
+            print(f"\nStale .neut/ items: {', '.join(findings['stale_neut'])}")
+            if not dry_run:
+                from neutron_os import REPO_ROOT
+                import shutil
+                for name in findings["stale_neut"]:
+                    stale_path = REPO_ROOT / ".neut" / name
+                    if stale_path.is_dir():
+                        shutil.rmtree(stale_path, ignore_errors=True)
+                    elif stale_path.is_file():
+                        stale_path.unlink(missing_ok=True)
+                    print(f"  Removed .neut/{name}")
+
         if findings["unexpected_root"]:
             print(f"\nUnexpected root items: {', '.join(findings['unexpected_root'])}")
             print("  New functionality → src/neutron_os/extensions/builtins/")
