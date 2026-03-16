@@ -25,14 +25,25 @@ _GLOBAL_SETTINGS_PATH = Path.home() / ".neut" / "settings.toml"
 _PROJECT_SETTINGS_PATH = _REPO_ROOT / ".neut" / "settings.toml"
 
 _DEFAULTS: dict[str, Any] = {
+    # User identity (captured during neut config)
+    "user.name": "",
+    "user.email": "",
+    "user.org": "",                      # e.g., "utexas.edu"
+    "user.org_tenant": "",               # Microsoft tenant for org SSO (e.g., "utexas.onmicrosoft.com")
+
+    # Routing
     "routing.default_mode": "auto",
     "routing.cloud_provider": "anthropic",
     "routing.vpn_provider": "qwen-tacc",
     "routing.on_vpn_unavailable": "warn",
     "routing.ollama_model": "llama3.2:1b",
     "routing.audit_log": True,
+
+    # Interface
     "interface.stream": True,
     "interface.theme": "dark",
+
+    # RAG
     "rag.database_url": "",  # empty = RAG disabled; set to postgresql:// to enable
 }
 

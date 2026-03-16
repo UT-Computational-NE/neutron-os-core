@@ -230,6 +230,35 @@ class OneDriveBrowserStorageProvider(StorageProvider):
 
         return results
 
+    def _resolve_onedrive_url(self) -> str:
+        """Resolve the correct OneDrive/SharePoint URL based on user org."""
+        if self.site_url:
+            return self.site_url
+
+        # Check if user has an org configured
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            store = SettingsStore()
+            org = store.get("user.org", "")
+            email = store.get("user.email", "")
+
+            if org:
+                # Org OneDrive: https://{org_domain}-my.sharepoint.com/
+                org_domain = org.replace(".", "").replace("edu", "")
+                # Common patterns: utexas.edu → utexas-my.sharepoint.com
+                # But actual domain varies — try the email-based pattern
+                if email:
+                    # bbooth@utexas.edu → utexas-my.sharepoint.com/personal/bbooth_utexas_edu
+                    user_part = email.split("@")[0]
+                    domain_part = org.replace(".", "_")
+                    return f"https://{org.split('.')[0]}-my.sharepoint.com/personal/{user_part}_{domain_part}/_layouts/15/onedrive.aspx"
+                return f"https://{org.split('.')[0]}-my.sharepoint.com/"
+        except Exception:
+            pass
+
+        # Fallback: generic OneDrive (will redirect to org login if needed)
+        return "https://onedrive.live.com/"
+
     def _upload_to_onedrive(
         self,
         page,
@@ -240,17 +269,8 @@ class OneDriveBrowserStorageProvider(StorageProvider):
     ) -> UploadResult:
         """Navigate to OneDrive folder and upload a file."""
 
-        # Navigate to OneDrive
-        if self.site_url:
-            # SharePoint site
-            page.goto(self.site_url, wait_until="domcontentloaded", timeout=30000)
-        else:
-            # Personal OneDrive
-            page.goto(
-                "https://onedrive.live.com/",
-                wait_until="domcontentloaded",
-                timeout=30000,
-            )
+        onedrive_url = self._resolve_onedrive_url()
+        page.goto(onedrive_url, wait_until="domcontentloaded", timeout=30000)
 
         # Handle login if needed
         if self._needs_login(page):
