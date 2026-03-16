@@ -243,9 +243,18 @@ class MoManager:
         # Retention policy sweep (if project root provided)
         if project_root is not None:
             result["retention"] = self._sweep_retention(project_root)
+            result["repo_hygiene"] = self._sweep_repo_hygiene(project_root)
 
         self._publish("mo.swept", result)
         return result
+
+    def _sweep_repo_hygiene(self, project_root: Path) -> dict[str, Any]:
+        """Run lightweight repo hygiene as part of sweep."""
+        try:
+            from .repo_hygiene import clean_clutter
+            return clean_clutter(project_root, dry_run=False)
+        except Exception:
+            return {"skipped": True}
 
     def _sweep_retention(self, project_root: Path) -> dict[str, Any]:
         """Run retention policy enforcement as part of sweep."""

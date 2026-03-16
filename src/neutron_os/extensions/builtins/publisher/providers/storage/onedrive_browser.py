@@ -191,23 +191,38 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             page = context.new_page()
 
             try:
-                for local_path in files:
+                for i, local_path in enumerate(files):
                     if not local_path.exists():
                         results.append(UploadResult(
                             success=False, url="",
                             error=f"File not found: {local_path}",
                         ))
+                        print(f"    [{i+1}/{len(files)}] ✗ {local_path.name} — file not found",
+                              flush=True)
                         continue
 
+                    print(f"    [{i+1}/{len(files)}] Uploading {local_path.name}...",
+                          end=" ", flush=True)
                     result = self._upload_to_onedrive(
                         page, context, local_path, local_path.name, target,
                     )
                     results.append(result)
-                    logger.info(
-                        "%s %s",
-                        "✓" if result.success else "✗",
-                        local_path.name,
-                    )
+                    if result.success:
+                        print(f"✓", flush=True)
+                    else:
+                        print(f"✗ {result.error[:80]}", flush=True)
+                        # Fail fast: if first upload fails, stop trying
+                        if i == 0:
+                            print("\n    First upload failed. Stopping batch.", flush=True)
+                            print(f"    Debug: take a screenshot with --headed to see the page.",
+                                  flush=True)
+                            # Fill remaining with same error
+                            for remaining in files[i+1:]:
+                                results.append(UploadResult(
+                                    success=False, url="",
+                                    error="Skipped (first upload failed)",
+                                ))
+                            break
 
                 context.storage_state(path=str(self.session_dir / "state.json"))
                 os.chmod(str(self.session_dir / "state.json"), 0o600)
@@ -356,11 +371,19 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                         },
                     )
 
+            # Screenshot for debugging
+            screenshot_path = Path.home() / ".neut" / "onedrive-debug.png"
+            try:
+                page.screenshot(path=str(screenshot_path))
+                logger.info("Debug screenshot saved: %s", screenshot_path)
+            except Exception:
+                pass
+
             return UploadResult(
                 success=False,
                 url="",
-                error="No upload mechanism found on OneDrive page. "
-                      "The page may not have loaded correctly.",
+                error=f"No upload mechanism found. Page URL: {page.url}. "
+                      f"Debug screenshot: {screenshot_path}",
             )
 
         except Exception as e:
