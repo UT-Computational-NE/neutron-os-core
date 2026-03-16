@@ -243,6 +243,7 @@ class MoManager:
         # Retention policy sweep (if project root provided)
         if project_root is not None:
             result["retention"] = self._sweep_retention(project_root)
+            # Repo hygiene: only clean pycache (safe), never delete .neut/ items automatically
             result["repo_hygiene"] = self._sweep_repo_hygiene(project_root)
 
         self._publish("mo.swept", result)

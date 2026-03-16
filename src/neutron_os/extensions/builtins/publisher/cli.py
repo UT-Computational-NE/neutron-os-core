@@ -1053,17 +1053,21 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         sys.exit(1)
 
     onedrive_folder = "NeutronOS/prd"
+    onedrive_url = ""
     if config_path.exists():
         try:
             import yaml
             with open(config_path) as f:
                 cfg = yaml.safe_load(f) or {}
-            onedrive_folder = cfg.get("storage", {}).get("onedrive_folder", "NeutronOS") + "/prd"
+            storage_cfg = cfg.get("storage", {})
+            onedrive_folder = storage_cfg.get("onedrive_folder", "NeutronOS") + "/prd"
+            onedrive_url = storage_cfg.get("onedrive_url", "")
         except Exception:
             pass
 
     provider = OneDriveBrowserStorageProvider({
         "folder": onedrive_folder,
+        "site_url": onedrive_url,
         "headless": not headed,
     })
 

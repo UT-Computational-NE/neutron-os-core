@@ -133,12 +133,17 @@ def scan_repo_hygiene(root: Path) -> dict[str, Any]:
 
 
 def clean_clutter(root: Path, dry_run: bool = True) -> dict[str, int]:
-    """Remove detected clutter from the repo.
+    """Remove detected clutter (pycache, DS_Store, etc.) from the repo.
+
+    Only cleans safe items (caches, temp files). Does NOT touch .neut/
+    items — those require explicit `neut mo clean --repo` with user review.
 
     Returns counts of cleaned items.
     """
     findings = scan_repo_hygiene(root)
     cleaned = {"dirs": 0, "files": 0}
+    # Note: stale_neut items are reported but NOT auto-cleaned here.
+    # They're only cleaned via the --repo CLI path with user confirmation.
 
     for path_str, item_type, description in findings["clutter"]:
         full_path = root / path_str
