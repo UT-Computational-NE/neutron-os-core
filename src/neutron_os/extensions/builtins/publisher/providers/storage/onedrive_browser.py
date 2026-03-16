@@ -299,138 +299,88 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         if "sharepoint.com" in actual_url or "onedrive" in actual_url:
             self._save_discovered_url(actual_url)
 
-        # Use SharePoint REST API via the browser's authenticated session.
-        # The browser context carries the auth cookies that SharePoint accepts.
-        # This is reliable — no CSS selectors, no UI clicking.
+        # Upload via the OneDrive web UI.
+        # The SharePoint REST API returns 403 on some org tenants,
+        # so we use the UI "Create or upload" button instead.
         try:
-            from urllib.parse import urlparse
-            parsed = urlparse(actual_url)
-            sp_base = f"{parsed.scheme}://{parsed.hostname}"
-
-            # Discover the personal site path from the page
-            personal_path = page.evaluate("""() => {
-                // Extract from URL path: /personal/bbooth_utexas_edu/...
-                const match = window.location.pathname.match(/\\/personal\\/([^/]+)/);
-                if (match) return match[1];
-                // Try _spPageContextInfo (SharePoint global)
-                if (window._spPageContextInfo && window._spPageContextInfo.userLoginName) {
-                    return window._spPageContextInfo.userLoginName.replace('@', '_').replace(/\\./g, '_');
-                }
-                return '';
-            }""")
-
-            if not personal_path:
-                # Navigate to OneDrive files page to get the personal path
-                page.goto(f"{sp_base}/_layouts/15/onedrive.aspx", wait_until="domcontentloaded", timeout=15000)
+            # First navigate to "My files"
+            my_files_link = page.query_selector("a:has-text('My files'), [data-automationid='my-files']")
+            if my_files_link:
+                my_files_link.click()
                 page.wait_for_timeout(3000)
-                personal_path = page.evaluate("""() => {
-                    const match = window.location.pathname.match(/\\/personal\\/([^/]+)/);
-                    return match ? match[1] : '';
-                }""")
 
-            if not personal_path:
-                return UploadResult(
-                    success=False, url="",
-                    error=f"Could not determine personal site path. URL: {page.url}",
+            # Navigate into target folder (or create it)
+            self._navigate_to_folder(page, target_folder)
+            page.wait_for_timeout(2000)
+
+            # Click "+ Create or upload" button (visible in UT OneDrive)
+            create_btn = page.query_selector(
+                "button:has-text('Create or upload'), "
+                "button:has-text('Upload'), "
+                "button:has-text('Add new'), "
+                "[data-automationid='uploadFileCommand']"
+            )
+
+            if not create_btn:
+                # Try the command bar upload button
+                create_btn = page.query_selector(
+                    "[data-automationid='newCommand'], "
+                    "button[aria-label='Upload'], "
+                    "button[aria-label='Create or upload']"
                 )
 
-            folder_path = target_folder.strip("/")
-            docs_root = f"/personal/{personal_path}/Documents"
-            file_bytes = local_path.read_bytes()
-            file_size = len(file_bytes)
+            if create_btn:
+                create_btn.click()
+                page.wait_for_timeout(1000)
 
-            import base64
-            b64_content = base64.b64encode(file_bytes).decode("ascii")
+                # Look for "Files upload" or "File upload" option in dropdown
+                upload_files = page.query_selector(
+                    "button:has-text('Files upload'), "
+                    "button:has-text('File upload'), "
+                    "button:has-text('Files'), "
+                    "[data-automationid='uploadFilesCommand']"
+                )
 
-            upload_result = page.evaluate("""async (args) => {
-                try {
-                    const binaryString = atob(args.b64);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
+                if upload_files:
+                    # Use file chooser pattern
+                    with page.expect_file_chooser(timeout=10000) as fc_info:
+                        upload_files.click()
+                    file_chooser = fc_info.value
+                    file_chooser.set_files(str(local_path))
+                    page.wait_for_timeout(5000)  # Wait for upload
 
-                    // Get form digest
-                    const digestResp = await fetch(
-                        args.spBase + '/_api/contextinfo',
-                        { method: 'POST', headers: { 'Accept': 'application/json;odata=verbose' } }
-                    );
-                    const digestData = await digestResp.json();
-                    const digest = digestData.d.GetContextWebInformation.FormDigestValue;
-
-                    // Ensure folder exists
-                    await fetch(args.spBase + '/_api/web/folders', {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json;odata=verbose',
-                            'Content-Type': 'application/json;odata=verbose',
-                            'X-RequestDigest': digest,
+                    return UploadResult(
+                        success=True,
+                        url=page.url,
+                        storage_id=remote_name,
+                        metadata={
+                            "folder": target_folder,
+                            "name": remote_name,
+                            "method": "ui_file_chooser",
                         },
-                        body: JSON.stringify({
-                            '__metadata': { 'type': 'SP.Folder' },
-                            'ServerRelativeUrl': args.docsRoot + '/' + args.folder
-                        })
-                    }).catch(() => {});  // Ignore if folder exists
+                    )
 
-                    // Upload file
-                    const url = args.spBase + "/_api/web/GetFolderByServerRelativeUrl('" +
-                        args.docsRoot + '/' + args.folder +
-                        "')/Files/add(url='" + args.fileName + "',overwrite=true)";
-
-                    const uploadResp = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json;odata=verbose',
-                            'X-RequestDigest': digest,
-                        },
-                        body: bytes.buffer
-                    });
-
-                    if (!uploadResp.ok) {
-                        const errText = await uploadResp.text();
-                        return { success: false, error: uploadResp.status + ': ' + errText.substring(0, 300) };
-                    }
-
-                    const result = await uploadResp.json();
-                    return {
-                        success: true,
-                        url: result.d.ServerRelativeUrl || '',
-                        name: result.d.Name || args.fileName
-                    };
-                } catch(e) {
-                    return { success: false, error: e.toString() };
-                }
-            }""", {
-                "b64": b64_content,
-                "spBase": sp_base,
-                "docsRoot": docs_root,
-                "folder": folder_path,
-                "fileName": remote_name,
-            })
-
-            if upload_result and upload_result.get("success"):
-                web_url = f"{sp_base}{upload_result.get('url', '')}"
+            # If no button found, try hidden input[type=file]
+            file_input = page.query_selector("input[type='file']")
+            if file_input:
+                file_input.set_input_files(str(local_path))
+                page.wait_for_timeout(5000)
                 return UploadResult(
                     success=True,
-                    url=web_url,
+                    url=page.url,
                     storage_id=remote_name,
-                    metadata={
-                        "folder": folder_path,
-                        "name": remote_name,
-                        "method": "sharepoint_rest_api",
-                        "size": file_size,
-                    },
+                    metadata={"folder": target_folder, "name": remote_name, "method": "hidden_input"},
                 )
-            else:
-                error = upload_result.get("error", "Unknown") if upload_result else "No response"
-                try:
-                    page.screenshot(path=str(Path.home() / ".neut" / "onedrive-debug.png"))
-                except Exception:
-                    pass
-                return UploadResult(
-                    success=False, url="",
-                    error=f"SharePoint upload failed: {error}",
-                )
+
+            # Screenshot for debugging
+            try:
+                page.screenshot(path=str(Path.home() / ".neut" / "onedrive-debug.png"))
+            except Exception:
+                pass
+            return UploadResult(
+                success=False, url="",
+                error=f"Could not find upload button. Page: {page.url}. Screenshot: ~/.neut/onedrive-debug.png",
+            )
 
         except Exception as e:
             try:
