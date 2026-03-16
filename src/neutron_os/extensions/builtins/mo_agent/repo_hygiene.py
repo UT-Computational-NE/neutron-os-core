@@ -34,12 +34,14 @@ CLUTTER_PATTERNS = [
 # Directories to skip when scanning workspace (works with or without .git)
 SKIP_DIRS = {".git", ".venv", "node_modules", ".ruff_cache", ".pytest_cache"}
 
-# Expected .neut/ subdirectories (anything else is stale)
-EXPECTED_NEUT_DIRS = {
+# Expected .neut/ contents (anything else is flagged as stale)
+EXPECTED_NEUT_ITEMS = {
+    # Directories
     "archive", "credentials", "downloads", "extensions",
-    "generated", "publisher", "settings.toml", "setup-state.json",
-    "update-state.json", "restart-state.json", "review_state.json",
-    ".doc-state.json",
+    "generated", "publisher",
+    # Files
+    "settings.toml", "setup-state.json",
+    "update-state.json", "restart-state.json",
 }
 
 # Root-level items that are expected
@@ -115,7 +117,7 @@ def scan_repo_hygiene(root: Path) -> dict[str, Any]:
     neut_dir = root / ".neut"
     if neut_dir.exists():
         for item in neut_dir.iterdir():
-            if item.name not in EXPECTED_NEUT_DIRS:
+            if item.name not in EXPECTED_NEUT_ITEMS:
                 findings["stale_neut"].append(item.name)
 
     # Find empty directories in src/ and tests/
