@@ -26,6 +26,7 @@ repos = [
     "PyGithub>=2.0",
     "python-gitlab>=4.0",
 ]
+browser = ["playwright>=1.40"]
 serve = []
 chat = [
     "rich>=13.0",
