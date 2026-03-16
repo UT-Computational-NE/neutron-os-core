@@ -1175,6 +1175,23 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     print(f"\n  {success}/{len(just_files)} published successfully.\n")
 
 
+def _source_to_subfolder(source: Path, repo_root: Path) -> str:
+    """Derive OneDrive subfolder by mirroring the source path relative to docs/.
+
+    docs/requirements/prd-executive.md → requirements
+    docs/tech-specs/spec-model-routing.md → tech-specs
+    """
+    try:
+        rel = source.parent.relative_to(repo_root / "docs")
+        return str(rel)
+    except ValueError:
+        try:
+            rel = source.parent.relative_to(repo_root)
+            return str(rel)
+        except ValueError:
+            return ""
+
+
 def _generate_docx(md_path: Path) -> Path:
     """Generate a .docx from a .md file using pandoc. Returns path to .docx."""
     import subprocess
