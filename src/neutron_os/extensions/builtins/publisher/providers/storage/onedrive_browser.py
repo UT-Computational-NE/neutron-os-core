@@ -299,106 +299,47 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         if "sharepoint.com" in actual_url or "onedrive" in actual_url:
             self._save_discovered_url(actual_url)
 
-        # Upload via the OneDrive web UI.
-        # The SharePoint REST API returns 403 on some org tenants,
-        # so we use the UI "Create or upload" button instead.
+        # Upload via OneDrive web UI (tested: UT SharePoint, March 2026)
         try:
-            # Navigate to "My files" first
-            my_files = page.query_selector(
-                "a:has-text('My files'), "
-                "button:has-text('My files'), "
-                "span:has-text('My files')"
-            )
-            if my_files:
-                my_files.click()
-                page.wait_for_timeout(3000)
-
-            # Navigate into target folder — click on it if it exists
-            folder_parts = [p for p in target_folder.strip("/").split("/") if p]
-            for part in folder_parts:
-                folder_link = page.query_selector(f"button:has-text('{part}'), a:has-text('{part}')")
-                if folder_link:
-                    folder_link.click()
-                    page.wait_for_timeout(2000)
-                else:
-                    # Folder doesn't exist — we'll upload to current location
-                    logger.warning("Folder '%s' not found, uploading to current directory", part)
-                    break
-
-            page.wait_for_timeout(1000)
-
-            # Strategy: use page.set_input_files on any input[type=file] element.
-            # OneDrive's React app always has one — it may be hidden but Playwright
-            # can interact with it directly without clicking UI buttons.
-            #
-            # If that doesn't exist, fall back to the "+ Create or upload" menu.
-
-            # Method 1: Direct input[type=file] (most reliable)
-            file_inputs = page.query_selector_all("input[type='file']")
-            if file_inputs:
-                # Use the first file input — Playwright can set files on hidden inputs
-                file_inputs[0].set_input_files(str(local_path))
-                page.wait_for_timeout(5000)
-
-                return UploadResult(
-                    success=True,
-                    url=page.url,
-                    storage_id=remote_name,
-                    metadata={
-                        "folder": target_folder,
-                        "name": remote_name,
-                        "method": "hidden_file_input",
-                    },
-                )
-
-            # Method 2: Click "+ Create or upload", then "Files upload"
-            create_btn = page.query_selector(
-                "button:has-text('Create or upload'), "
-                "button:has-text('Upload')"
-            )
-            if create_btn:
-                create_btn.click()
-                page.wait_for_timeout(1500)
-
-                # Now the dropdown should be visible — screenshot to debug
-                page.screenshot(path=str(Path.home() / ".neut" / "onedrive-dropdown.png"))
-
-                # Look for file upload option in the dropdown menu
-                # Try multiple selectors for different OneDrive versions
-                upload_option = page.query_selector(
-                    "button:has-text('Files upload'), "
-                    "button:has-text('File upload'), "
-                    "span:has-text('Files upload'), "
-                    "span:has-text('File upload'), "
-                    "[role='menuitem']:has-text('upload')"
-                )
-
-                if upload_option:
-                    with page.expect_file_chooser(timeout=10000) as fc_info:
-                        upload_option.click()
-                    file_chooser = fc_info.value
-                    file_chooser.set_files(str(local_path))
-                    page.wait_for_timeout(5000)
-
-                    return UploadResult(
-                        success=True,
-                        url=page.url,
-                        storage_id=remote_name,
-                        metadata={
-                            "folder": target_folder,
-                            "name": remote_name,
-                            "method": "menu_file_chooser",
-                        },
-                    )
-
-            # Failed — save screenshot
+            # Navigate to "My files"
             try:
-                page.screenshot(path=str(Path.home() / ".neut" / "onedrive-debug.png"))
+                page.click("text=My files", timeout=5000)
+                page.wait_for_timeout(3000)
             except Exception:
                 pass
+
+            # Navigate into target folder
+            for part in [fp for fp in target_folder.strip("/").split("/") if fp]:
+                try:
+                    page.click(
+                        f"[data-automationid='field-LinkFilename']:has-text('{part}')",
+                        timeout=5000,
+                    )
+                    page.wait_for_timeout(2000)
+                except Exception:
+                    logger.info("Folder '%s' not found, uploading to current location", part)
+                    break
+
+            # Click "+ Create or upload" → "Files upload" → file chooser
+            page.click("text=Create or upload", timeout=5000)
+            page.wait_for_timeout(1000)
+
+            with page.expect_file_chooser(timeout=10000) as fc_info:
+                page.click("text=Files upload", timeout=5000)
+
+            fc = fc_info.value
+            fc.set_files(str(local_path))
+            page.wait_for_timeout(5000)
+
             return UploadResult(
-                success=False, url="",
-                error=f"Upload failed. Page: {page.url}. Check ~/.neut/onedrive-debug.png",
+                success=True,
+                url=page.url,
+                storage_id=remote_name,
+                metadata={
+                    "folder": target_folder,
+                    "name": remote_name,
+                    "method": "onedrive_ui",
+                },
             )
 
         except Exception as e:
