@@ -4,6 +4,14 @@ Uses browser automation to authenticate with your regular Microsoft account
 and download meeting transcripts from Teams/OneDrive. No developer API
 access or MS Graph credentials required — just your user login.
 
+Auth strategy is configurable:
+  - "browser"   : Playwright headless (default, no API keys needed)
+  - "graph_api" : MS Graph API (requires MS_GRAPH_CLIENT_ID etc.)
+  - "manual"    : File drop to runtime/inbox/raw/teams/ (no auth)
+
+Session cookies are stored in ~/.neut/credentials/teams/ (user-scoped,
+follows the user across projects, not committed to git).
+
 First run: interactive browser for MFA. Subsequent runs: fully headless
 using persisted session cookies.
 
@@ -17,6 +25,9 @@ Usage:
     # Fetch last 30 days of transcripts
     neut signal ingest --source teams-browser --days 30
 
+    # Clear saved session (force re-login)
+    neut signal ingest --source teams-browser --clear-session
+
 Requires: pip install playwright && playwright install chromium
 """
 
@@ -24,6 +35,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from datetime import datetime, timedelta, timezone
@@ -39,26 +51,32 @@ from .base import BaseExtractor
 logger = logging.getLogger(__name__)
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
-_SESSION_DIR = _RUNTIME_DIR / "inbox" / "state" / "teams_browser_session"
 _RAW_TEAMS_DIR = _RUNTIME_DIR / "inbox" / "raw" / "teams"
 _DOWNLOAD_DIR = _RAW_TEAMS_DIR / "transcripts"
 
+# Credentials stored at user scope, not project scope.
+# This follows the user across projects (like ~/.ssh or ~/.aws).
+_USER_CREDS_DIR = Path.home() / ".neut" / "credentials" / "teams"
+
 # Microsoft 365 URLs
 _TEAMS_URL = "https://teams.microsoft.com"
-_ONEDRIVE_URL = "https://onedrive.live.com"
-_LOGIN_URL = "https://login.microsoftonline.com"
 
-# Selectors (may need updating if Microsoft changes their UI)
-_TRANSCRIPTS_URL = (
-    "https://teams.microsoft.com/_#/calendarv2"
-)
+
+def _resolve_session_dir(session_dir: Path | None = None) -> Path:
+    """Resolve session directory with env var override."""
+    if session_dir is not None:
+        return session_dir
+    override = os.environ.get("NEUT_TEAMS_SESSION_DIR")
+    if override:
+        return Path(override)
+    return _USER_CREDS_DIR
 
 
 @register_source(
     name="teams_browser",
     description="Teams meeting transcripts via browser automation (no API keys needed)",
     source_type=SourceType.PULL,
-    requires_auth=False,  # Uses browser session, not API keys
+    requires_auth=False,  # Browser auth, not API keys
     file_patterns=["*.vtt", "*.docx"],
     default_poll_interval=3600,  # 1 hour
     icon="🌐",
@@ -68,7 +86,13 @@ class TeamsBrowserExtractor(BaseExtractor):
     """Fetch Teams meeting transcripts using Playwright browser automation.
 
     Authenticates as the user via their regular Microsoft account.
-    Session cookies are persisted so MFA is only needed once.
+    Session state (cookies, tokens) persisted to ~/.neut/credentials/teams/
+    so MFA is only needed once.
+
+    Auth methods (configurable via auth_method parameter):
+        "browser"   - Playwright headless Chromium (default)
+        "graph_api" - MS Graph API with device code OAuth
+        "manual"    - No auth; expects files in runtime/inbox/raw/teams/
     """
 
     @property
@@ -81,11 +105,13 @@ class TeamsBrowserExtractor(BaseExtractor):
         download_dir: Optional[Path] = None,
         headless: bool = True,
         days: int = 7,
+        auth_method: str = "browser",
     ):
-        self.session_dir = session_dir or _SESSION_DIR
+        self.session_dir = _resolve_session_dir(session_dir)
         self.download_dir = download_dir or _DOWNLOAD_DIR
         self.headless = headless
         self.days = days
+        self.auth_method = auth_method
 
     @staticmethod
     def is_available() -> bool:
@@ -113,6 +139,15 @@ class TeamsBrowserExtractor(BaseExtractor):
         """Check if a saved browser session exists."""
         return (self.session_dir / "state.json").exists()
 
+    def session_age_hours(self) -> float | None:
+        """How old is the saved session, in hours? None if no session."""
+        state_file = self.session_dir / "state.json"
+        if not state_file.exists():
+            return None
+        mtime = state_file.stat().st_mtime
+        age_seconds = time.time() - mtime
+        return age_seconds / 3600
+
     def fetch_transcripts(
         self,
         days: Optional[int] = None,
@@ -128,6 +163,14 @@ class TeamsBrowserExtractor(BaseExtractor):
         Returns:
             List of paths to downloaded transcript files.
         """
+        if self.auth_method == "manual":
+            # Manual mode: just return whatever's already in the download dir
+            return self._scan_local_files()
+
+        if self.auth_method == "graph_api":
+            return self._fetch_via_graph_api(days or self.days)
+
+        # Default: browser automation
         self.ensure_playwright()
         from playwright.sync_api import sync_playwright
 
@@ -170,18 +213,21 @@ class TeamsBrowserExtractor(BaseExtractor):
 
                 # Save session state after successful auth
                 context.storage_state(path=str(self.session_dir / "state.json"))
+                # Restrict permissions on the session file
+                os.chmod(str(self.session_dir / "state.json"), 0o600)
 
                 # Navigate to recent meetings and download transcripts
                 downloaded = self._fetch_recent_transcripts(page, context, days)
 
                 # Save session state again (cookies may have refreshed)
                 context.storage_state(path=str(self.session_dir / "state.json"))
+                os.chmod(str(self.session_dir / "state.json"), 0o600)
 
             except Exception as e:
                 logger.error("Teams browser fetch failed: %s", e)
-                # Save session anyway so partial auth isn't lost
                 try:
                     context.storage_state(path=str(self.session_dir / "state.json"))
+                    os.chmod(str(self.session_dir / "state.json"), 0o600)
                 except Exception:
                     pass
                 raise
@@ -190,6 +236,25 @@ class TeamsBrowserExtractor(BaseExtractor):
                 browser.close()
 
         return downloaded
+
+    def _scan_local_files(self) -> list[Path]:
+        """Scan the download directory for transcript files (manual mode)."""
+        if not self.download_dir.exists():
+            return []
+        return [
+            f for f in self.download_dir.iterdir()
+            if f.is_file() and f.suffix.lower() in (".vtt", ".docx", ".srt", ".txt")
+        ]
+
+    def _fetch_via_graph_api(self, days: int) -> list[Path]:
+        """Delegate to the existing TeamsChatExtractor for Graph API auth."""
+        try:
+            from .teams_chat import TeamsChatExtractor, export_teams_chat
+            output = export_teams_chat(days=days, output_dir=self.download_dir)
+            return [output] if output.exists() else []
+        except Exception as e:
+            logger.error("Graph API fetch failed: %s", e)
+            return []
 
     def _needs_login(self, page) -> bool:
         """Check if the page redirected to Microsoft login."""
@@ -201,11 +266,7 @@ class TeamsBrowserExtractor(BaseExtractor):
         )
 
     def _do_login(self, page, headless: bool) -> None:
-        """Handle Microsoft login flow.
-
-        For headed mode: wait for the user to complete login + MFA.
-        For headless mode: this shouldn't be called (session should exist).
-        """
+        """Handle Microsoft login flow."""
         if headless:
             raise RuntimeError(
                 "Login required but running headless. "
@@ -217,13 +278,13 @@ class TeamsBrowserExtractor(BaseExtractor):
         print("  Complete the login in the browser window (including MFA).")
         print("  Waiting for authentication...\n")
 
-        # Wait for redirect back to Teams (up to 5 minutes for MFA)
         try:
             page.wait_for_url(
                 re.compile(r"teams\.microsoft\.com"),
                 timeout=300_000,
             )
-            print("  ✓ Login successful — session saved for future headless use.\n")
+            print("  ✓ Login successful — session saved for future headless use.")
+            print(f"  Session stored at: {self.session_dir / 'state.json'}\n")
         except Exception:
             raise RuntimeError(
                 "Login timed out. Complete the login within 5 minutes."
@@ -234,7 +295,6 @@ class TeamsBrowserExtractor(BaseExtractor):
     ) -> list[Path]:
         """Navigate to recent meetings and download available transcripts."""
         downloaded: list[Path] = []
-        since = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Navigate to Teams calendar view
         try:
@@ -246,11 +306,9 @@ class TeamsBrowserExtractor(BaseExtractor):
             page.wait_for_timeout(3000)  # Let calendar load
         except Exception as e:
             logger.warning("Could not load Teams calendar: %s", e)
-            # Try OneDrive recordings folder as fallback
             return self._fetch_from_onedrive(page, context, days)
 
         # Look for meetings with transcripts
-        # The Teams calendar shows recent meetings; each may have a transcript
         meeting_elements = page.query_selector_all(
             "[data-tid='calendar-event'], .calendar-event, [role='listitem']"
         )
@@ -259,12 +317,11 @@ class TeamsBrowserExtractor(BaseExtractor):
             logger.info("No meeting elements found on calendar. Trying OneDrive fallback.")
             return self._fetch_from_onedrive(page, context, days)
 
-        for meeting_el in meeting_elements[:20]:  # Cap at 20 most recent
+        for meeting_el in meeting_elements[:20]:
             try:
                 meeting_el.click()
                 page.wait_for_timeout(1000)
 
-                # Look for transcript/recording tab or download link
                 transcript_link = page.query_selector(
                     "[data-tid='transcript-tab'], "
                     "button:has-text('Transcript'), "
@@ -276,7 +333,6 @@ class TeamsBrowserExtractor(BaseExtractor):
                     transcript_link.click()
                     page.wait_for_timeout(2000)
 
-                    # Try to download the transcript
                     download_link = page.query_selector(
                         "a:has-text('Download'), "
                         "button:has-text('Download'), "
@@ -292,7 +348,6 @@ class TeamsBrowserExtractor(BaseExtractor):
                         downloaded.append(dest)
                         logger.info("Downloaded transcript: %s", dest.name)
 
-                # Close the meeting detail
                 close_btn = page.query_selector(
                     "button[aria-label='Close'], "
                     "button:has-text('Close'), "
@@ -311,15 +366,10 @@ class TeamsBrowserExtractor(BaseExtractor):
     def _fetch_from_onedrive(
         self, page, context, days: int,
     ) -> list[Path]:
-        """Fallback: fetch transcripts from OneDrive Recordings folder.
-
-        Teams stores meeting recordings and transcripts in the user's
-        OneDrive under 'Recordings' folder.
-        """
+        """Fallback: fetch transcripts from OneDrive Recordings folder."""
         downloaded: list[Path] = []
 
         try:
-            # Navigate to OneDrive Recordings folder
             page.goto(
                 "https://onedrive.live.com/?view=folder",
                 wait_until="domcontentloaded",
@@ -327,7 +377,6 @@ class TeamsBrowserExtractor(BaseExtractor):
             )
             page.wait_for_timeout(3000)
 
-            # Try to find Recordings folder
             recordings_link = page.query_selector(
                 "a:has-text('Recordings'), "
                 "[data-automationid='FieldRenderer-name']:has-text('Recordings')"
@@ -337,7 +386,6 @@ class TeamsBrowserExtractor(BaseExtractor):
                 recordings_link.click()
                 page.wait_for_timeout(2000)
 
-                # Find transcript files (.vtt, .docx)
                 file_links = page.query_selector_all(
                     "[data-automationid='FieldRenderer-name']"
                 )
@@ -345,7 +393,6 @@ class TeamsBrowserExtractor(BaseExtractor):
                 for link in file_links:
                     name = link.inner_text().strip()
                     if any(name.endswith(ext) for ext in (".vtt", ".docx", ".txt")):
-                        # Right-click → Download
                         link.click(button="right")
                         page.wait_for_timeout(500)
 
@@ -369,12 +416,7 @@ class TeamsBrowserExtractor(BaseExtractor):
         return downloaded
 
     def extract(self, source_path: Path, **kwargs) -> Extraction:
-        """Fetch transcripts from Teams and return extraction results.
-
-        Unlike other extractors that process local files, this one
-        fetches from the network first, then delegates to the
-        TranscriptExtractor for signal extraction.
-        """
+        """Fetch transcripts from Teams and return extraction results."""
         errors: list[str] = []
         signals: list[Signal] = []
 

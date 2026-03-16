@@ -450,4 +450,7 @@ STATE_LOCATIONS: list[StateLocation] = [
 
     # Sessions
     StateLocation("runtime/sessions", "sessions", "Chat session history", "high", "sessions", "*.json"),
+
+    # Credentials (user-scoped, ~/.neut/credentials/)
+    StateLocation("~/.neut/credentials/teams", "credentials", "Teams browser session cookies", "critical"),
 ]

@@ -340,7 +340,7 @@ class TestStateLocationRegistry:
         for loc in STATE_LOCATIONS:
             assert loc.path, f"Empty path in {loc}"
             assert loc.category in (
-                "runtime", "config", "documents", "corrections", "sessions",
+                "runtime", "config", "documents", "corrections", "sessions", "credentials",
             ), f"Invalid category '{loc.category}' for {loc.path}"
             assert loc.description, f"Empty description for {loc.path}"
             assert loc.sensitivity in (
