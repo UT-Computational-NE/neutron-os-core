@@ -1022,12 +1022,21 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             print(f"✗ Path not found: {single_path}", file=sys.stderr)
             sys.exit(1)
 
-        # Determine subfolder from source location
-        try:
-            rel = target.parent.relative_to(REPO_ROOT)
-            subfolder = str(rel).replace("docs/", "").replace("requirements", "prd").replace("tech-specs", "tech-specs")
-        except ValueError:
-            subfolder = ""
+        # Look up the OneDrive subfolder from .publisher.yaml folder config
+        subfolder = ""
+        if config_path.exists():
+            try:
+                import yaml
+                with open(config_path) as f:
+                    cfg = yaml.safe_load(f) or {}
+                for folder_cfg in cfg.get("folders", []):
+                    cfg_folder = REPO_ROOT / folder_cfg["path"]
+                    cfg_pattern = folder_cfg.get("pattern", "*.md")
+                    if target.parent == cfg_folder and target.match(cfg_pattern):
+                        subfolder = folder_cfg.get("onedrive_subfolder", "")
+                        break
+            except Exception:
+                pass
 
         if target.is_dir():
             for md_file in sorted(target.glob("*.md")):
