@@ -54,7 +54,7 @@ User: "catch me up on what happened this week"
   → Presents results in chat context
 
 User: "publish the weekly summary to OneDrive"
-  → Agent recognizes: neut pub push --endpoint onedrive-browser
+  → Agent recognizes: neut pub push --endpoint onedrive
   → Runs CLI command
   → Reports success/failure
 

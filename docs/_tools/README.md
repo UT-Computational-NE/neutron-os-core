@@ -14,7 +14,7 @@ neut pub generate docs/requirements/prd-executive.md
 neut pub publish --all --changed-only
 
 # Push to OneDrive (browser-based, no API keys needed)
-neut pub push --endpoint onedrive-browser .neut/generated/prd/prd_neutron-os-executive.docx
+neut pub push --endpoint onedrive .neut/generated/prd/prd_neutron-os-executive.docx
 ```
 
 Generated `.docx` files are written to `.neut/generated/` (gitignored).

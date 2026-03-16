@@ -811,7 +811,7 @@ def get_parser() -> argparse.ArgumentParser:
     push_parser.add_argument("path", nargs="?", help="File or directory to push")
     push_parser.add_argument("--all", action="store_true", help="Push all .md files in configured folders")
     push_parser.add_argument("--draft", action="store_true", help="Publish as draft")
-    push_parser.add_argument("--endpoint", help="Override storage provider (e.g. 'local', 'onedrive-browser')")
+    push_parser.add_argument("--endpoint", help="Override storage provider (e.g. 'local', 'onedrive')")
     push_parser.add_argument("--headed", action="store_true", help="Show browser window (for first-time login)")
     push_parser.add_argument("--force", action="store_true", help="Force re-publish even if unchanged")
 
@@ -924,7 +924,7 @@ def cmd_push(args: argparse.Namespace) -> None:
 
     Two modes:
     - Single/directory: generates + publishes via engine (supports .compile.yaml assembly)
-    - --all + --endpoint onedrive-browser: batch generate + upload via Playwright
+    - --all + --endpoint onedrive: batch generate + upload via Playwright
 
     First run with --headed opens a browser for Microsoft login.
     """
@@ -944,16 +944,16 @@ def cmd_push(args: argparse.Namespace) -> None:
         return
 
     # ── Single file with browser storage ──────────────────────────────
-    if args.path and storage in ("onedrive-browser", "onedrive-graph", "box-browser"):
+    if args.path and storage in ("onedrive", "onedrive-graph", "box-browser"):
         _cmd_push_batch(args, engine, draft, storage, headed, force)
         return
 
     # ── Single file / directory push (original behavior) ──────────────────
     if not args.path:
-        print("Usage: neut pub push <path> [--all] [--endpoint onedrive-browser] [--headed]")
+        print("Usage: neut pub push <path> [--all] [--endpoint onedrive] [--headed]")
         print("\nExamples:")
         print("  neut pub push docs/requirements/prd_executive.md")
-        print("  neut pub push --all --endpoint onedrive-browser --headed")
+        print("  neut pub push --all --endpoint onedrive --headed")
         return
 
     target = Path(args.path).resolve()
@@ -1101,10 +1101,10 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
 
     if storage == "box-browser":
         provider = BoxBrowserStorageProvider({
-            "folder": target_folder,
+            "folder": onedrive_root,
             "headless": not headed,
         })
-        dest_label = f"Box/{target_folder}"
+        dest_label = f"Box/{onedrive_root}"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
             print("    neut pub push --all --endpoint box-browser --headed\n")
@@ -1112,32 +1112,32 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     elif storage == "onedrive-graph":
         from .providers.storage.onedrive_graph import OneDriveGraphStorageProvider
         provider = OneDriveGraphStorageProvider({
-            "folder": target_folder,
+            "folder": onedrive_root,
         })
-        dest_label = f"OneDrive/{target_folder} (Graph API)"
-    elif storage == "onedrive-browser":
+        dest_label = f"OneDrive/{onedrive_root} (Graph API)"
+    elif storage == "onedrive":
         provider = OneDriveBrowserStorageProvider({
-            "folder": target_folder + "/prd",
+            "folder": onedrive_root,
             "site_url": site_url,
             "headless": not headed,
         })
-        dest_label = f"OneDrive/{target_folder}/prd"
+        dest_label = f"OneDrive/{onedrive_root}"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
-            print("    neut pub push --all --endpoint onedrive-browser --headed\n")
+            print("    neut pub push --all --endpoint onedrive --headed\n")
             sys.exit(1)
     else:
         # Default to Graph API (most reliable)
         from .providers.storage.onedrive_graph import OneDriveGraphStorageProvider
         provider = OneDriveGraphStorageProvider({
-            "folder": target_folder,
+            "folder": onedrive_root,
         })
-        dest_label = f"OneDrive/{target_folder} (Graph API)"
+        dest_label = f"OneDrive/{onedrive_root} (Graph API)"
 
     # Build per-file folder paths
     just_files = [df[0] for df in docx_files]
     per_file_folders = [
-        f"{target_folder}/{df[1]}" if df[1] else target_folder
+        f"{onedrive_root}/{df[1]}" if df[1] else onedrive_root
         for df in docx_files
     ]
 
