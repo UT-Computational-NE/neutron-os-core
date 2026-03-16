@@ -31,8 +31,8 @@ CLUTTER_PATTERNS = [
     ("*.pyc", "glob", "Compiled Python bytecode"),
 ]
 
-# Directories to skip when scanning
-SKIP_DIRS = {".git", ".venv", "node_modules", ".neut"}
+# Directories to skip when scanning (works with or without .git)
+SKIP_DIRS = {".git", ".venv", "node_modules", ".neut", ".ruff_cache", ".pytest_cache"}
 
 # Root-level items that are expected
 EXPECTED_ROOT_DIRS = {
@@ -45,6 +45,12 @@ EXPECTED_ROOT_FILES = {
     "LICENSE", "Makefile", "Dockerfile", "conftest.py",
     ".gitignore", ".gitlab-ci.yml", ".envrc", ".env.example",
     ".publisher.yaml", ".dockerignore", ".gitmessage", ".mcp.json",
+}
+
+# Dotfiles/dotdirs at root that are always OK (with or without git)
+EXPECTED_ROOT_DOTDIRS = {
+    ".git", ".venv", ".neut", ".claude", ".claude.example",
+    ".github", ".vscode",
 }
 
 
