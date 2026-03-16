@@ -304,7 +304,7 @@ class TestCmdPublish:
             all=False,
             changed_only=False,
             draft=False,
-            storage=None,
+            endpoint=None,
         )
 
         cli.cmd_publish(args)
@@ -319,7 +319,7 @@ class TestCmdPublish:
             all=False,
             changed_only=False,
             draft=False,
-            storage=None,
+            endpoint=None,
         )
 
         with pytest.raises(SystemExit):

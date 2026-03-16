@@ -209,7 +209,7 @@ def test_cmd_push_single_file_no_manifest(tmp_path):
     args = MagicMock()
     args.path = str(doc)
     args.draft = False
-    args.storage = "local"
+    args.endpoint = "local"
     args.force = False
     args.all = False
     args.headed = False
@@ -239,7 +239,7 @@ def test_cmd_push_with_manifest_assembles_transparently(tmp_path, capsys):
     args = MagicMock()
     args.path = str(tmp_path)  # pass directory — manifest auto-detected
     args.draft = False
-    args.storage = "local"
+    args.endpoint = "local"
     args.force = False
     args.all = False
     args.headed = False
@@ -276,7 +276,7 @@ def test_cmd_push_cleans_up_temp_on_publish_failure(tmp_path):
     args = MagicMock()
     args.path = str(tmp_path)
     args.draft = False
-    args.storage = None
+    args.endpoint = None
     args.force = False
     args.all = False
     args.headed = False

@@ -44,8 +44,8 @@ class TestPushParser:
     def test_push_storage_override(self):
         from neutron_os.extensions.builtins.publisher.cli import get_parser
         parser = get_parser()
-        args = parser.parse_args(["push", "file.md", "--storage", "local"])
-        assert args.storage == "local"
+        args = parser.parse_args(["push", "file.md", "--endpoint", "local"])
+        assert args.endpoint == "local"
 
     def test_push_draft_flag(self):
         from neutron_os.extensions.builtins.publisher.cli import get_parser
@@ -134,7 +134,7 @@ class TestPushAllWorkflow:
             MockProvider.return_value = mock_instance
 
             args = argparse.Namespace(
-                all=True, path=None, draft=False, storage=None,
+                all=True, path=None, draft=False, endpoint=None,
                 headed=False, force=False, command="push",
             )
 

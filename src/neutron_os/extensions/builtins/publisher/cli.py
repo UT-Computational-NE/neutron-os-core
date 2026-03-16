@@ -48,7 +48,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
                 if source.exists():
                     engine.publish(
                         source,
-                        storage_override=args.storage,
+                        endpoint_override=args.endpoint,
                         draft=args.draft,
                         force=force,
                     )
@@ -62,7 +62,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
             sys.exit(1)
         result = engine.publish(
             source,
-            storage_override=args.storage,
+            endpoint_override=args.endpoint,
             draft=args.draft,
             force=force,
         )
@@ -758,7 +758,7 @@ def get_parser() -> argparse.ArgumentParser:
     pub_parser.add_argument("--draft", action="store_true", help="Publish as draft")
     pub_parser.add_argument("--all", action="store_true", help="Batch publish")
     pub_parser.add_argument("--changed-only", action="store_true", help="Only changed docs")
-    pub_parser.add_argument("--storage", help="Override storage provider (e.g., 'local')")
+    pub_parser.add_argument("--endpoint", help="Override storage provider (e.g., 'local')")
     pub_parser.add_argument("--force", action="store_true", help="Force publish even if no changes detected")
 
     # review
@@ -811,7 +811,7 @@ def get_parser() -> argparse.ArgumentParser:
     push_parser.add_argument("path", nargs="?", help="File or directory to push")
     push_parser.add_argument("--all", action="store_true", help="Push all .md files in configured folders")
     push_parser.add_argument("--draft", action="store_true", help="Publish as draft")
-    push_parser.add_argument("--storage", help="Override storage provider (e.g. 'local', 'onedrive-browser')")
+    push_parser.add_argument("--endpoint", help="Override storage provider (e.g. 'local', 'onedrive-browser')")
     push_parser.add_argument("--headed", action="store_true", help="Show browser window (for first-time login)")
     push_parser.add_argument("--force", action="store_true", help="Force re-publish even if unchanged")
 
@@ -924,7 +924,7 @@ def cmd_push(args: argparse.Namespace) -> None:
 
     Two modes:
     - Single/directory: generates + publishes via engine (supports .compile.yaml assembly)
-    - --all + --storage onedrive-browser: batch generate + upload via Playwright
+    - --all + --endpoint onedrive-browser: batch generate + upload via Playwright
 
     First run with --headed opens a browser for Microsoft login.
     """
@@ -934,7 +934,7 @@ def cmd_push(args: argparse.Namespace) -> None:
     engine = PublisherEngine()
     force = getattr(args, "force", False)
     draft = getattr(args, "draft", False)
-    storage = getattr(args, "storage", None)
+    storage = getattr(args, "endpoint", None)
     headed = getattr(args, "headed", False)
     push_all = getattr(args, "all", False)
 
@@ -950,10 +950,10 @@ def cmd_push(args: argparse.Namespace) -> None:
 
     # ── Single file / directory push (original behavior) ──────────────────
     if not args.path:
-        print("Usage: neut pub push <path> [--all] [--storage onedrive-browser] [--headed]")
+        print("Usage: neut pub push <path> [--all] [--endpoint onedrive-browser] [--headed]")
         print("\nExamples:")
         print("  neut pub push docs/requirements/prd_executive.md")
-        print("  neut pub push --all --storage onedrive-browser --headed")
+        print("  neut pub push --all --endpoint onedrive-browser --headed")
         return
 
     target = Path(args.path).resolve()
@@ -983,7 +983,7 @@ def cmd_push(args: argparse.Namespace) -> None:
     # Publish via engine
     try:
         result = engine.publish(
-            source, storage_override=storage, draft=draft, force=force,
+            source, endpoint_override=storage, draft=draft, force=force,
         )
         if result and isinstance(result, dict):
             print("\n" + "=" * 70)
@@ -1022,21 +1022,8 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             print(f"✗ Path not found: {single_path}", file=sys.stderr)
             sys.exit(1)
 
-        # Look up the OneDrive subfolder from .publisher.yaml folder config
-        subfolder = ""
-        if config_path.exists():
-            try:
-                import yaml
-                with open(config_path) as f:
-                    cfg = yaml.safe_load(f) or {}
-                for folder_cfg in cfg.get("folders", []):
-                    cfg_folder = REPO_ROOT / folder_cfg["path"]
-                    cfg_pattern = folder_cfg.get("pattern", "*.md")
-                    if target.parent == cfg_folder and target.match(cfg_pattern):
-                        subfolder = folder_cfg.get("onedrive_subfolder", "")
-                        break
-            except Exception:
-                pass
+        # Mirror source path: docs/requirements/ → requirements/
+        subfolder = _source_to_subfolder(target, REPO_ROOT)
 
         if target.is_dir():
             for md_file in sorted(target.glob("*.md")):
@@ -1066,11 +1053,11 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         for folder_cfg in folders:
             folder = REPO_ROOT / folder_cfg["path"]
             pattern = folder_cfg.get("pattern", "*.md")
-            subfolder = folder_cfg.get("onedrive_subfolder", "")
             if folder.exists():
                 for md_file in sorted(folder.glob(pattern)):
                     if md_file.name.startswith("_") or md_file.name == "README.md":
                         continue
+                    subfolder = _source_to_subfolder(md_file, REPO_ROOT)
                     files_to_push.append((md_file, _generate_docx(md_file), subfolder))
 
     if not files_to_push:
@@ -1099,7 +1086,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         sys.exit(1)
 
     # Read config
-    target_folder = "NeutronOS"
+    onedrive_root = "NeutronOS"
     site_url = ""
     if config_path.exists():
         try:
@@ -1107,7 +1094,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             with open(config_path) as f:
                 cfg = yaml.safe_load(f) or {}
             storage_cfg = cfg.get("storage", {})
-            target_folder = storage_cfg.get("onedrive_folder", storage_cfg.get("box_folder", "NeutronOS"))
+            onedrive_root = storage_cfg.get("onedrive_root", storage_cfg.get("onedrive_folder", "NeutronOS"))
             site_url = storage_cfg.get("onedrive_url", "")
         except Exception:
             pass
@@ -1120,7 +1107,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         dest_label = f"Box/{target_folder}"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
-            print("    neut pub push --all --storage box-browser --headed\n")
+            print("    neut pub push --all --endpoint box-browser --headed\n")
             sys.exit(1)
     elif storage == "onedrive-graph":
         from .providers.storage.onedrive_graph import OneDriveGraphStorageProvider
@@ -1137,7 +1124,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         dest_label = f"OneDrive/{target_folder}/prd"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
-            print("    neut pub push --all --storage onedrive-browser --headed\n")
+            print("    neut pub push --all --endpoint onedrive-browser --headed\n")
             sys.exit(1)
     else:
         # Default to Graph API (most reliable)
