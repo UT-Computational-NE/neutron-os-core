@@ -233,7 +233,7 @@ Files that currently use raw `json.load`/`json.dump`:
 | `propagation_queue.json` | `json.load(open(...))` | `LockedJsonFile` |
 | `.mo-manifest.json` | Custom `_LockedFile` | `LockedJsonFile` (already locked) |
 
-Priority: Publisher state files first (most likely to see concurrent access), then sense pipeline state.
+Priority: Publisher state files first (most likely to see concurrent access), then signal pipeline state.
 
 ---
 

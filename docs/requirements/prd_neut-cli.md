@@ -135,7 +135,7 @@ neut ext validate ./my-extension.wasm
 
 ### 8. Interactive Chat Mode (`neut chat`)
 
-An agentic assistant for working with reactor systems — think Claude Code, but for nuclear facilities. Neut is the friendly AI that powers the interactive experience; Neut Sense, Neut Publisher, and other capabilities are tools Neut can invoke on behalf of the user.
+An agentic assistant for working with reactor systems — think Claude Code, but for nuclear facilities. Neut is the friendly AI that powers the interactive experience; Neut Signal, Neut Publisher, and other capabilities are tools Neut can invoke on behalf of the user.
 
 ```bash
 # Start interactive session
@@ -156,7 +156,7 @@ neut chat --mode plan
 - Search procedures, tech specs, historical incidents
 - Walk through experiment planning with safety checks
 - Ingest and search media (`neut media` via conversation)
-- Synthesize signals across sources (`neut sense` via conversation)
+- Synthesize signals across sources (`neut signal` via conversation)
 
 **Key Principle:** Human-in-the-loop for all writes. Neut can draft, analyze, and suggest — but the operator confirms before anything is committed.
 
@@ -251,25 +251,25 @@ Full design in `docs/specs/neut-cli-spec.md §Slash Commands`.
 | **Structured decisions** | When the option space is bounded (e.g., pick a beam port, choose an isotope config), Neut presents interactive single/multi-select forms instead of freetext |
 | **Audit trail** | All mode transitions and approved actions are logged to the session record |
 
-### 9. Program Awareness (`neut sense`)
+### 9. Program Awareness (`neut signal`)
 
-Neut Sense is the proactive sensing capability — ingesting signals from voice memos, Teams transcripts, GitLab activity, and other sources, then synthesizing them into actionable updates.
+Neut Signal is the proactive sensing capability — ingesting signals from voice memos, Teams transcripts, GitLab activity, and other sources, then synthesizing them into actionable updates.
 
 ```bash
 # Ingest all new signals
-neut sense ingest --all
+neut signal ingest --all
 
 # Ingest from a specific source
-neut sense ingest --source voice
+neut signal ingest --source voice
 
 # Draft weekly synthesis
-neut sense synthesize --preview
+neut signal synthesize --preview
 
 # Check pipeline status
-neut sense status
+neut signal status
 ```
 
-See [Neut Sense & Synthesis MVP Spec](../specs/sense-synthesis-mvp-spec.md) for full design.
+See [Neut Signal & Synthesis MVP Spec](../specs/signal-synthesis-mvp-spec.md) for full design.
 
 ### 10. Media Library (`neut media`)
 

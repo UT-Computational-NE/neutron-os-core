@@ -5,7 +5,7 @@ Drives the conversation with multi-turn tool calling:
   if tool_use: execute → feed results back → loop
   else: return text response
 
-The agent is LLM-agnostic — it uses the same Gateway as neut sense.
+The agent is LLM-agnostic — it uses the same Gateway as neut signal.
 """
 
 from __future__ import annotations
@@ -583,7 +583,7 @@ class ChatAgent:
         if ctx_content:
             parts.append(f"\n--- Additional context ---\n{ctx_content[:4000]}")
 
-        # Context from terminal command (e.g., neut sense brief → chat)
+        # Context from terminal command (e.g., neut signal brief → chat)
         ctx_md = self.session.context.get("context_markdown", "")
         if ctx_md:
             parts.append(

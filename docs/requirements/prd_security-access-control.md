@@ -22,7 +22,7 @@ These requirements were scoped out of the model routing spec (§7, §8, §10) to
 
 NeutronOS faces three categories of security threat:
 
-**1. Prompt injection and EC exfiltration.** Malicious or inadvertently dangerous content in RAG-indexed documents, user inputs, or sense pipeline signals can instruct the LLM to repeat, reproduce, or reformat EC content in ways that bypass keyword-based routing controls. Attack vectors include RAG poisoning, indirect injection via user input, cross-tier escalation, tool-use injection, and session hijack via the sense inbox.
+**1. Prompt injection and EC exfiltration.** Malicious or inadvertently dangerous content in RAG-indexed documents, user inputs, or signal pipeline signals can instruct the LLM to repeat, reproduce, or reformat EC content in ways that bypass keyword-based routing controls. Attack vectors include RAG poisoning, indirect injection via user input, cross-tier escalation, tool-use injection, and session hijack via the sense inbox.
 
 **2. EC leakage through operational paths.** Even without adversarial intent, EC content can leak into public RAG stores, application logs, error messages, or LLM responses that cross the network boundary. The routing classifier catches explicit keywords but cannot detect paraphrased or restructured EC content.
 

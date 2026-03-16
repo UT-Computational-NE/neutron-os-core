@@ -303,7 +303,7 @@ The store will carry two independent classification dimensions:
 - [x] `neut rag reindex` — drop and fully rebuild the index
 - [x] `neut rag watch` — filesystem watcher for continuous background indexing
 - [x] Session auto-indexing — daemon thread indexes each chat session after every turn
-- [x] Signal ingestion from `runtime/inbox/processed/` (sense pipeline output)
+- [x] Signal ingestion from `runtime/inbox/processed/` (signal pipeline output)
 - [x] Git log indexing from `runtime/knowledge/` cloned repos
 - [x] `neut note` extension — quick daily notes auto-indexed into personal RAG
 - [x] Per-corpus stats, `delete_corpus`, low-confidence RAG hint
@@ -382,7 +382,7 @@ Prompt injection is the primary attack vector by which EC content could be exfil
 | Indirect injection | User crafts input to cause qwen-rascal to emit structured EC content | High |
 | Cross-tier escalation | Public-tier content overrides routing mode | Critical |
 | Tool-use injection | Retrieved EC content contains embedded tool call syntax | Medium |
-| Sense pipeline injection | Malicious meeting notes inject routing overrides | Medium |
+| Signal pipeline injection | Malicious meeting notes inject routing overrides | Medium |
 
 **Defense requirements:**
 
@@ -417,7 +417,7 @@ When EC content appears where it should not — in a cloud API response, in the 
 | Response leakage | EC keywords in LLM response | High |
 | Routing violation | EC-classified query reaches cloud provider | Critical |
 | Store contamination | EC chunks in public pgvector store | Critical |
-| Pipeline leakage | EC content transits sense pipeline into non-EC path | Critical |
+| Pipeline leakage | EC content transits signal pipeline into non-EC path | Critical |
 | Log leakage | EC plaintext in audit or application logs | High |
 
 **Automated response protocol:**
@@ -495,12 +495,12 @@ neut state retention --status            # show files approaching cutoff
 
 These agents ship with `neut` today and are part of the core platform. They are domain-agnostic — they work at any facility without facility-specific configuration.
 
-### Sense Agent ✅
+### Signal Agent ✅
 
-**Extension:** `src/neutron_os/extensions/builtins/sense_agent/`
-**CLI:** `neut sense`
+**Extension:** `src/neutron_os/extensions/builtins/signal_agent/`
+**CLI:** `neut signal`
 
-The sense agent is the signal ingestion backbone of NeutronOS. It ingests signals from multiple sources — voice memos, Teams transcripts, GitLab activity, freetext — extracts structured information, correlates across sources, and synthesizes program state.
+The signal agent is the signal ingestion backbone of NeutronOS. It ingests signals from multiple sources — voice memos, Teams transcripts, GitLab activity, freetext — extracts structured information, correlates across sources, and synthesizes program state.
 
 **Pipeline:**
 ```
@@ -515,10 +515,10 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 
 **Key commands:**
 ```bash
-neut sense status               # show inbox state and pipeline health
-neut sense ingest [source]      # process new signals
-neut sense review               # human review of pending extractions
-neut sense publish              # publish approved items
+neut signal status               # show inbox state and pipeline health
+neut signal ingest [source]      # process new signals
+neut signal review               # human review of pending extractions
+neut signal publish              # publish approved items
 ```
 
 ---
@@ -586,7 +586,7 @@ Three agents run as persistent system services, started at login and auto-restar
 | Agent | Service label | Platform |
 |-------|--------------|---------|
 | `publisher_agent` | `com.neutron-os.publisher-agent` | macOS (launchd) / Linux (systemd) |
-| `sense_agent` | `com.neutron-os.sense-agent` | macOS (launchd) / Linux (systemd) |
+| `signal_agent` | `com.neutron-os.sense-agent` | macOS (launchd) / Linux (systemd) |
 | `doctor_agent` | `com.neutron-os.doctor-agent` | macOS (launchd) / Linux (systemd) |
 
 Service labels are workspace-scoped (one plist/unit per workspace installation, not globally unique per user account). The full label embeds the workspace path hash to prevent collisions when multiple NeutronOS workspaces exist on the same machine.
@@ -1129,7 +1129,7 @@ Agent: "Relevant Operating Experience: INPO SER 2024-3 identified a similar
 
 | Component | Description |
 |-----------|-------------|
-| **Voice ID** | Enrollment-based speaker identification; ties to `neut sense` speaker diarization |
+| **Voice ID** | Enrollment-based speaker identification; ties to `neut signal` speaker diarization |
 | **Location Provider** | Pluggable adapter: badge tap, beacon, self-declaration — configured per facility |
 | **Log Entry Flow** | Voice command → identity verified → location confirmed → TTS preview → voice notes → confirmation |
 | **Typed Fallback** | Agent asks minimum questions to complete entry if voice unavailable |
@@ -1373,7 +1373,7 @@ tool_dependencies:
 | **GOAL_PLT_012** | Prompt Injection & EC Exfiltration Defense | 🔲 Design complete | P0 |
 | **GOAL_PLT_013** | EC Leakage Detection & Incident Response | 🔲 Design complete | P0 |
 | Agent State Management | Backup, retention, migration | 🔲 Designed | P1 |
-| Sense Agent | Signal ingestion pipeline | ✅ Implemented | P0 |
+| Signal Agent | Signal ingestion pipeline | ✅ Implemented | P0 |
 | Chat Agent | Interactive LLM assistant | ✅ Implemented | P0 |
 | M-O Agent | Platform housekeeping | ✅ Implemented | P0 |
 | Doctor Agent | Platform diagnostics | ✅ Implemented | P0 |
@@ -1419,7 +1419,7 @@ tool_dependencies:
 - [RAG Architecture Spec](../specs/neutron-os-rag-architecture-spec.md) — Full RAG design including EC compliance
 - [Model Routing Spec](../specs/neutron-os-model-routing-spec.md) — Router, gateway, prompt injection defense, leakage detection
 - [Agent Architecture Spec](../specs/neutron-os-agent-architecture.md) — Agent configuration and orchestration
-- [Sense & Synthesis MVP Spec](../specs/sense-synthesis-mvp-spec.md) — Sense pipeline detail
+- [Signal Sense & Synthesis Synthesis MVP Spec](../specs/signal-synthesis-mvp-spec.md) — Signal pipeline detail
 
 ### External References
 - 10 CFR 810: Assistance to Foreign Atomic Energy Activities (export control)

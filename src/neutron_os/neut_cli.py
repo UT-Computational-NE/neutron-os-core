@@ -444,7 +444,7 @@ def _copy_subparsers(
 ) -> None:
     """Copy subparser definitions from *src_parser* into *dst_parser*.
 
-    This lets argcomplete see the full completion tree (e.g. ``neut sense
+    This lets argcomplete see the full completion tree (e.g. ``neut signal
     ingest``) without duplicating parser definitions.
     """
     for action in src_parser._actions:

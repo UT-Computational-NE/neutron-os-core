@@ -544,7 +544,7 @@ echo ""
 echo "Then:"
 echo "  neut chat                   # Interactive agent"
 echo "  neut demo run               # Guided walkthrough (Jay's story)"
-echo "  neut sense brief            # Catch up on what happened"
+echo "  neut signal brief            # Catch up on what happened"
 echo ""
 
 # Clear shell command cache so 'neut' resolves to the new script

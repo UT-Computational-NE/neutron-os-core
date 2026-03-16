@@ -50,7 +50,7 @@ Combine both streams into coherent v2.1.0 that:
            │
 ┌──────────▼──────────┐
 │  2. SIGNAL          │
-│  EXTRACTION         │  ← Neut Sense extracts from multiple sources
+│  EXTRACTION         │  ← Neut Signal extracts from multiple sources
 └──────────┬──────────┘
            │
 ┌──────────▼──────────┐
@@ -297,10 +297,10 @@ Result: v2.0.0 → v2.1.0
 
 ---
 
-## Key Integration: How Neut Sense Feeds the Merge
+## Key Integration: How Neut Signal Feeds the Merge
 
 ```
-Neut Sense Pipeline:
+Neut Signal Pipeline:
 ├─ Extract (voice, notes, chat)
 ├─ Synthesize (Synthesizer)
 ├─ Output: Changelog with entries
@@ -487,7 +487,7 @@ Every merge decision is recorded:
 
 ## References
 
-- **Neut Sense Pipeline**: `tools/pipelines/sense/` (extractors, synthesizer, models)
+- **Neut Signal Pipeline**: `tools/pipelines/sense/` (extractors, synthesizer, models)
 - **Publisher Review Extractor**: `tools/pipelines/sense/extractors/docflow_review.py`
 - **Semantic Versioning**: `tools/docflow/scripts/publish.py` (version logic)
 - **State Management**: `tools/docflow/state.py` (DocumentState, PublicationRecord)

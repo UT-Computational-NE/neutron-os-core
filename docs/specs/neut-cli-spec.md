@@ -115,7 +115,7 @@ neut
 │       ├── status         # Agent health
 │       └── warmup         # Cold-start warm-up scan
 │
-├── sense                  # Signal ingestion (sense_agent extension)
+├── sense                  # Signal ingestion (signal_agent extension)
 │   ├── status             # Inbox state + pending extractions
 │   ├── ingest             # Ingest a signal file
 │   ├── scan               # Scan inbox for unprocessed signals

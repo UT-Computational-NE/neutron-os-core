@@ -123,7 +123,7 @@ Neutron OS is designed as a **modular platform**. Facilities enable only the mod
 | **Training** | Personnel onboarding, certification currency, skills development, **operator requalification tracking (4hr/quarter minimum)** | *(future PRD)* | Off |
 | **Personnel** | Staff directory with roles, certifications, contact info, availability | *(future PRD)* | Off |
 | **Search / AI** | RAG, workflow-enabled agents, tuned LLMs, semantic search | *(future PRD)* | Off |
-| **neut CLI + Agents** | `neut chat`, `neut sense`, export-control routing, `neut settings` | [Agent PRD](../requirements/prd_neutron-os-agents.md) | On |
+| **neut CLI + Agents** | `neut chat`, `neut signal`, export-control routing, `neut settings` | [Agent PRD](../requirements/prd_neutron-os-agents.md) | On |
 | **Publisher** | `neut pub` — document lifecycle, markdown → publish, multi-endpoint | [Publisher PRD](../requirements/prd_publisher.md) | On |
 | **Connections** | Integrations hub for external systems (within Settings) | *(future PRD)* | Off |
 

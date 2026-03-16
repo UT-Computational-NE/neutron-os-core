@@ -6,15 +6,15 @@
 
 ## Context
 
-The `neut sense` module accumulated two responsibilities that don't belong to it:
+The `neut signal` module accumulated two responsibilities that don't belong to it:
 
-1. **`neut sense db`** — Exposes database migration, clustering, and schema
+1. **`neut signal db`** — Exposes database migration, clustering, and schema
    management commands directly to end users. The target personas (reactor
    operators, nuclear engineering researchers, compliance officers) have no use
-   for `neut sense db migrate` or `neut sense db stats`. This is a leaky
+   for `neut signal db migrate` or `neut signal db stats`. This is a leaky
    abstraction: implementation plumbing surfaced as a user-facing command.
 
-2. **`neut sense media`** — A media library (recordings, images, documents with
+2. **`neut signal media`** — A media library (recordings, images, documents with
    metadata, vector search, access control) that is useful far beyond signal
    extraction. The Experiment Manager needs photos of samples. Reactor Ops Log
    needs inspection recordings. Compliance needs evidence artifacts. Training
@@ -39,8 +39,8 @@ neut media link <id> <entity>  # Associate with experiment, log entry, etc.
 neut media export <id>         # Export for compliance or sharing
 ```
 
-Media becomes a platform service consumed by Neut Sense, Experiment Manager, Ops Log,
-Compliance, and any future module. Neut Sense becomes a *consumer* of
+Media becomes a platform service consumed by Neut Signal, Experiment Manager, Ops Log,
+Compliance, and any future module. Neut Signal becomes a *consumer* of
 media (indexing recordings for signal extraction), not the *owner* of the media
 library.
 
@@ -52,7 +52,7 @@ Database lifecycle commands move out of the user-facing CLI:
   setup (already has a wizard flow)
 - **`neut infra`** handles migration, schema verification, and health checks
   for administrators
-- Direct `neut sense db` commands are removed from the default `--help` output
+- Direct `neut signal db` commands are removed from the default `--help` output
 
 ## Alternatives Considered
 

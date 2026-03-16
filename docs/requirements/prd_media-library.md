@@ -13,9 +13,9 @@
 
 The Media Library is a **cross-cutting platform service** that manages recordings, photographs, documents, and other binary artifacts across all Neutron OS modules. It provides ingest, metadata tagging, semantic search, and access-controlled retrieval.
 
-Rather than each module implementing its own file storage, the Media Library provides a shared service that any module can produce to or consume from. Neut Sense indexes media for signal extraction. The Experiment Manager attaches photos to samples. The Ops Log links inspection recordings to shift entries. Compliance exports evidence packages.
+Rather than each module implementing its own file storage, the Media Library provides a shared service that any module can produce to or consume from. Neut Signal indexes media for signal extraction. The Experiment Manager attaches photos to samples. The Ops Log links inspection recordings to shift entries. Compliance exports evidence packages.
 
-**Key Principle:** Media is about **storage, metadata, and retrieval** of binary artifacts. It does not interpret content — that is the job of the consuming module (Neut Sense extracts signals, compliance validates evidence, experiments correlate results).
+**Key Principle:** Media is about **storage, metadata, and retrieval** of binary artifacts. It does not interpret content — that is the job of the consuming module (Neut Signal extracts signals, compliance validates evidence, experiments correlate results).
 
 ---
 
@@ -38,7 +38,7 @@ flowchart TB
     end
 
     subgraph Consumers["Media Consumers"]
-        NeutSense[Neut Sense]
+        NeutSense[Neut Signal]
         Exp[Experiment Manager]
         Ops[Reactor Ops Log]
         Comp[Compliance Tracking]
@@ -94,7 +94,7 @@ flowchart TB
 
 1. Manager searches: `neut media search "beam port schedule" --type audio --after 2026-02-18`
 2. Media Library returns matching recordings ranked by relevance
-3. If Neut Sense has processed the recording, the transcript snippet is shown alongside
+3. If Neut Signal has processed the recording, the transcript snippet is shown alongside
 
 ### Compliance Officer: Evidence Export
 
@@ -148,9 +148,9 @@ neut media delete <id>             Remove (with confirmation)
 
 ### Phase 2 — Semantic Search
 
-6. **Embedding index** — Generate embeddings for text content (transcripts, OCR, document text) using the same provider pattern as Neut Sense (OpenAI, local sentence-transformers, keyword fallback)
+6. **Embedding index** — Generate embeddings for text content (transcripts, OCR, document text) using the same provider pattern as Neut Signal (OpenAI, local sentence-transformers, keyword fallback)
 7. **Semantic search** — `neut media search` uses vector similarity when embeddings are available, falls back to keyword
-8. **Transcript linking** — When Neut Sense processes a recording, the transcript is linked back to the media item
+8. **Transcript linking** — When Neut Signal processes a recording, the transcript is linked back to the media item
 
 ### Phase 3 — Shared Storage & Sync
 
@@ -169,7 +169,7 @@ Recorded media — especially audio, video, and chat logs — carries implicit c
 
 1. **Participants are automatic viewers.** Anyone tagged as present in a recording is automatically granted `viewer` access and notified when the media is ingested into the system.
 2. **Default visibility is `participants`.** Unless overridden by a tag or policy, only people who were in the conversation can access the recording.
-3. **Speaker attribution matters.** Neut Sense tags *who said what* during transcription. This enables per-speaker search, accountability, and selective PII stripping.
+3. **Speaker attribution matters.** Neut Signal tags *who said what* during transcription. This enables per-speaker search, accountability, and selective PII stripping.
 4. **PII is stripped from shared content.** When a transcript or summary is shared beyond the participant group, personally identifying information is redacted. The original unredacted content remains available only to participants and authorized roles.
 5. **Sharing requires group approval by default.** `neut media share` sends an approval request to all participants. The share completes when all (or a quorum, configurable) approve. Access control policies can preempt this — e.g., recordings tagged `non-private` in a `public-meetings` channel skip the approval flow.
 
@@ -218,7 +218,7 @@ flowchart LR
 
 ### People Tagging & Speaker Attribution
 
-Recordings and conversations are linked to **Person** entities. During ingest, participants can be tagged manually (`--participants alice,bob`) or detected automatically by Neut Sense during transcription (speaker diarization). Each transcript segment is attributed to a speaker, enabling:
+Recordings and conversations are linked to **Person** entities. During ingest, participants can be tagged manually (`--participants alice,bob`) or detected automatically by Neut Signal during transcription (speaker diarization). Each transcript segment is attributed to a speaker, enabling:
 
 - Per-speaker search: *"What did Alice say about the beam port?"*
 - Selective PII redaction: strip names and identifiers when sharing beyond the participant group
@@ -318,7 +318,7 @@ tools/media/
   pending_sync/             # Queued uploads for when shared service is available
 ```
 
-This mirrors Neut Sense's offline-first design: everything works with
+This mirrors Neut Signal's offline-first design: everything works with
 flat JSON files. No PostgreSQL, no external services.
 
 ### Local Buffer & Sync Strategy
@@ -356,25 +356,25 @@ interface is identical — only the backend changes.
 
 ---
 
-## Relationship to Neut Sense
+## Relationship to Neut Signal
 
-Neut Sense is a **consumer** of the Media Library, not its owner:
+Neut Signal is a **consumer** of the Media Library, not its owner:
 
 | Concern | Owner | How |
 |---------|-------|-----|
 | Store a recording | **Media Library** | `neut media ingest recording.m4a` |
-| Extract signals from a recording | **Neut Sense** | Neut Sense reads from Media Library, writes signals |
-| Link transcript to recording | **Media Library** | Neut Sense calls `media.link(recording_id, transcript_id)` |
-| Search recordings by content | **Media Library** | Uses embeddings generated by Neut Sense or its own providers |
+| Extract signals from a recording | **Neut Signal** | Neut Signal reads from Media Library, writes signals |
+| Link transcript to recording | **Media Library** | Neut Signal calls `media.link(recording_id, transcript_id)` |
+| Search recordings by content | **Media Library** | Uses embeddings generated by Neut Signal or its own providers |
 
 This separation means:
-- Media works without Neut Sense (just a file library with metadata)
-- Neut Sense works without Media (processes files directly from inbox)
+- Media works without Neut Signal (just a file library with metadata)
+- Neut Signal works without Media (processes files directly from inbox)
 - When both are active, they enrich each other
 
 ---
 
-## Migration from Neut Sense
+## Migration from Neut Signal
 
 Per [ADR-009](../adr/009-promote-media-internalize-db.md), the following code
 moves from `tools/pipelines/sense/` to `tools/media/`:

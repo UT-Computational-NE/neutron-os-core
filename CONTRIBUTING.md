@@ -30,7 +30,7 @@ neut --help
 
 ### Facility Config (Optional)
 
-If you're running `neut sense` or `neut chat`, copy the example configs:
+If you're running `neut signal` or `neut chat`, copy the example configs:
 
 ```bash
 cp -r runtime/config.example/ runtime/config/
@@ -73,7 +73,7 @@ make test
 pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
 
 # Single extension
-pytest src/neutron_os/extensions/builtins/sense_agent/tests/ -v
+pytest src/neutron_os/extensions/builtins/signal_agent/tests/ -v
 
 # Unit tests only (no credentials needed)
 pytest -m "not integration"

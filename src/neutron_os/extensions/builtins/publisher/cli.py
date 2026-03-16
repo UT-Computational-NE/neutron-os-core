@@ -604,7 +604,7 @@ def cmd_review(args: argparse.Namespace) -> None:
             print(f"Draft not found: {file_arg}")
         else:
             print("No draft files found in tools/agents/drafts/")
-            print("Generate one with: neut sense draft")
+            print("Generate one with: neut signal draft")
         sys.exit(1)
 
     print(f"File: {draft_path.name}")

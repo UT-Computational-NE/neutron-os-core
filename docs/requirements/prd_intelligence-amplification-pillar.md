@@ -145,11 +145,11 @@ neut media discuss <id> --concepts
 Publisher synchronizes `.md` (repo) and `.docx` (collaborative) versions:
 - Human edits in Office 365 → reconcile back to `.md`
 - Agent edits in `.md` → publish to Office 365
-- Diagram intelligence (Mermaid parsing) is a Sense capability
+- Diagram intelligence (Mermaid parsing) is a Signal capability
 
 ### Stage 5: FEEDBACK — Close the Loop
 
-**Goal:** Sense the downstream effects of published intelligence.
+**Goal:** Signal the downstream effects of published intelligence.
 
 **Feedback Sources:**
 - User feedback (usability studies, support tickets, analytics)
@@ -176,7 +176,7 @@ Publisher synchronizes `.md` (repo) and `.docx` (collaborative) versions:
 | Metric | Description | Target |
 |--------|-------------|--------|
 | **Cycle Time** | Signal sensed → feature shipped | Decreasing |
-| **Sense Latency** | Event occurs → signal captured | < 24 hours |
+| **Signal Latency** | Event occurs → signal captured | < 24 hours |
 | **Synthesis Latency** | Signal captured → actionable output | < 4 hours |
 | **Create Latency** | Brief received → design complete | Tracked |
 | **Publish Latency** | Design approved → shipped | Tracked |
@@ -243,7 +243,7 @@ Signal Sources (all feed into ONE RAG)
 
 **Key Design Decisions:**
 - **PostgreSQL + pgvector** — single embedding store, scales with infrastructure
-- **No parallel RAG systems** — Publisher diagram intelligence is a Sense capability, not separate
+- **No parallel RAG systems** — Publisher diagram intelligence is a Signal capability, not separate
 - **Model-agnostic** — supports OpenAI, local LLMs (Llama, Mistral), keyword fallback
 
 ---
@@ -322,13 +322,13 @@ Most "AI assistant" systems are one-shot: prompt in, response out. Intelligence 
 ## Implementation Phases
 
 ### Phase 0: Foundation (Current)
-- [x] Sense extractors (voice, calendar, notes)
+- [x] Signal extractors (voice, calendar, notes)
 - [x] Media Library with hybrid search
 - [x] NeutExplainer for recording discussion
 - [x] Basic signal correlation
 - [x] PRD/briefing synthesis
 - [ ] Infrastructure (K3D, PostgreSQL, pgvector)
-- [ ] Publisher → Sense consolidation
+- [ ] Publisher → Signal consolidation
 
 ### Phase 1: Loop Instrumentation
 - [ ] Signal quality scoring
@@ -360,7 +360,7 @@ Most "AI assistant" systems are one-shot: prompt in, response out. Intelligence 
 
 **Year 1:**
 - Loop fully instrumented with baseline metrics
-- Sense latency < 24 hours for all configured sources
+- Signal latency < 24 hours for all configured sources
 - Synthesis accuracy > 60% (drafts approved with minor edits)
 - Manual loop closure < 30 days average
 

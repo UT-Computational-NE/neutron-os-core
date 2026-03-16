@@ -29,7 +29,7 @@ docs/
 ## What does NOT belong here
 
 - **Extension-specific docs** — go in the extension's `docs/` directory
-  (e.g., `src/neutron_os/extensions/builtins/sense_agent/docs/`)
+  (e.g., `src/neutron_os/extensions/builtins/signal_agent/docs/`)
 - **API reference** — auto-generated, not manually maintained here
 - **Runtime config** — belongs in `runtime/`
 - **Generated Word docs** — go to `docs/_tools/generated/`

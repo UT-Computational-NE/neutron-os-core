@@ -1,4 +1,4 @@
-"""Shared test fixtures for neut sense and publisher test suites."""
+"""Shared test fixtures for neut signal and publisher test suites."""
 
 import json
 import sys

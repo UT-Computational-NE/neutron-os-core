@@ -56,7 +56,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Sense selector labels
 */}}
-{{- define "neutron-os.senseSelectorLabels" -}}
+{{- define "neutron-os.signalSelectorLabels" -}}
 {{ include "neutron-os.selectorLabels" . }}
 app.kubernetes.io/component: sense
 {{- end }}

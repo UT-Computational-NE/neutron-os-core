@@ -23,10 +23,10 @@ image:
   pullSecrets: []
 
 # Sense Server (THE agent - handles RAG, signal processing, media library)
-sense:
+signal:
   enabled: true
   image:
-    repository: ghcr.io/neutron-os/sense
+    repository: ghcr.io/neutron-os/signal
     tag: ""  # Defaults to Chart appVersion
   
   replicas: 1
@@ -162,7 +162,7 @@ persistence:
 service:
   type: ClusterIP
   
-  sense:
+  signal:
     port: 8765
   
   api:
@@ -184,7 +184,7 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          service: sense
+          service: signal
   
   tls: []
   #  - secretName: neut-tls

@@ -34,7 +34,7 @@ infra/
 │           ├── values-local.yaml   # K3D overrides
 │           └── templates/
 │               ├── _helpers.tpl
-│               ├── sense-deployment.yaml
+│               ├── signal-deployment.yaml
 │               ├── service.yaml
 │               └── configmap.yaml
 │
@@ -76,7 +76,7 @@ kubectl get pods -n default
 
 ```bash
 # Port-forward Sense server
-kubectl port-forward svc/neut-sense 8765:8765
+kubectl port-forward svc/neut-signal 8765:8765
 
 # Port-forward PostgreSQL (for debugging)
 kubectl port-forward svc/neut-postgresql 5432:5432

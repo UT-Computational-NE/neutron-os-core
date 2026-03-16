@@ -65,15 +65,15 @@ class TestTopLevelCompletion:
 
     def test_bare_neut_shows_subcommands(self):
         completions = _get_completions("neut ")
-        assert "sense" in completions
+        assert "signal" in completions
         assert "doc" in completions
         assert "chat" in completions
         assert "config" in completions
         assert "doctor" in completions
 
     def test_partial_subcommand(self):
-        completions = _get_completions("neut se")
-        assert "sense" in completions
+        completions = _get_completions("neut si")
+        assert "signal" in completions
         # Should NOT include unrelated commands
         assert "doc" not in completions
 
@@ -83,17 +83,17 @@ class TestTopLevelCompletion:
 
 
 class TestSenseCompletion:
-    """Test `neut sense <TAB>` shows sense subcommands."""
+    """Test `neut signal <TAB>` shows signal subcommands."""
 
-    def test_sense_subcommands(self):
-        completions = _get_completions("neut sense ")
+    def test_signal_subcommands(self):
+        completions = _get_completions("neut signal ")
         assert "brief" in completions
         assert "status" in completions
         assert "draft" in completions
         assert "pipeline" in completions
 
-    def test_sense_partial(self):
-        completions = _get_completions("neut sense br")
+    def test_signal_partial(self):
+        completions = _get_completions("neut signal br")
         assert "brief" in completions
 
 

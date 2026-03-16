@@ -62,7 +62,7 @@ def attempt_recovery(
 def _recover_brief_since(args: Namespace, error: Exception) -> Namespace | None:
     """Coalesce args.since + args.topic when _parse_since fails.
 
-    When the user types: neut sense brief --since last week
+    When the user types: neut signal brief --since last week
     argparse sees: since="last", topic="week"
     _parse_since("last") raises ValueError.
 
@@ -83,7 +83,7 @@ def _recover_brief_since(args: Namespace, error: Exception) -> Namespace | None:
     # Try the combined value
     combined = f"{since} {topic}"
     try:
-        from neutron_os.extensions.builtins.sense_agent.briefing import _parse_since
+        from neutron_os.extensions.builtins.signal_agent.briefing import _parse_since
         _parse_since(combined)  # Validate it parses
     except (ValueError, ImportError):
         return None

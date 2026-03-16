@@ -38,7 +38,7 @@ Neutron_OS/
     infra/                     #   Shared infra (gateway, orchestrator, auth)
     extensions/                #   Extension system
       builtins/                #   Domain-agnostic builtin extensions
-        sense_agent/           #     Signal ingestion agent
+        signal_agent/           #     Signal ingestion agent
         chat_agent/            #     Interactive LLM assistant agent
         mo_agent/              #     M-O resource steward agent
         doctor_agent/          #     AI diagnostics agent
@@ -110,7 +110,7 @@ separate repo, installed to `.neut/extensions/`).
 ### Extension Kinds
 
 - `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
-  Examples: `sense_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
+  Examples: `signal_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
 - `tool` — Capability invoked by agents or CLI (publisher, db, demo)
 - `utility` — Platform plumbing (status, test, update)
 
@@ -191,7 +191,7 @@ See `docs/requirements/prd_neut-cli.md` for full spec.
 
 ---
 
-## Sense Pipeline (`neut sense`)
+## Signal Pipeline (`neut signal`)
 
 Proactive program awareness — ingesting signals from multiple sources,
 extracting structured information, and maintaining program state.
@@ -199,16 +199,16 @@ extracting structured information, and maintaining program state.
 ```
 Sources (voice memos, Teams, GitLab, Linear, freetext)
   → Inbox (runtime/inbox/raw/)
-  → Extractors (src/neutron_os/extensions/builtins/sense_agent/extractors/)
+  → Extractors (src/neutron_os/extensions/builtins/signal_agent/extractors/)
   → Correlator → Synthesizer → Review gate → Publisher
 ```
 
 ### Key Files
 
 - `src/neutron_os/infra/gateway.py` — Model-agnostic LLM routing
-- `src/neutron_os/extensions/builtins/sense_agent/extractors/` — Source-specific extraction
-- `src/neutron_os/extensions/builtins/sense_agent/correlator.py` — Entity resolution
-- `src/neutron_os/extensions/builtins/sense_agent/synthesizer.py` — Cross-source merging
+- `src/neutron_os/extensions/builtins/signal_agent/extractors/` — Source-specific extraction
+- `src/neutron_os/extensions/builtins/signal_agent/correlator.py` — Entity resolution
+- `src/neutron_os/extensions/builtins/signal_agent/synthesizer.py` — Cross-source merging
 
 Full design: `docs/specs/neutron-os-agent-architecture.md`
 
@@ -268,7 +268,7 @@ pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
 pytest -m "not integration"
 
 # Single extension
-pytest src/neutron_os/extensions/builtins/sense_agent/tests/ -v
+pytest src/neutron_os/extensions/builtins/signal_agent/tests/ -v
 
 # Export control classifier red-team suite
 pytest tests/routing/test_classifier_accuracy.py -v
@@ -287,7 +287,7 @@ npx promptfoo view                                      # open results dashboard
 ### Direct Module Execution
 
 ```bash
-python -m neutron_os.neut_cli sense status
+python -m neutron_os.neut_cli signal status
 ```
 
 ---

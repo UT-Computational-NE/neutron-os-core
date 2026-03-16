@@ -24,7 +24,7 @@ These are not new CLI features. They are **infrastructure concerns** that M-O (t
 ### The Concurrency Problem (Critical)
 
 Today, NeutronOS agents operate sequentially. But the architecture is moving toward:
-- Parallel extractors in the sense pipeline (voice + GitLab + Teams running concurrently)
+- Parallel extractors in the signal pipeline (voice + GitLab + Teams running concurrently)
 - M-O sweeping scratch files while other agents are writing
 - Publisher syncing document state while sense is updating signal references
 - Chat agent reading session state while sense is appending signals
@@ -33,12 +33,12 @@ Every shared JSON file is a race condition:
 
 | File | Writers | Failure Mode |
 |------|---------|-------------|
-| `.publisher-registry.json` | Publisher, Sense | Lost document mappings |
-| `.publisher-state.json` | Publisher, Sense | Corrupt lifecycle state |
-| `runtime/inbox/state/briefing_state.json` | Sense, Chat | Lost briefing progress |
-| `runtime/inbox/corrections/user_glossary.json` | Sense, Review | Lost corrections |
-| `runtime/inbox/corrections/propagation_queue.json` | Sense, Review | Duplicate or lost propagations |
-| `runtime/sessions/*.json` | Chat, Sense | Corrupt session history |
+| `.publisher-registry.json` | Publisher, Signal | Lost document mappings |
+| `.publisher-state.json` | Publisher, Signal | Corrupt lifecycle state |
+| `runtime/inbox/state/briefing_state.json` | Signal, Chat | Lost briefing progress |
+| `runtime/inbox/corrections/user_glossary.json` | Signal, Review | Lost corrections |
+| `runtime/inbox/corrections/propagation_queue.json` | Signal, Review | Duplicate or lost propagations |
+| `runtime/sessions/*.json` | Chat, Signal | Corrupt session history |
 
 M-O's manifest already solves this for scratch files with `fcntl.flock`. That pattern must be generalized.
 

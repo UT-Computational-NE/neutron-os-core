@@ -2301,7 +2301,7 @@ neut pub draft <title> [--type <type>] [--from-notes <path>] [--llm] [--output <
 |------|-------------|
 | `<title>` | Document title (required). Used in front matter and to derive output filename. |
 | `--type <type>` | Document type from the registry (default: `report`). |
-| `--from-notes <path>` | Directory to scan for source material (.md and .txt files). Also accepts a sense agent session JSON file (`runtime/sessions/<session-id>.json`) — Publisher extracts the synthesized signal summary and action items as scaffold seed content, enabling the sense→draft→push pipeline: a voice memo processed by the sense agent can directly seed a document scaffold without manual note-taking. |
+| `--from-notes <path>` | Directory to scan for source material (.md and .txt files). Also accepts a signal agent session JSON file (`runtime/sessions/<session-id>.json`) — Publisher extracts the synthesized signal summary and action items as scaffold seed content, enabling the sense→draft→push pipeline: a voice memo processed by the signal agent can directly seed a document scaffold without manual note-taking. |
 | `--llm` | Enable Mode B (LLM-assisted prose generation). Requires `chat_agent` to be configured. |
 | `--output <file>` | Explicit output path for the generated scaffold `.md`. Default: CWD with slugified title. |
 
@@ -3979,7 +3979,7 @@ NeutronOS's agents are designed to be running continuously, not just when invoke
 | Drift detection scan | Daily or on git push | `publisher_agent` |
 | Provenance warnings | On file modification | `publisher` (watches `data-sources`) |
 | Stale document alerts | On `neut pub status` | `publisher` (mechanical — no LLM) |
-| New-signal draft proposal | On sense agent output | `publisher_agent` (sense→draft pipeline) |
+| New-signal draft proposal | On signal agent output | `publisher_agent` (sense→draft pipeline) |
 | RAG index staleness | After push | `publisher` (re-embeds automatically) |
 
 ### 28.2 Scheduling
@@ -4746,7 +4746,7 @@ The user can proceed. The indexing process writes chunks to `rag-internal` as it
 
 ### 31.1 The Problem
 
-`publisher_agent` is designed to run continuously — scanning for drift, watching for new sense output, probing endpoint reachability. `sense_agent` also runs continuously, watching inboxes and processing signals. Running these as foreground processes that die when the terminal closes is not a production pattern.
+`publisher_agent` is designed to run continuously — scanning for drift, watching for new sense output, probing endpoint reachability. `signal_agent` also runs continuously, watching inboxes and processing signals. Running these as foreground processes that die when the terminal closes is not a production pattern.
 
 Nuclear facility staff should not have to remember to start Neut's background agents. The agents should be running when the laptop boots, available when the user opens `neut chat`, and restarting automatically if they crash.
 
@@ -4757,10 +4757,10 @@ Nuclear facility staff should not have to remember to start Neut's background ag
 | Agent | Service name | What it does continuously |
 |-------|-------------|--------------------------|
 | `publisher_agent` | `com.neutron-os.publisher-agent` | Drift scans, warm-up, proposal generation |
-| `sense_agent` | `com.neutron-os.sense-agent` | Inbox watching, signal ingestion, draft creation |
+| `signal_agent` | `com.neutron-os.sense-agent` | Inbox watching, signal ingestion, draft creation |
 | `doctor_agent` | `com.neutron-os.doctor-agent` | System health monitoring, token expiry warnings |
 
-`chat_agent` and `mo_agent` are not registered as always-on services — they are invoked on demand (`neut chat`, `neut mo`). However, `publisher_agent` and `sense_agent` are continuous background processes that make `neut chat` feel alive when the user opens it.
+`chat_agent` and `mo_agent` are not registered as always-on services — they are invoked on demand (`neut chat`, `neut mo`). However, `publisher_agent` and `signal_agent` are continuous background processes that make `neut chat` feel alive when the user opens it.
 
 ### 31.3 macOS: launchd Plist Generation
 
@@ -4968,7 +4968,7 @@ Publisher Agent
 | File | Purpose |
 |------|---------|
 | `src/neutron_os/extensions/builtins/publisher_agent/service.py` | Service entry point (`main()`) for launchd/systemd |
-| `src/neutron_os/extensions/builtins/sense_agent/service.py` | Sense agent service entry point |
+| `src/neutron_os/extensions/builtins/signal_agent/service.py` | Sense agent service entry point |
 | `src/neutron_os/extensions/builtins/doctor_agent/service.py` | Doctor agent service entry point |
 | `src/neutron_os/setup/agent_registration.py` | `register_launchd()`, `register_systemd()` — plist/unit generation and loading |
 | `src/neutron_os/extensions/builtins/agents/cli.py` | `neut agents` CLI: list, start, stop, logs, status |

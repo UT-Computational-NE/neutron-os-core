@@ -447,7 +447,7 @@ class HealthChecker:
                 resp.read().decode()
 
                 return ServiceHealth(
-                    name="Sense Server",
+                    name="Signal Server",
                     status=HealthStatus.HEALTHY,
                     message=f"Running ({latency:.0f}ms)",
                     latency_ms=latency,
@@ -456,17 +456,17 @@ class HealthChecker:
 
         except urllib.error.URLError:
             return ServiceHealth(
-                name="Sense Server",
+                name="Signal Server",
                 status=HealthStatus.UNKNOWN,
                 message=f"Not running (port {port})",
                 details={
                     "port": port,
-                    "fix": "neut sense serve &",
+                    "fix": "neut signal serve &",
                 },
             )
         except Exception as e:
             return ServiceHealth(
-                name="Sense Server",
+                name="Signal Server",
                 status=HealthStatus.UNHEALTHY,
                 message=str(e)[:50],
                 details={"port": port},

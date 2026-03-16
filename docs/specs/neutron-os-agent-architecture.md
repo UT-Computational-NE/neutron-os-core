@@ -41,9 +41,9 @@ Key design decisions already made:
 
 ---
 
-## What We're Adding: Neut Sense
+## What We're Adding: Neut Signal
 
-A new CLI noun (`neut sense`) that extends the existing `neut` command structure. Neut Sense is the
+A new CLI noun (`neut signal`) that extends the existing `neut` command structure. Neut Signal is the
 agentic module for continuous program awareness — ingesting signals from multiple
 sources, extracting structured information, and maintaining program state.
 
@@ -51,39 +51,39 @@ sources, extracting structured information, and maintaining program state.
 
 ```bash
 # ─── INGEST: Pull signals from sources ───
-neut sense ingest                     # Process all new items in inbox
-neut sense ingest --source voice      # Process only voice memos
-neut sense ingest --source teams      # Process only Teams recordings
-neut sense ingest --source gitlab     # Process latest GitLab export
-neut sense ingest --source text       # Process freetext drops (notes, emails)
+neut signal ingest                     # Process all new items in inbox
+neut signal ingest --source voice      # Process only voice memos
+neut signal ingest --source teams      # Process only Teams recordings
+neut signal ingest --source gitlab     # Process latest GitLab export
+neut signal ingest --source text       # Process freetext drops (notes, emails)
 
 # ─── DRAFT: Synthesize signals into human-readable summaries ───
-neut sense draft                      # Generate weekly status draft
-neut sense draft --scope tracker      # Draft tracker update only
-neut sense draft --scope issues       # Draft GitLab/Linear issue updates only
-neut sense draft --scope minutes      # Draft meeting minutes only
+neut signal draft                      # Generate weekly status draft
+neut signal draft --scope tracker      # Draft tracker update only
+neut signal draft --scope issues       # Draft GitLab/Linear issue updates only
+neut signal draft --scope minutes      # Draft meeting minutes only
 
 # ─── REVIEW: Human-in-the-loop approval ───
-neut sense review                     # Open latest draft in $EDITOR
-neut sense review --approve           # Approve current draft
-neut sense review --reject            # Reject and discard
+neut signal review                     # Open latest draft in $EDITOR
+neut signal review --approve           # Approve current draft
+neut signal review --reject            # Reject and discard
 
 # ─── PUBLISH: Apply approved changes ───
-neut sense publish                    # Push approved changes to targets
-neut sense publish --target onedrive  # Push tracker to SharePoint/OneDrive
-neut sense publish --target gitlab    # Apply issue updates to GitLab
-neut sense publish --target linear    # Apply issue updates to Linear
+neut signal publish                    # Push approved changes to targets
+neut signal publish --target onedrive  # Push tracker to SharePoint/OneDrive
+neut signal publish --target gitlab    # Apply issue updates to GitLab
+neut signal publish --target linear    # Apply issue updates to Linear
 
 # ─── HEARTBEAT: Proactive sensing daemon ───
-neut sense heartbeat                  # Run heartbeat checks now
-neut sense heartbeat --start          # Start daemon (launchd/systemd)
-neut sense heartbeat --stop           # Stop daemon
-neut sense heartbeat --status         # Show daemon status + last run
+neut signal heartbeat                  # Run heartbeat checks now
+neut signal heartbeat --start          # Start daemon (launchd/systemd)
+neut signal heartbeat --stop           # Stop daemon
+neut signal heartbeat --status         # Show daemon status + last run
 
 # ─── STATUS: Current program state ───
-neut sense status                     # Show program overview
-neut sense status --stale             # Show items with no signal in 14+ days
-neut sense status --people            # Show per-person activity summary
+neut signal status                     # Show program overview
+neut signal status --stale             # Show items with no signal in 14+ days
+neut signal status --people            # Show per-person activity summary
 ```
 
 ### Relationship to Existing Modules
@@ -95,12 +95,12 @@ neut model  — Surrogate model management         (facility-facing)
 neut twin   — Digital twin state                 (facility-facing)
 neut data   — Data platform queries              (facility-facing)
 neut chat   — Agentic assistant (interactive)    (facility-facing)
-neut sense  — Program awareness (proactive)      (team-facing)     ← NEW
+neut signal  — Program awareness (proactive)      (team-facing)     ← NEW
 neut ext    — Extension management               (platform-facing)
 neut infra  — Infrastructure management          (platform-facing)
 ```
 
-Neut Sense is unique: it's the only noun that runs proactively (heartbeat) and
+Neut Signal is unique: it's the only noun that runs proactively (heartbeat) and
 synthesizes across sources rather than querying a single system. But it follows
 the same patterns: offline-first, human-in-the-loop for writes, JSON/table
 output formats.
@@ -110,10 +110,10 @@ output formats.
 ## Relationship to `meeting-intake`
 
 The existing `tools/meeting-intake/` tool already specifies the Teams recording
-pipeline. `neut sense` does NOT replace it — it wraps and extends it:
+pipeline. `neut signal` does NOT replace it — it wraps and extends it:
 
 ```
-meeting-intake (existing)         neut sense (new)
+meeting-intake (existing)         neut signal (new)
 ─────────────────────────         ──────────────────
 Teams → Transcribe → Extract      Teams → meeting-intake → sense inbox
 → Match GitLab → Review →         Voice Memos → Whisper → sense inbox
@@ -127,8 +127,8 @@ Apply to GitLab                   GitLab exports → sense inbox
                                   (to tracker, GitLab, Linear, OneDrive)
 ```
 
-`meeting-intake` is a specialized extractor that Neut Sense orchestrates. The
-meeting-intake README already defines the right pipeline; Neut Sense adds:
+`meeting-intake` is a specialized extractor that Neut Signal orchestrates. The
+meeting-intake README already defines the right pipeline; Neut Signal adds:
 1. Voice Memos as an additional audio source (same Whisper pipeline)
 2. Non-audio sources (GitLab, Teams messages, freetext, email)
 3. Cross-source synthesis (merge signals from all sources into one draft)
@@ -146,7 +146,7 @@ Both audio sources flow through the same pipeline, with different ingestion path
 iPhone → iCloud → ~/Library/.../VoiceMemos/Recordings/*.m4a
   → fswatch/launchd detects new file
   → copies to tools/agents/inbox/raw/voice/
-  → neut sense ingest --source voice
+  → neut signal ingest --source voice
 ```
 
 **launchd plist** (extends existing `com.utcomputational.gitlab-export.plist` pattern):
@@ -177,7 +177,7 @@ iPhone → iCloud → ~/Library/.../VoiceMemos/Recordings/*.m4a
 Teams meeting ends → Recording appears in OneDrive/SharePoint
   → Microsoft Graph API webhook or polling (meeting-intake already specifies this)
   → Downloads to tools/agents/inbox/raw/teams/
-  → neut sense ingest --source teams
+  → neut signal ingest --source teams
 ```
 
 Teams recordings come with auto-generated transcripts (via Microsoft's own
@@ -419,7 +419,7 @@ def extract_signals(transcript, config):
 
 ## Service Layer
 
-Always-on agents (`publisher_agent`, `sense_agent`, `doctor_agent`) each expose a `service.py` module with a `main()` entry point. The service layer handles OS registration, process lifecycle, and graceful shutdown — the agent's domain logic is unchanged whether it runs interactively or as a system service.
+Always-on agents (`publisher_agent`, `signal_agent`, `doctor_agent`) each expose a `service.py` module with a `main()` entry point. The service layer handles OS registration, process lifecycle, and graceful shutdown — the agent's domain logic is unchanged whether it runs interactively or as a system service.
 
 ### `service.py` Entry Point Pattern
 
@@ -464,7 +464,7 @@ One plist per workspace, stored in `~/Library/LaunchAgents/`. Key fields:
   <array>
     <string>/path/to/.venv/bin/python</string>
     <string>-m</string>
-    <string>neutron_os.extensions.builtins.sense_agent.service</string>
+    <string>neutron_os.extensions.builtins.signal_agent.service</string>
   </array>
 
   <key>WorkingDirectory</key>
@@ -492,11 +492,11 @@ One plist per workspace, stored in `~/Library/LaunchAgents/`. Key fields:
 ```ini
 # ~/.config/systemd/user/neutron-os-sense-agent-<workspace-hash>.service
 [Unit]
-Description=NeutronOS Sense Agent (<workspace-name>)
+Description=NeutronOS Signal Agent (<workspace-name>)
 After=network.target
 
 [Service]
-ExecStart=/path/to/.venv/bin/python -m neutron_os.extensions.builtins.sense_agent.service
+ExecStart=/path/to/.venv/bin/python -m neutron_os.extensions.builtins.signal_agent.service
 WorkingDirectory=/path/to/workspace
 Restart=on-failure
 RestartSec=10
@@ -544,7 +544,7 @@ Subsequent recordings:
   → Agent adds to profiles
 ```
 
-**Deliverable:** `neut sense ingest --source voice` and `neut sense ingest --source teams`
+**Deliverable:** `neut signal ingest --source voice` and `neut signal ingest --source teams`
 both produce structured JSON in `inbox/processed/` with named speakers,
 decisions, action items, and initiative correlations.
 
@@ -557,7 +557,7 @@ decisions, action items, and initiative correlations.
 2. `tools/agents/extractors/linear.py` — Fetch Linear changes → signals
 3. Summary template for human-readable output
 
-**Deliverable:** `neut sense ingest --source gitlab` produces a summary like:
+**Deliverable:** `neut signal ingest --source gitlab` produces a summary like:
 ```markdown
 ## GitLab Activity — Week of Feb 17, 2026
 
@@ -580,7 +580,7 @@ decisions, action items, and initiative correlations.
 **Build order:**
 1. `tools/agents/synthesizer.py` — Merge processed signals into weekly draft
 2. `tools/agents/publisher.py` — Apply approved diff to xlsx + push to OneDrive
-3. `neut sense draft` and `neut sense publish` commands
+3. `neut signal draft` and `neut signal publish` commands
 
 ### Week 4: Heartbeat + Notifications
 
@@ -589,7 +589,7 @@ decisions, action items, and initiative correlations.
 **Build order:**
 1. `tools/agents/config/heartbeat.md` — Checklist of proactive checks
 2. launchd plist for heartbeat daemon
-3. `neut sense heartbeat` command
+3. `neut signal heartbeat` command
 4. Stale detection: flag people/initiatives with no signals in 14+ days
 
 ---
@@ -602,10 +602,10 @@ mermaid, INL framing). It should NOT be replaced with agent context.
 Instead, **append a section** for agent development:
 
 ```markdown
-## Agent Development (Neut Sense)
+## Agent Development (Neut Signal)
 
 ### Architecture
-See `docs/requirements/prd_neut-cli.md` for CLI design. Neut Sense extends
+See `docs/requirements/prd_neut-cli.md` for CLI design. Neut Signal extends
 the existing command structure for proactive program awareness.
 
 Agent code lives in `tools/agents/`. Instance config in `tools/agents/config/`
@@ -620,7 +620,7 @@ is .gitignored.
 - `tools/meeting-intake/` — Teams recording pipeline (pre-existing)
 
 ### Design Principles
-- **Extend, don't replace:** `meeting-intake` is an extractor that Neut Sense orchestrates
+- **Extend, don't replace:** `meeting-intake` is an extractor that Neut Signal orchestrates
 - **Human-in-the-loop:** All writes require explicit approval
 - **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
 - **IDE-agnostic:** CLI-first, no IDE plugins, MCP server for tool integration
@@ -630,17 +630,17 @@ is .gitignored.
 ### Running Locally
 ```bash
 # Process voice memos
-neut sense ingest --source voice
+neut signal ingest --source voice
 
 # Process Teams recordings
-neut sense ingest --source teams
+neut signal ingest --source teams
 
 # Generate weekly status draft
-neut sense draft
+neut signal draft
 
 # Review and approve
-neut sense review
-neut sense publish --target onedrive
+neut signal review
+neut signal publish --target onedrive
 ```
 ```
 
@@ -650,7 +650,7 @@ neut sense publish --target onedrive
 
 ### Public (neutron-os repo):
 - All code in `tools/agents/` (extractors, gateway, synthesizer, publisher)
-- CLI commands (`neut sense`)
+- CLI commands (`neut signal`)
 - Plugin interface for reactor-specific extractors
 - Config file schemas and examples (.example files)
 - Documentation
@@ -761,7 +761,7 @@ remain as JSON files on disk — only the index entries are pruned.
 | Notifications | pync (macOS) + ntfy.sh (remote) | Local + mobile push |
 | CLI framework | Click/Typer (Python prototype) → Rust (production) | Match neut CLI spec |
 
-**Note on CLI language:** The neut CLI spec says Rust. For the Neut Sense prototype,
+**Note on CLI language:** The neut CLI spec says Rust. For the Neut Signal prototype,
 Python is fine — it wraps existing Python tools (Whisper, openpyxl, python-gitlab).
-If Neut Sense needs to be compiled into the Rust `neut` binary later, it can be
+If Neut Signal needs to be compiled into the Rust `neut` binary later, it can be
 called as a subprocess or rewritten. Don't let language choice block week 1.

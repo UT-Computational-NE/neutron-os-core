@@ -1,0 +1,13 @@
+[extension]
+name = "signal"
+version = "0.3.0"
+description = "Agentic signal ingestion pipeline"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+
+[[cli.commands]]
+noun = "signal"
+module = "neutron_os.extensions.builtins.signal_agent.cli"
+description = "Agentic signal ingestion pipeline"

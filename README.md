@@ -6,7 +6,7 @@ A modular digital platform for nuclear facilities that unifies data management, 
 
 ## Key Capabilities
 
-- **Sense Pipeline** — Ingest signals from voice memos, Teams, GitLab, Linear, and freetext; extract structured insights; publish weekly briefings
+- **Signal Pipeline** — Ingest signals from voice memos, Teams, GitLab, Linear, and freetext; extract structured insights; publish weekly briefings
 - **Publisher** — Document lifecycle management with provider-based generation, storage, and review
 - **Interactive Agent** — Chat-based assistant with facility context (`neut chat`)
 - **Self-Diagnostics** — AI-powered troubleshooting (`neut doctor`)
@@ -57,8 +57,8 @@ Neutron_OS/
 
 ```bash
 neut chat                              # Interactive agent
-neut sense pipeline ingest             # Run signal ingestion
-neut sense status                      # Pipeline health
+neut signal pipeline ingest             # Run signal ingestion
+neut signal status                      # Pipeline health
 neut pub publish                       # Generate and publish documents
 neut doctor                            # AI-powered diagnostics
 neut ext init my-extension             # Create a new extension

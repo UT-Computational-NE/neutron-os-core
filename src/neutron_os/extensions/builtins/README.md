@@ -11,7 +11,7 @@ extensions with LLM autonomy from passive tools and utilities.
 
 | Directory | Kind | Description |
 |-----------|------|-------------|
-| `sense_agent/` | agent | Signal ingestion, extraction, synthesis |
+| `signal_agent/` | agent | Signal ingestion, extraction, synthesis |
 | `chat_agent/` | agent | Interactive LLM assistant |
 | `mo_agent/` | agent | M-O resource steward |
 | `doctor_agent/` | agent | AI-powered diagnostics and self-healing |
