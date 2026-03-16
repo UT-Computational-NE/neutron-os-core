@@ -1,8 +1,10 @@
 # Product Requirements Document: Experiment Manager
 
-**Module:** Experiment & Sample Tracking + Scheduling  
-**Status:** Draft  
-**Last Updated:** January 22, 2026  
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started.
+
+**Module:** Experiment & Sample Tracking + Scheduling
+**Status:** Draft
+**Last Updated:** January 22, 2026
 **Stakeholder Input:** Khiloni Shah, Nick Luciano (Jan 2026)  
 **Related Module:** [Medical Isotope Production](medical-isotope-prd.md) (shared backend, separate workflow)  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)

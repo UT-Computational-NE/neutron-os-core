@@ -1,8 +1,10 @@
 # Data Platform PRD
 
-**Product:** Neutron OS Data Platform  
-**Status:** Draft  
-**Last Updated:** 2026-01-21  
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started. For the current data architecture design, see [Data Architecture Specification](../specs/data-architecture-spec.md).
+
+**Product:** Neutron OS Data Platform
+**Status:** Draft
+**Last Updated:** 2026-01-21
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)
 
 ---

@@ -391,7 +391,7 @@ All ingest is **fully asynchronous** — no blocking in the prompt/response chai
 | Source | Path | Trigger | `source_type` |
 |--------|------|---------|--------------|
 | Chat session transcripts | `runtime/sessions/*.json` | After every chat turn (daemon thread) | `session` |
-| Processed sense signals | `runtime/inbox/processed/*.json` | `neut rag index` / watch | `signal` |
+| Processed signal outputs | `runtime/inbox/processed/*.json` | `neut rag index` / watch | `signal` |
 | Git commit logs | `.git` repos under `runtime/knowledge/` | `neut rag index` / watch | `git-log` |
 | Daily notes | `runtime/knowledge/notes/YYYY-MM-DD.md` | `neut note "..."` (immediate, background) | `markdown` |
 

@@ -2,6 +2,14 @@
 
 **The Product Development Feedback Loop for NeutronOS**
 
+| Property | Value |
+|----------|-------|
+| Status | Conceptual — not yet instrumented |
+| Implementation | `neut signal` implements the SENSE stage; other stages are manual |
+| Related Specs | [Agent Architecture](neutron-os-agent-architecture.md), [CLI Spec](neut-cli-spec.md) |
+
+> **Note:** "Sense" in this document refers to the product development loop stage, not the CLI command. The CLI command implementing this stage is `neut signal` (provided by the `signal_agent` extension).
+
 ## Vision
 
 Build the most adapted and finely tuned operating system by:

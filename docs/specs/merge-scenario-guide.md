@@ -365,7 +365,7 @@ Merge Pipeline:
 ✓ Workflow produces publishable output
 
 ### Group 8: Complete Pipeline (2 tests)
-✓ Complete pipeline sense-to-merge
+✓ Complete pipeline signal-to-merge
 ✓ Changelog-to-merge traceability
 
 **Total**: 28 passing tests ✅
@@ -487,8 +487,8 @@ Every merge decision is recorded:
 
 ## References
 
-- **Neut Signal Pipeline**: `tools/pipelines/sense/` (extractors, synthesizer, models)
-- **Publisher Review Extractor**: `tools/pipelines/sense/extractors/docflow_review.py`
+- **Neut Signal Pipeline**: `tools/pipelines/signal/` (extractors, synthesizer, models)
+- **Publisher Review Extractor**: `tools/pipelines/signal/extractors/docflow_review.py`
 - **Semantic Versioning**: `tools/docflow/scripts/publish.py` (version logic)
 - **State Management**: `tools/docflow/state.py` (DocumentState, PublicationRecord)
 

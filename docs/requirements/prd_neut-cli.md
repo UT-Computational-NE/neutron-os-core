@@ -1,8 +1,10 @@
 # Product Requirements Document: neut CLI
 
-**Module:** neut Command-Line Interface  
-**Status:** Planning  
-**Last Updated:** February 26, 2026  
+> **Implementation Status: 🟡 Partial** — Core CLI structure, `neut chat`, `neut signal`, `neut pub`, `neut rag`, `neut settings`, `neut status`, `neut doctor`, `neut note`, `neut demo`, `neut repo`, `neut db` are shipped. `neut log`, `neut sim`, `neut model`, `neut twin`, `neut data`, `neut infra`, `neut ext` are planned but not started.
+
+**Module:** neut Command-Line Interface
+**Status:** Planning
+**Last Updated:** February 26, 2026
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)  
 **Tech Spec:** [neut CLI Specification](../specs/neut-cli-spec.md)  
 **Brand Reference:** [Brand Identity - CLI Section](../design/brand-identity.md#cli-identity)
@@ -294,7 +296,7 @@ Publisher manages document generation, publishing, and review cycles.
 
 ```bash
 # Publish a document
-neut pub publish docs/requirements/prd_foo.md
+neut pub push docs/requirements/prd_foo.md
 
 # Check document status
 neut pub status
@@ -303,7 +305,7 @@ neut pub status
 neut pub pull --all
 ```
 
-See [Publisher Specification](../specs/docflow-spec.md) for full design.
+See [Publisher Specification](../specs/neutron-os-publisher-spec.md) for full design.
 
 ---
 

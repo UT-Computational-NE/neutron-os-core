@@ -1,5 +1,7 @@
 # Product Requirements Document: Media Library
 
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started.
+
 **Module:** Cross-Cutting Media Management
 **Status:** Draft
 **Last Updated:** February 26, 2026
@@ -38,7 +40,7 @@ flowchart TB
     end
 
     subgraph Consumers["Media Consumers"]
-        NeutSense[Neut Signal]
+        NeutSignal[Neut Signal]
         Exp[Experiment Manager]
         Ops[Reactor Ops Log]
         Comp[Compliance Tracking]
@@ -55,7 +57,7 @@ flowchart TB
     Meta --> Search
     Store --> Search
 
-    Search --> NeutSense
+    Search --> NeutSignal
     Search --> Exp
     Search --> Ops
     Search --> Comp
@@ -377,13 +379,13 @@ This separation means:
 ## Migration from Neut Signal
 
 Per [ADR-009](../adr/009-promote-media-internalize-db.md), the following code
-moves from `tools/pipelines/sense/` to `tools/media/`:
+moves from `signal_agent/` to a future `media/` extension:
 
 | Current Location | New Location |
 |-----------------|--------------|
-| `sense/media_library.py` | `tools/media/library.py` |
-| `sense/pgvector_store.py` | `tools/media/store.py` |
-| `sense/db_models.py` (Media, Participant) | `tools/media/models.py` |
+| `signal_agent/media_library.py` | `media/library.py` |
+| `signal_agent/pgvector_store.py` | `media/store.py` |
+| `signal_agent/db_models.py` (Media, Participant) | `media/models.py` |
 
 Re-exports from the old paths will emit deprecation warnings during the
 transition period.

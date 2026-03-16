@@ -1,5 +1,7 @@
 # NeutronOS Agent Platform — Needs Assessment & Capability Reference
 
+> **Implementation Status: 🟡 Partial** — Platform infrastructure (routing, RAG, settings, eval harness) is shipped. Built-in agents (Signal, Chat, M-O, Doctor) are shipped. Domain agent capabilities (regulatory intelligence, operational workflow, research, training) are planned but not started.
+
 *Agentic Runtime for Safer, More Cost-Efficient Nuclear Operations*
 
 **Status:** Active
@@ -147,48 +149,10 @@ These capabilities are not agents — they are the infrastructure that makes age
 
 **Status:** Implemented — `src/neutron_os/infra/router.py`
 **Priority:** P0
-**Spec:** `docs/specs/neutron-os-model-routing-spec.md`
 
-Every LLM call is classified before dispatch. The classifier runs locally — no cloud call is made to decide whether content is sensitive.
+Every LLM call is classified before dispatch. The classifier runs locally (keyword + SLM) and routes `export_controlled` queries to the VPN model, `public` queries to cloud. Sensitivity is configurable (`strict` / `balanced` / `permissive`).
 
-**Classification pipeline:**
-
-```
-Query text
-  │
-  ├─► Phase 1: Keyword matching (zero-dependency, offline)
-  │     Matches against configurable term list
-  │     Triggers: MCNP, SCALE, RELAP, ORIGEN, "10 CFR 810", "export controlled", etc.
-  │
-  ├─► Phase 1b: SLM semantic classification (Ollama, llama3.2:1b)
-  │     Catches ambiguous queries that don't keyword-match
-  │     2-second timeout; fails safe to `public` if Ollama not running
-  │     Maintains 5-turn context window to catch topic drift
-  │
-  └─► Decision: public | export_controlled
-        public          → cloud provider (Anthropic, OpenAI)
-        export_controlled → VPN model (qwen-rascal on UT rascal server)
-```
-
-**Requirements:**
-
-| ID | Requirement |
-|----|-------------|
-| PLT-006-1 | Every LLM call MUST be classified before dispatch |
-| PLT-006-2 | Classification MUST run locally — no cloud call to decide sensitivity |
-| PLT-006-3 | Export-controlled queries MUST route to VPN-gated model |
-| PLT-006-4 | Public queries route to configured cloud provider |
-| PLT-006-5 | VPN model unreachable → warn user, refuse to route sensitive content to cloud |
-| PLT-006-6 | Keyword list MUST be user-configurable (`export_control_terms.txt`) |
-| PLT-006-7 | Users MUST be able to declare a session as EC (`neut chat --mode export-controlled`) |
-| PLT-006-8 | Classification result visible to user (routing notice on flagged queries) |
-
-**Configuring sensitivity:**
-```bash
-neut settings set routing.sensitivity strict      # keyword match only; strict keyword set
-neut settings set routing.sensitivity balanced    # keyword + SLM (default)
-neut settings set routing.sensitivity permissive  # SLM only; fewer false positives
-```
+**Full specification:** [Model Routing Spec](../specs/neutron-os-model-routing-spec.md)
 
 ---
 
@@ -197,19 +161,9 @@ neut settings set routing.sensitivity permissive  # SLM only; fewer false positi
 **Status:** Implemented — `src/neutron_os/infra/gateway.py`, `runtime/config.example/models.toml`
 **Priority:** P0
 
-Providers declare their routing tier in `models.toml`. The gateway uses this to select the appropriate provider for each classified request.
+Two-tier model routing: `public` (cloud providers) and `export_controlled` (VPN-gated model). Providers declare their tier in `models.toml`.
 
-| Tier | Use Case | Example Provider | Network Requirement |
-|------|----------|------------------|---------------------|
-| `public` | General queries, safe for cloud | Anthropic Claude, OpenAI GPT | Internet |
-| `export_controlled` | Sensitive nuclear content | qwen-rascal (UT rascal server) | UT VPN required |
-
-When the chat agent starts, it announces which model is active and its tier:
-```
-Using claude-sonnet-4 [cloud/public]          # internet-facing session
-Using qwen-rascal [export_controlled/VPN]     # VPN-gated session
-[VPN model offline — refusing export-controlled queries]  # VPN down, safe mode
-```
+**Full specification:** [Model Routing Spec](../specs/neutron-os-model-routing-spec.md)
 
 ---
 
@@ -347,22 +301,10 @@ npx promptfoo view                                      # open results dashboard
 
 **Status:** Design approved — implementation pending
 **Priority:** P0
-**Spec:** `docs/specs/neutron-os-rag-architecture-spec.md §8`
 
-> **Critical compliance requirement.** Under EAR and 10 CFR 810, copying export-controlled material to a user's workstation is itself an unauthorized transfer. Local embedding of EC documents on a personal machine is **prohibited by regulation**. The architecture must reflect this.
+EC documents must remain on authorized systems (rascal). Ingest, embedding, and storage run server-side; the client only receives LLM-synthesized responses via VPN.
 
-This is the nuclear equivalent of a secure compartmented information facility (SCIF) rule: you cannot take classified documents home, even to work on them locally.
-
-**Requirements:**
-
-| REQ | Requirement | Priority |
-|-----|-------------|---------|
-| EC-001 | EC documents MUST remain on authorized systems (rascal) | P0 |
-| EC-002 | EC ingest, embedding, and storage MUST run on rascal — never on client | P0 |
-| EC-003 | EC retrieval MUST be proxied via VPN; only LLM-synthesized responses cross boundary | P0 |
-| EC-004 | Client connects to separate `rag.ec_database_url` (rascal postgres) for EC RAG | P0 |
-| EC-005 | `neut rag index` for EC content MUST run server-side (`--remote` flag) | P0 |
-| EC-006 | Personal EC work files MUST be indexed from rascal home directories, not from client | P0 |
+**Full specification:** [RAG Architecture Spec §8](../specs/neutron-os-rag-architecture-spec.md)
 
 ---
 
@@ -370,35 +312,10 @@ This is the nuclear equivalent of a secure compartmented information facility (S
 
 **Status:** Design complete — implementation pending
 **Priority:** P0
-**Spec:** `docs/specs/neutron-os-model-routing-spec.md §8`
 
-Prompt injection is the primary attack vector by which EC content could be exfiltrated through the AI interface — comparable to social engineering a cleared employee into leaking classified material.
+Defense against RAG poisoning, indirect injection, cross-tier escalation, tool-use injection, and signal pipeline injection. Includes chunk sanitization, audit logging, response scanning, and routing mode immutability.
 
-**Attack surfaces:**
-
-| Vector | Example | Risk |
-|--------|---------|------|
-| RAG poisoning | Malicious text in indexed doc instructs LLM to reproduce EC chunks | High |
-| Indirect injection | User crafts input to cause qwen-rascal to emit structured EC content | High |
-| Cross-tier escalation | Public-tier content overrides routing mode | Critical |
-| Tool-use injection | Retrieved EC content contains embedded tool call syntax | Medium |
-| Signal pipeline injection | Malicious meeting notes inject routing overrides | Medium |
-
-**Defense requirements:**
-
-| REQ | Requirement | Layer | Priority |
-|-----|------------|-------|---------|
-| PI-001 | Chunk text sanitized for injection patterns before LLM injection (server-side on rascal) | Code | P0 |
-| PI-002 | qwen-rascal system prompt MUST include: retrieved content cannot issue commands | Prompt | P0 |
-| PI-003 | Every EC session MUST produce audit log entry (query hash, response hash, chunk source paths) | Infra | P0 |
-| PI-004 | Response from EC path scanned for EC keyword matches; flagged responses withheld | Code | P1 |
-| PI-005 | Routing mode MUST NOT be changeable by content in retrieved documents or user messages | Code | P0 |
-| PI-006 | redteam-export-control.yaml MUST include injection attack scenarios | Testing | P1 |
-
-**Open policy questions** (facility must resolve with export control officer):
-1. Is LLM-synthesized content derived from EC sources itself export-controlled? (Default: mark with `[Export-Controlled Environment]` header)
-2. Should raw chunk text ever be returned to client? (Default: no; `--show-context` requires explicit opt-in)
-3. Should tool-use be enabled during EC RAG sessions? (Default: read-only tools only)
+**Full specification:** [Model Routing Spec §8](../specs/neutron-os-model-routing-spec.md) | [Security & Access Control PRD](prd_security-access-control.md)
 
 ---
 
@@ -406,36 +323,10 @@ Prompt injection is the primary attack vector by which EC content could be exfil
 
 **Status:** Design complete — implementation pending
 **Priority:** P0
-**Spec:** `docs/specs/neutron-os-model-routing-spec.md §10`
 
-When EC content appears where it should not — in a cloud API response, in the public RAG store, in application logs — NeutronOS must detect it immediately, respond automatically, and provide forensics sufficient to identify the source.
+Four-tier automated response protocol for EC content appearing in unauthorized locations (cloud responses, public RAG store, application logs, signal pipeline). Includes source identification via `security_events` table and monitoring via `neut status` / `neut doctor --security`.
 
-**Leakage event types:**
-
-| Type | Example | Severity |
-|------|---------|---------|
-| Response leakage | EC keywords in LLM response | High |
-| Routing violation | EC-classified query reaches cloud provider | Critical |
-| Store contamination | EC chunks in public pgvector store | Critical |
-| Pipeline leakage | EC content transits signal pipeline into non-EC path | Critical |
-| Log leakage | EC plaintext in audit or application logs | High |
-
-**Automated response protocol:**
-
-| Tier | Trigger | Action |
-|------|---------|--------|
-| 1 — Immediate | EC keywords in response | Withhold response; log event; increment session counter |
-| 2 — Session suspend | Session leakage count > threshold | Kill session; log `SESSION_TERMINATED_EC_LEAKAGE`; alert webhook |
-| 3 — Store quarantine | EC chunks in public store | Quarantine chunks; preserve for forensics; require admin resolution |
-| 4 — Persistent escalation | Cross-session pattern | Disable EC RAG for source; notify export control officer; generate incident report |
-
-**Source identification:** All leakage events are recorded in a `security_events` table with `source_paths[]`, `chunk_ids[]`, `matched_terms[]`, `query_hash`, `response_hash` (never plaintext), and HMAC integrity. Every leak is traceable to a specific document and session.
-
-**Monitoring:**
-```bash
-neut status          # shows open leakage events and last scan time
-neut doctor --security  # runs background checks: public store EC scan, log scrub, EC isolation check
-```
+**Full specification:** [Model Routing Spec §10](../specs/neutron-os-model-routing-spec.md) | [Security & Access Control PRD](prd_security-access-control.md)
 
 ---
 
@@ -586,7 +477,7 @@ Three agents run as persistent system services, started at login and auto-restar
 | Agent | Service label | Platform |
 |-------|--------------|---------|
 | `publisher_agent` | `com.neutron-os.publisher-agent` | macOS (launchd) / Linux (systemd) |
-| `signal_agent` | `com.neutron-os.sense-agent` | macOS (launchd) / Linux (systemd) |
+| `signal_agent` | `com.neutron-os.signal-agent` | macOS (launchd) / Linux (systemd) |
 | `doctor_agent` | `com.neutron-os.doctor-agent` | macOS (launchd) / Linux (systemd) |
 
 Service labels are workspace-scoped (one plist/unit per workspace installation, not globally unique per user account). The full label embeds the workspace path hash to prevent collisions when multiple NeutronOS workspaces exist on the same machine.
@@ -1419,7 +1310,7 @@ tool_dependencies:
 - [RAG Architecture Spec](../specs/neutron-os-rag-architecture-spec.md) — Full RAG design including EC compliance
 - [Model Routing Spec](../specs/neutron-os-model-routing-spec.md) — Router, gateway, prompt injection defense, leakage detection
 - [Agent Architecture Spec](../specs/neutron-os-agent-architecture.md) — Agent configuration and orchestration
-- [Signal Sense & Synthesis Synthesis MVP Spec](../specs/signal-synthesis-mvp-spec.md) — Signal pipeline detail
+- [Agent Architecture Spec](../specs/neutron-os-agent-architecture.md) — Signal pipeline detail
 
 ### External References
 - 10 CFR 810: Assistance to Foreign Atomic Energy Activities (export control)

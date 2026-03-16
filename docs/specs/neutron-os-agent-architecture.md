@@ -9,33 +9,31 @@ respect and extend, not replace:
 
 ```
 Neutron_OS/
-  docs/requirements/
-    prd_neutron-os-executive.md     # Platform vision (modular, reactor-agnostic)
-    prd_neut-cli.md                 # CLI with noun-verb: neut log|sim|model|twin|data|chat
-    prd_compliance-tracking.md      # Audit automation module
-    prd_medical-isotope.md          # Isotope workflow module
-    prd_experiment-manager.md       # Experiment management module
-    ...
-  docs/specs/
-    neut-cli-spec.md                # Rust CLI, clap v4, offline-first, WASM plugins
-    data-architecture-spec.md       # Medallion lakehouse (Iceberg, DuckDB, Dagster)
-    ...
-  plugins/
-    (stub) plugin-triga/            # Reactor-specific logic
-    (stub) plugin-msr/
-    (stub) plugin-mit-loop/
+  src/neutron_os/                   # Python package root
+    extensions/builtins/
+      signal_agent/                 # Signal ingestion agent (this spec)
+      chat_agent/                   # Interactive LLM assistant
+      publisher/                    # Document lifecycle
+      mo_agent/                     # Resource steward
+      doctor_agent/                 # AI diagnostics
+      ...                           # See CLAUDE.md for full list
+    infra/                          # Shared infra (gateway, auth)
+  runtime/                          # Instance-specific data (mostly gitignored)
+    config/                         # Facility config
+    inbox/                          # Signal inbox
+    drafts/                         # Agent-generated drafts
+    sessions/                       # Agent sessions
+  docs/
+    requirements/                   # PRDs
+    specs/                          # Architecture specs
   tools/
     exports/                        # Weekly GitLab JSON dumps
-    tracker/                        # Program tracker build scripts
-    agents/inbox/                   # Agent sensing inbox (empty, ready)
-  services/                         # (stub) Backend services
-  packages/                         # (stub) Shared libraries
 ```
 
 Key design decisions already made:
-- **`neut` CLI** is the unified interface (Rust, noun-verb pattern)
-- **Plugins** handle reactor-specific logic (TRIGA, MSR, MIT Loop)
-- **meeting-intake** already specifies Teams → Transcribe → Extract → GitLab
+- **`neut` CLI** is the unified interface (Python/argparse, noun-verb pattern)
+- **Extensions** handle reactor-specific logic (external repos, installed to `.neut/extensions/`)
+- **Signal pipeline** handles Teams → Transcribe → Extract → GitLab
 - **Offline-first** is a hard requirement (nuclear facilities lose network)
 - **Model-agnostic** — no vendor lock-in on LLM provider
 
@@ -109,18 +107,18 @@ output formats.
 
 ## Relationship to `meeting-intake`
 
-The existing `tools/meeting-intake/` tool already specifies the Teams recording
-pipeline. `neut signal` does NOT replace it — it wraps and extends it:
+The original `meeting-intake` concept specified a Teams recording pipeline.
+`neut signal` subsumes and extends that concept:
 
 ```
 meeting-intake (existing)         neut signal (new)
 ─────────────────────────         ──────────────────
-Teams → Transcribe → Extract      Teams → meeting-intake → sense inbox
-→ Match GitLab → Review →         Voice Memos → Whisper → sense inbox
-Apply to GitLab                   GitLab exports → sense inbox
-                                  Teams messages → sense inbox
-                                  Freetext/notes → sense inbox
-                                  Email → sense inbox
+Teams → Transcribe → Extract      Teams → meeting-intake → signal inbox
+→ Match GitLab → Review →         Voice Memos → Whisper → signal inbox
+Apply to GitLab                   GitLab exports → signal inbox
+                                  Teams messages → signal inbox
+                                  Freetext/notes → signal inbox
+                                  Email → signal inbox
                                   ─────────────────────────────
                                   All sources → Extract → Synthesize
                                   → Draft → Review → Publish
@@ -145,17 +143,17 @@ Both audio sources flow through the same pipeline, with different ingestion path
 ```
 iPhone → iCloud → ~/Library/.../VoiceMemos/Recordings/*.m4a
   → fswatch/launchd detects new file
-  → copies to tools/agents/inbox/raw/voice/
+  → copies to runtime/inbox/raw/voice/
   → neut signal ingest --source voice
 ```
 
 **launchd plist** (extends existing `com.utcomputational.gitlab-export.plist` pattern):
 ```xml
-<!-- com.utcomputational.voice-sense.plist -->
+<!-- com.utcomputational.voice-signal.plist -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.utcomputational.voice-sense</string>
+  <string>com.utcomputational.voice-signal</string>
   <key>WatchPaths</key>
   <array>
     <string>~/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings</string>
@@ -163,7 +161,7 @@ iPhone → iCloud → ~/Library/.../VoiceMemos/Recordings/*.m4a
   <key>ProgramArguments</key>
   <array>
     <string>/usr/local/bin/neut</string>
-    <string>sense</string>
+    <string>signal</string>
     <string>ingest</string>
     <string>--source</string>
     <string>voice</string>
@@ -176,7 +174,7 @@ iPhone → iCloud → ~/Library/.../VoiceMemos/Recordings/*.m4a
 ```
 Teams meeting ends → Recording appears in OneDrive/SharePoint
   → Microsoft Graph API webhook or polling (meeting-intake already specifies this)
-  → Downloads to tools/agents/inbox/raw/teams/
+  → Downloads to runtime/inbox/raw/teams/
   → neut signal ingest --source teams
 ```
 
@@ -222,67 +220,63 @@ Audio file (.m4a / .mp4 / .webm)
   │  Output: correlated signals with suggested targets
   │
   └─ Notify + Queue for Review
-     Output: notification to Ben + draft in tools/agents/drafts/
+     Output: notification to Ben + draft in runtime/drafts/
 ```
 
 ---
 
 ## File Structure (within existing repo)
 
-No new top-level directories. Everything fits in `tools/` and `docs/`:
+Code lives in the extension directory; runtime data in `runtime/`:
 
 ```
+src/neutron_os/extensions/builtins/signal_agent/
+  __init__.py
+  cli.py                            # CLI commands for `neut signal`
+  service.py                        # Always-on service entry point
+  extractors/
+    __init__.py
+    base.py                         # Abstract extractor interface
+    audio.py                        # Whisper + pyannote (shared by voice + teams)
+    gitlab.py                       # GitLab export diff → signals
+    freetext.py                     # General text → signals
+    linear.py                       # Linear issue state changes → signals
+  correlator.py                     # Map signals to people/initiatives/issues
+  synthesizer.py                    # Merge signals → weekly draft
+  neut-extension.toml               # Extension manifest (noun = "signal")
+
+src/neutron_os/infra/
+  gateway.py                        # Model-agnostic LLM interface
+
+runtime/
+  inbox/
+    raw/                            # Drop zone for unprocessed inputs
+      voice/                        # Voice memo .m4a files
+      teams/                        # Teams recording downloads
+      gitlab/                       # GitLab export JSONs
+      text/                         # Freetext: Teams msgs, emails, notes
+    processed/                      # Extracted signal JSONs
+  config/                           # Facility config (gitignored)
+    heartbeat.md                    # Proactive task schedule
+    models.toml                     # LLM provider config (gateway)
+  drafts/                           # Agent-generated summaries for review
+
 tools/
-  agents/
-    inbox/
-      raw/                          # Drop zone for unprocessed inputs
-        voice/                      # Voice memo .m4a files
-        teams/                      # Teams recording downloads
-        gitlab/                     # GitLab export JSONs (symlink to ../exports/)
-        text/                       # Freetext: Teams msgs, emails, notes
-      processed/                    # Extracted signal JSONs
-    drafts/                         # Agent-generated summaries for review
-    approved/                       # Human-approved updates (audit trail)
-    config/
-      heartbeat.md                  # Proactive task schedule
-      models.toml                   # LLM provider config (gateway)
-    extractors/
-      __init__.py
-      base.py                       # Abstract extractor interface
-      audio.py                      # Whisper + pyannote (shared by voice + teams)
-      gitlab.py                     # GitLab export diff → signals
-      freetext.py                   # General text → signals
-      linear.py                     # Linear issue state changes → signals
-    synthesizer.py                  # Merge signals → weekly draft
-    correlator.py                   # Map signals to people/initiatives/issues
-    publisher.py                    # Apply changes → xlsx/OneDrive/GitLab/Linear
-    gateway.py                      # Model-agnostic LLM interface
-    notifier.py                     # macOS notifications, iMessage, Teams webhook
-
-  meeting-intake/                   # EXISTING — Teams-specific pipeline
-    README.md                       # Already specifies Teams → Whisper → GitLab
-    ...
-
-  tracker/                          # EXISTING — Program tracker build
-    build_tracker.py                # openpyxl tracker generator
-    ...
-
-  exports/                          # EXISTING — GitLab weekly dumps
+  exports/                          # GitLab weekly dumps
     gitlab_export_YYYY-MM-DD.json
-    ...
 ```
 
 ---
 
 ## Instance vs. Platform Separation
 
-NeutronOS is designed for any nuclear facility. The `tools/agents/config/`
+NeutronOS is designed for any nuclear facility. The `runtime/config/`
 directory contains instance-specific configuration. Everything else is generic.
 
 ### Instance Config (facility-specific, .gitignored)
 
 ```toml
-# tools/agents/config/facility.toml
+# runtime/config/facility.toml
 
 [facility]
 name = "UT NETL TRIGA"
@@ -290,24 +284,24 @@ type = "research"          # research | commercial | government
 reactor = "triga"          # triga | msr | lwr | htgr | sfr | ...
 plugin = "plugin-triga"    # links to plugins/ reactor-specific logic
 
-[sense.sources]
+[signal.sources]
 voice_memos = true
 teams_recordings = true
 gitlab_export = true
 email_forwarding = false   # future
 
-[sense.heartbeat]
+[signal.heartbeat]
 interval_minutes = 30
 active_hours = "08:00-18:00"
 active_days = "Mon-Fri"
 
-[sense.publish]
+[signal.publish]
 onedrive_path = "Documents/Clarno_Group_Master_Program_Tracker.xlsx"
 teams_channel = ""         # optional webhook for status posts
 ```
 
 ```markdown
-# tools/agents/config/people.md
+# runtime/config/people.md
 # Facility-specific team roster — .gitignored
 
 | Name | GitLab | Linear | Role | Initiative |
@@ -319,7 +313,7 @@ teams_channel = ""         # optional webhook for status posts
 ```
 
 ```markdown
-# tools/agents/config/initiatives.md
+# runtime/config/initiatives.md
 # Facility-specific project list — .gitignored
 
 | ID | Name | Status | Owners | Repos |
@@ -351,7 +345,7 @@ You use Cursor, VS Code, Claude Code, and may run Qwen on TACC. The gateway
 must not assume any specific provider.
 
 ```toml
-# tools/agents/config/models.toml
+# runtime/config/models.toml
 
 [gateway]
 format = "openai"          # All providers speak OpenAI chat completions
@@ -458,7 +452,7 @@ One plist per workspace, stored in `~/Library/LaunchAgents/`. Key fields:
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.neutron-os.sense-agent.<workspace-hash></string>
+  <string>com.neutron-os.signal-agent.<workspace-hash></string>
 
   <key>ProgramArguments</key>
   <array>
@@ -477,10 +471,10 @@ One plist per workspace, stored in `~/Library/LaunchAgents/`. Key fields:
   <integer>10</integer>
 
   <key>StandardOutPath</key>
-  <string>/path/to/workspace/runtime/logs/sense-agent.stdout.log</string>
+  <string>/path/to/workspace/runtime/logs/signal-agent.stdout.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/path/to/workspace/runtime/logs/sense-agent.stderr.log</string>
+  <string>/path/to/workspace/runtime/logs/signal-agent.stderr.log</string>
 </dict>
 </plist>
 ```
@@ -490,7 +484,7 @@ One plist per workspace, stored in `~/Library/LaunchAgents/`. Key fields:
 ### systemd User Unit Structure (Linux)
 
 ```ini
-# ~/.config/systemd/user/neutron-os-sense-agent-<workspace-hash>.service
+# ~/.config/systemd/user/neutron-os-signal-agent-<workspace-hash>.service
 [Unit]
 Description=NeutronOS Signal Agent (<workspace-name>)
 After=network.target
@@ -500,8 +494,8 @@ ExecStart=/path/to/.venv/bin/python -m neutron_os.extensions.builtins.signal_age
 WorkingDirectory=/path/to/workspace
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:/path/to/workspace/runtime/logs/sense-agent.stdout.log
-StandardError=append:/path/to/workspace/runtime/logs/sense-agent.stderr.log
+StandardOutput=append:/path/to/workspace/runtime/logs/signal-agent.stdout.log
+StandardError=append:/path/to/workspace/runtime/logs/signal-agent.stderr.log
 
 [Install]
 WantedBy=default.target
@@ -518,10 +512,10 @@ WantedBy=default.target
 **Goal:** Record a meeting → get a structured, correlated summary within minutes.
 
 **Build order:**
-1. `tools/agents/extractors/audio.py` — Whisper transcription + pyannote diarization
-2. `tools/agents/gateway.py` — Model-agnostic LLM client (litellm or custom)
-3. `tools/agents/correlator.py` — Map extracted entities to people.md + initiatives.md
-4. `tools/agents/notifier.py` — macOS notification when processing complete
+1. `src/neutron_os/extensions/builtins/signal_agent/extractors/audio.py` — Whisper transcription + pyannote diarization
+2. `src/neutron_os/infra/gateway.py` — Model-agnostic LLM client (litellm or custom)
+3. `src/neutron_os/extensions/builtins/signal_agent/correlator.py` — Map extracted entities to people.md + initiatives.md
+4. Notifier module — macOS notification when processing complete
 5. Ingest scripts for both sources:
    - Voice Memos: launchd watcher on iCloud sync directory
    - Teams: extend `meeting-intake` to also deposit in `inbox/raw/teams/`
@@ -553,8 +547,8 @@ decisions, action items, and initiative correlations.
 **Goal:** Weekly human-readable summary of what changed across all repos.
 
 **Build order:**
-1. `tools/agents/extractors/gitlab.py` — Diff two weekly exports → signals
-2. `tools/agents/extractors/linear.py` — Fetch Linear changes → signals
+1. `src/neutron_os/extensions/builtins/signal_agent/extractors/gitlab.py` — Diff two weekly exports → signals
+2. `src/neutron_os/extensions/builtins/signal_agent/extractors/linear.py` — Fetch Linear changes → signals
 3. Summary template for human-readable output
 
 **Deliverable:** `neut signal ingest --source gitlab` produces a summary like:
@@ -578,8 +572,8 @@ decisions, action items, and initiative correlations.
 **Goal:** Merge all signals → generate tracker diff → apply on approval.
 
 **Build order:**
-1. `tools/agents/synthesizer.py` — Merge processed signals into weekly draft
-2. `tools/agents/publisher.py` — Apply approved diff to xlsx + push to OneDrive
+1. `src/neutron_os/extensions/builtins/signal_agent/synthesizer.py` — Merge processed signals into weekly draft
+2. Publisher module — Apply approved diff to xlsx + push to OneDrive
 3. `neut signal draft` and `neut signal publish` commands
 
 ### Week 4: Heartbeat + Notifications
@@ -587,7 +581,7 @@ decisions, action items, and initiative correlations.
 **Goal:** Agent proactively checks for new inputs and alerts when needed.
 
 **Build order:**
-1. `tools/agents/config/heartbeat.md` — Checklist of proactive checks
+1. `runtime/config/heartbeat.md` — Checklist of proactive checks
 2. launchd plist for heartbeat daemon
 3. `neut signal heartbeat` command
 4. Stale detection: flag people/initiatives with no signals in 14+ days
@@ -608,16 +602,14 @@ Instead, **append a section** for agent development:
 See `docs/requirements/prd_neut-cli.md` for CLI design. Neut Signal extends
 the existing command structure for proactive program awareness.
 
-Agent code lives in `tools/agents/`. Instance config in `tools/agents/config/`
+Agent code lives in `src/neutron_os/extensions/builtins/signal_agent/`. Instance config in `runtime/config/`
 is .gitignored.
 
 ### Key Files
-- `tools/agents/gateway.py` — Model-agnostic LLM routing
-- `tools/agents/extractors/` — Source-specific signal extraction
-- `tools/agents/correlator.py` — Entity resolution (people, initiatives, issues)
-- `tools/agents/synthesizer.py` — Cross-source signal merging
-- `tools/agents/publisher.py` — Multi-target publishing
-- `tools/meeting-intake/` — Teams recording pipeline (pre-existing)
+- `src/neutron_os/infra/gateway.py` — Model-agnostic LLM routing
+- `src/neutron_os/extensions/builtins/signal_agent/extractors/` — Source-specific signal extraction
+- `src/neutron_os/extensions/builtins/signal_agent/correlator.py` — Entity resolution (people, initiatives, issues)
+- `src/neutron_os/extensions/builtins/signal_agent/synthesizer.py` — Cross-source signal merging
 
 ### Design Principles
 - **Extend, don't replace:** `meeting-intake` is an extractor that Neut Signal orchestrates
@@ -649,21 +641,20 @@ neut signal publish --target onedrive
 ## Open Source Boundary
 
 ### Public (neutron-os repo):
-- All code in `tools/agents/` (extractors, gateway, synthesizer, publisher)
+- All code in `src/neutron_os/extensions/builtins/signal_agent/` (extractors, correlator, synthesizer)
 - CLI commands (`neut signal`)
 - Plugin interface for reactor-specific extractors
 - Config file schemas and examples (.example files)
 - Documentation
 
 ### Private (.gitignored):
-- `tools/agents/config/people.md` — your team roster
-- `tools/agents/config/initiatives.md` — your project list
-- `tools/agents/config/facility.toml` — your facility details
-- `tools/agents/config/models.toml` — your API keys
-- `tools/agents/config/speaker_profiles.json` — voice ID data
-- `tools/agents/inbox/` — all input data
-- `tools/agents/drafts/` — generated summaries
-- `tools/agents/approved/` — approval audit trail
+- `runtime/config/people.md` — your team roster
+- `runtime/config/initiatives.md` — your project list
+- `runtime/config/facility.toml` — your facility details
+- `runtime/config/models.toml` — your API keys
+- `runtime/config/speaker_profiles.json` — voice ID data
+- `runtime/inbox/` — all input data
+- `runtime/drafts/` — generated summaries
 
 ---
 

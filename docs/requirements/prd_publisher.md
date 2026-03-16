@@ -1,6 +1,9 @@
 # Publisher — Product Requirements Document
 
+> **Implementation Status: 🟡 Partial** — Core document generation (pandoc-docx), storage (local, OneDrive), feedback (docx-comments), notifications (terminal, SMTP), link rewriting, versioning/state, and draft watermarking are shipped. Format inference, endpoint catalog, audience targeting, document types, citations, compilation, reverse ingestion, drift detection, and publisher agent are planned. See the Capability Summary table below for per-feature status.
+
 **Version**: 0.7.0 · **Date**: 2026-03-13 · **Status**: Active
+**Spec:** [Publisher Architecture Specification](../specs/neutron-os-publisher-spec.md)
 
 ---
 

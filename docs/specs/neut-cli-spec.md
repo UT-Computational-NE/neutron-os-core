@@ -40,42 +40,26 @@
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| **Language** | Rust | Fast startup, single binary, WASM integration |
-| **CLI framework** | clap v4 | Derive macros, shell completions, subcommand support |
-| **HTTP client** | reqwest | async, TLS, connection pooling |
-| **Output** | tabled + serde_json | Pretty tables, machine-readable JSON |
-| **Config** | toml | Human-editable, Rust ecosystem standard |
-| **Auth** | oauth2-rs | OIDC/OAuth2 flows |
+| **Language** | Python | Rapid iteration, rich ecosystem (Whisper, ML, openpyxl) |
+| **CLI framework** | argparse + argcomplete | Standard library, shell completions |
+| **HTTP client** | httpx | async, TLS, connection pooling |
+| **Output** | rich + json | Pretty tables, machine-readable JSON |
+| **Config** | toml | Human-editable, standard format |
+| **Auth** | TBD | OIDC/OAuth2 flows |
 
-### Binary Structure
+> **Note:** The original spec targeted Rust/clap. The implementation uses Python/argparse for rapid prototyping. A Rust rewrite remains a future option.
+
+### Package Structure
 
 ```
-neut (single binary, ~10-15 MB)
-├── Core commands (built-in)
-│   ├── neut log
-│   ├── neut data
-│   ├── neut model
-│   ├── neut sim
-│   ├── neut twin
-│   ├── neut infra
-│   └── neut ext
-├── Embedded WASM runtime (wasmtime)
-│   └── Local model validation
-└── Shell completions (generated)
+neutron_os (Python package, pip install -e ".[all]")
+├── neut_cli.py              # Entry point
+├── cli_registry.py          # Extension command discovery
+├── extensions/builtins/     # All builtin extensions (each registers CLI nouns)
+└── infra/                   # Shared infrastructure
 ```
 
-### Package Name
-
-```toml
-# Cargo.toml
-[package]
-name = "neut-cli"
-version = "0.1.0"
-
-[[bin]]
-name = "neut"
-path = "src/main.rs"
-```
+Commands are discovered dynamically from `neut-extension.toml` manifests in each extension directory. See [CLAUDE.md](../../CLAUDE.md) for the full extension layout.
 
 ---
 
@@ -115,7 +99,7 @@ neut
 │       ├── status         # Agent health
 │       └── warmup         # Cold-start warm-up scan
 │
-├── sense                  # Signal ingestion (signal_agent extension)
+├── signal                 # Signal ingestion (signal_agent extension)
 │   ├── status             # Inbox state + pending extractions
 │   ├── ingest             # Ingest a signal file
 │   ├── scan               # Scan inbox for unprocessed signals
@@ -174,7 +158,24 @@ neut
 │   ├── pipeline status    # Pipeline health
 │   └── schema             # Schema inspection
 │
-├── cost estimate          # Cost modeling (cost_estimation extension)
+├── note                   # Quick-capture notes (note extension)
+│   └── ...
+│
+├── mirror                 # Repository mirroring (mirror_agent extension)
+│   └── ...
+│
+├── mo                     # Resource steward (mo_agent extension)
+│   └── ...
+│
+├── doc                    # Document operations (publisher extension, alias)
+│   └── ...
+│
+├── code                   # Code-aware chat (chat_agent extension, alias)
+│   └── ...
+│
+├── serve                  # Web API server (web_api extension)
+│   └── ...
+│
 ├── demo [--collaborator]  # Guided demos (demo extension)
 ├── config                 # Setup wizard
 ├── doctor [--fix]         # System health check + auto-fix

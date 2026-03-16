@@ -1,8 +1,10 @@
 # Product Requirements Document: Compliance Tracking System
 
-**Module:** Cross-Cutting Compliance Infrastructure  
-**Status:** Draft  
-**Last Updated:** January 22, 2026  
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started.
+
+**Module:** Cross-Cutting Compliance Infrastructure
+**Status:** Draft
+**Last Updated:** January 22, 2026
 **Stakeholder Input:** Jim (TJ) - NRC requirements, 30-min checks, 2-year inspection scope  
 **Related Modules:** [Reactor Ops Log](reactor-ops-log-prd.md), [Experiment Manager](experiment-manager-prd.md), [Training](../specs/neutron-os-master-tech-spec.md)  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)

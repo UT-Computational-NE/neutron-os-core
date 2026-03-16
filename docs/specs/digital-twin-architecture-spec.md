@@ -309,7 +309,7 @@ class DashboardProvider(ABC):
     def get_superset_dashboards(self) -> List[Dict]: ...
 ```
 
-> **Full Interface Definitions:** See [neutron_core/interfaces.py](../../packages/neutron-core/neutron_core/interfaces.py) for complete Pydantic models and type definitions.
+> **Full Interface Definitions:** These interfaces are not yet implemented. When built, they will live in `src/neutron_os/infra/` or a dedicated `neutron_core` package.
 
 ### 6.3 Touch Points
 

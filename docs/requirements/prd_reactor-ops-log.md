@@ -1,8 +1,10 @@
 # Product Requirements Document: Reactor Ops Log
 
-**Module:** Reactor Ops Log  
-**Status:** Draft  
-**Last Updated:** March 5, 2026  
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started.
+
+**Module:** Reactor Ops Log
+**Status:** Draft
+**Last Updated:** March 5, 2026
 **Stakeholder Input:** Jim (TJ), Nick Luciano (Jan 2026), Jay Torres (eLogger prototype)  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)  
 **Historical Reference:** Previously referred to as "elog" in some contexts  

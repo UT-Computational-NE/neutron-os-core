@@ -1,8 +1,10 @@
 # Product Requirements Document: Scheduling System
 
-**Module:** Cross-Cutting Scheduling Infrastructure  
-**Status:** Draft  
-**Last Updated:** January 22, 2026  
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started.
+
+**Module:** Cross-Cutting Scheduling Infrastructure
+**Status:** Draft
+**Last Updated:** January 22, 2026
 **Stakeholder Input:** Jim (TJ), Khiloni Shah, Nick Luciano  
 **Related Modules:** [Experiment Manager](experiment-manager-prd.md), [Reactor Ops Log](reactor-ops-log-prd.md), [Medical Isotope](medical-isotope-prd.md)  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)

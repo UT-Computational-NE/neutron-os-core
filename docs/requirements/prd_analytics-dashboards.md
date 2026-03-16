@@ -1,8 +1,10 @@
 # Product Requirements Document: Analytics Dashboards
 
-**Module:** Superset Analytics Dashboards  
-**Status:** Draft  
-**Last Updated:** January 21, 2026  
+> **Implementation Status: 🔲 Not Started** — This PRD describes planned functionality. Implementation has not started.
+
+**Module:** Superset Analytics Dashboards
+**Status:** Draft
+**Last Updated:** January 21, 2026
 **Stakeholder Input:** Jim (TJ), Nick Luciano (Jan 2026)  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)
 

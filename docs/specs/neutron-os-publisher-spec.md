@@ -2301,7 +2301,7 @@ neut pub draft <title> [--type <type>] [--from-notes <path>] [--llm] [--output <
 |------|-------------|
 | `<title>` | Document title (required). Used in front matter and to derive output filename. |
 | `--type <type>` | Document type from the registry (default: `report`). |
-| `--from-notes <path>` | Directory to scan for source material (.md and .txt files). Also accepts a signal agent session JSON file (`runtime/sessions/<session-id>.json`) — Publisher extracts the synthesized signal summary and action items as scaffold seed content, enabling the sense→draft→push pipeline: a voice memo processed by the signal agent can directly seed a document scaffold without manual note-taking. |
+| `--from-notes <path>` | Directory to scan for source material (.md and .txt files). Also accepts a signal agent session JSON file (`runtime/sessions/<session-id>.json`) — Publisher extracts the synthesized signal summary and action items as scaffold seed content, enabling the signal→draft→push pipeline: a voice memo processed by the signal agent can directly seed a document scaffold without manual note-taking. |
 | `--llm` | Enable Mode B (LLM-assisted prose generation). Requires `chat_agent` to be configured. |
 | `--output <file>` | Explicit output path for the generated scaffold `.md`. Default: CWD with slugified title. |
 
@@ -3979,7 +3979,7 @@ NeutronOS's agents are designed to be running continuously, not just when invoke
 | Drift detection scan | Daily or on git push | `publisher_agent` |
 | Provenance warnings | On file modification | `publisher` (watches `data-sources`) |
 | Stale document alerts | On `neut pub status` | `publisher` (mechanical — no LLM) |
-| New-signal draft proposal | On signal agent output | `publisher_agent` (sense→draft pipeline) |
+| New-signal draft proposal | On signal agent output | `publisher_agent` (signal→draft pipeline) |
 | RAG index staleness | After push | `publisher` (re-embeds automatically) |
 
 ### 28.2 Scheduling
@@ -4746,7 +4746,7 @@ The user can proceed. The indexing process writes chunks to `rag-internal` as it
 
 ### 31.1 The Problem
 
-`publisher_agent` is designed to run continuously — scanning for drift, watching for new sense output, probing endpoint reachability. `signal_agent` also runs continuously, watching inboxes and processing signals. Running these as foreground processes that die when the terminal closes is not a production pattern.
+`publisher_agent` is designed to run continuously — scanning for drift, watching for new signal output, probing endpoint reachability. `signal_agent` also runs continuously, watching inboxes and processing signals. Running these as foreground processes that die when the terminal closes is not a production pattern.
 
 Nuclear facility staff should not have to remember to start Neut's background agents. The agents should be running when the laptop boots, available when the user opens `neut chat`, and restarting automatically if they crash.
 
@@ -4757,7 +4757,7 @@ Nuclear facility staff should not have to remember to start Neut's background ag
 | Agent | Service name | What it does continuously |
 |-------|-------------|--------------------------|
 | `publisher_agent` | `com.neutron-os.publisher-agent` | Drift scans, warm-up, proposal generation |
-| `signal_agent` | `com.neutron-os.sense-agent` | Inbox watching, signal ingestion, draft creation |
+| `signal_agent` | `com.neutron-os.signal-agent` | Inbox watching, signal ingestion, draft creation |
 | `doctor_agent` | `com.neutron-os.doctor-agent` | System health monitoring, token expiry warnings |
 
 `chat_agent` and `mo_agent` are not registered as always-on services — they are invoked on demand (`neut chat`, `neut mo`). However, `publisher_agent` and `signal_agent` are continuous background processes that make `neut chat` feel alive when the user opens it.
@@ -4877,7 +4877,7 @@ neut agents logs publisher-agent -n 50   # last 50 lines
 Agent               Status     PID    Last Active           Log
 ─────────────────────────────────────────────────────────────────
 publisher-agent     running    14821  2026-03-13 09:47:02   runtime/logs/publisher-agent.log
-sense-agent         running    14822  2026-03-13 09:42:11   runtime/logs/sense-agent.log
+signal-agent         running    14822  2026-03-13 09:42:11   runtime/logs/signal-agent.log
 doctor-agent        stopped    —      2026-03-12 23:00:00   runtime/logs/doctor-agent.log
 ```
 
@@ -4949,7 +4949,7 @@ System
 
 Agents
   ✓  publisher-agent  running (PID 14821)
-  ✓  sense-agent      running (PID 14822)
+  ✓  signal-agent      running (PID 14822)
   ⚠  doctor-agent     stopped — run: neut agents start doctor-agent
 
 Credentials
