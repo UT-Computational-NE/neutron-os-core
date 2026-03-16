@@ -257,8 +257,10 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             return self.site_url
 
         # Check if we previously discovered the org URL
+        # (must contain /my or /personal/ to be a usable files URL,
+        # not just the home page)
         discovered = self._load_discovered_url()
-        if discovered:
+        if discovered and ("/my" in discovered or "/personal/" in discovered):
             return discovered
 
         # Universal entry point — works for any org, personal, or edu account.
@@ -294,19 +296,20 @@ class OneDriveBrowserStorageProvider(StorageProvider):
 
         page.wait_for_timeout(3000)
 
-        # Capture the actual OneDrive URL after redirect
-        actual_url = page.url
-        if "sharepoint.com" in actual_url or "onedrive" in actual_url:
-            self._save_discovered_url(actual_url)
-
         # Upload via OneDrive web UI (tested: UT SharePoint, March 2026)
         try:
-            # Navigate to "My files"
+            # Navigate to "My files" — this resolves the personal site URL
             try:
                 page.click("text=My files", timeout=5000)
                 page.wait_for_timeout(3000)
             except Exception:
                 pass
+
+            # Save the discovered URL AFTER navigating to My files
+            # (the redirect from office.com lands on Home, not personal files)
+            actual_url = page.url
+            if "sharepoint.com" in actual_url:
+                self._save_discovered_url(actual_url)
 
             # Navigate into target folder
             for part in [fp for fp in target_folder.strip("/").split("/") if fp]:
