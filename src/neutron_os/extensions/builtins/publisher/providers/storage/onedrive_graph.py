@@ -89,7 +89,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
     def _device_code_auth(self) -> str:
         """Authenticate via device code flow."""
         # Determine tenant from user settings
-        tenant = "common"
+        tenant = "organizations"
         try:
             from neutron_os.extensions.builtins.settings.store import SettingsStore
             org_tenant = SettingsStore().get("user.org_tenant", "")
@@ -170,7 +170,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
 
     def _refresh_token(self, refresh_token: str) -> str:
         """Refresh an expired access token."""
-        tenant = "common"
+        tenant = "organizations"
         try:
             from neutron_os.extensions.builtins.settings.store import SettingsStore
             org_tenant = SettingsStore().get("user.org_tenant", "")
