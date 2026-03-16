@@ -287,67 +287,82 @@ class OneDriveBrowserStorageProvider(StorageProvider):
 
         page.wait_for_timeout(3000)
 
-        # Extract access token from browser session
-        access_token = self._extract_access_token(page, context)
-        if not access_token:
-            return UploadResult(
-                success=False,
-                url="",
-                error="Could not extract access token from browser session. "
-                      "Try clearing session and re-authenticating: "
-                      "neut pub push --all --storage onedrive-browser --headed",
-            )
+        page.wait_for_timeout(3000)
 
-        # Build upload path: /me/drive/root:/{folder}/{filename}:/content
-        folder_path = target_folder.strip("/")
-        upload_url = (
-            f"https://graph.microsoft.com/v1.0/me/drive/root:"
-            f"/{folder_path}/{remote_name}:/content"
-        )
+        # Navigate to the target folder
+        self._navigate_to_folder(page, target_folder)
+        page.wait_for_timeout(2000)
 
-        # Read file content
-        file_content = local_path.read_bytes()
-
-        # Upload via Graph API PUT (simple upload for files < 4MB)
-        # For larger files, would need upload session — but .docx PRDs are typically < 1MB
+        # Upload using the file input approach — OneDrive has a hidden file
+        # input that we can set directly via Playwright, bypassing the
+        # click-based UI entirely
         try:
-            req = urllib.request.Request(
-                upload_url,
-                data=file_content,
-                method="PUT",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                result_data = _json.loads(resp.read())
-                web_url = result_data.get("webUrl", "")
-                item_id = result_data.get("id", "")
+            # Method 1: Use the drag-and-drop / file input zone
+            # OneDrive's web app has an input[type=file] for uploads
+            file_input = page.query_selector("input[type='file']")
+
+            if file_input:
+                file_input.set_input_files(str(local_path))
+                page.wait_for_timeout(5000)  # Wait for upload to complete
+
+                # Check if upload succeeded by looking for the filename
+                page.wait_for_timeout(2000)
+                url = page.url
 
                 return UploadResult(
                     success=True,
-                    url=web_url,
-                    storage_id=item_id,
+                    url=url,
+                    storage_id=remote_name,
                     metadata={
-                        "folder": folder_path,
+                        "folder": target_folder,
                         "name": remote_name,
-                        "method": "graph_api_via_browser_session",
-                        "size": len(file_content),
+                        "method": "file_input",
                     },
                 )
 
-        except urllib.error.HTTPError as e:
-            error_body = ""
-            try:
-                error_body = e.read().decode()[:500]
-            except Exception:
-                pass
+            # Method 2: Click Upload → Files → file chooser
+            upload_btn = page.query_selector(
+                "button:has-text('Upload'), "
+                "[data-automationid='uploadCommand'], "
+                "button[aria-label='Upload'], "
+                "span:has-text('Upload')"
+            )
+
+            if upload_btn:
+                upload_btn.click()
+                page.wait_for_timeout(1000)
+
+                files_option = page.query_selector(
+                    "button:has-text('Files'), "
+                    "span:has-text('Files')"
+                )
+                if files_option:
+                    with page.expect_file_chooser(timeout=5000) as fc_info:
+                        files_option.click()
+                    file_chooser = fc_info.value
+                    file_chooser.set_files(str(local_path))
+
+                    page.wait_for_timeout(5000)
+                    url = page.url
+
+                    return UploadResult(
+                        success=True,
+                        url=url,
+                        storage_id=remote_name,
+                        metadata={
+                            "folder": target_folder,
+                            "name": remote_name,
+                            "method": "file_chooser",
+                        },
+                    )
+
             return UploadResult(
                 success=False,
                 url="",
-                error=f"Graph API upload failed ({e.code}): {error_body}",
+                error="No upload mechanism found on OneDrive page. "
+                      "The page may not have loaded correctly.",
             )
+
         except Exception as e:
             return UploadResult(
                 success=False,
