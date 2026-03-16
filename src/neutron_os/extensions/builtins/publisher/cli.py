@@ -938,8 +938,13 @@ def cmd_push(args: argparse.Namespace) -> None:
     headed = getattr(args, "headed", False)
     push_all = getattr(args, "all", False)
 
-    # ── Batch browser upload (--all --storage onedrive-browser) ───────────
-    if push_all or storage == "onedrive-browser":
+    # ── Batch upload (--all flag) ────────────────────────────────────────
+    if push_all:
+        _cmd_push_batch(args, engine, draft, storage, headed, force)
+        return
+
+    # ── Single file with browser storage ──────────────────────────────
+    if args.path and storage in ("onedrive-browser", "onedrive-graph", "box-browser"):
         _cmd_push_batch(args, engine, draft, storage, headed, force)
         return
 
@@ -1000,35 +1005,63 @@ def cmd_push(args: argparse.Namespace) -> None:
 
 
 def _cmd_push_batch(args, engine, draft, storage, headed, force):
-    """Batch generate + upload via Playwright browser."""
+    """Generate + upload via browser storage provider."""
     from neutron_os import REPO_ROOT
 
-    # Collect files from configured folders
-    config_path = REPO_ROOT / ".publisher.yaml"
-    folders = []
-    if config_path.exists():
-        try:
-            import yaml
-            with open(config_path) as f:
-                cfg = yaml.safe_load(f) or {}
-            folders = cfg.get("folders", [])
-        except Exception:
-            pass
-
-    if not folders:
-        folders = [{"path": "docs/requirements", "pattern": "prd_*.md"}]
+    push_all = getattr(args, "all", False)
+    single_path = getattr(args, "path", None)
 
     # (source_md, docx_path, onedrive_subfolder)
     files_to_push: list[tuple[Path, Path, str]] = []
-    for folder_cfg in folders:
-        folder = REPO_ROOT / folder_cfg["path"]
-        pattern = folder_cfg.get("pattern", "*.md")
-        subfolder = folder_cfg.get("onedrive_subfolder", "")
-        if folder.exists():
-            for md_file in sorted(folder.glob(pattern)):
+
+    if single_path and not push_all:
+        # Single file or directory
+        target = Path(single_path).resolve()
+        if not target.exists():
+            print(f"✗ Path not found: {single_path}", file=sys.stderr)
+            sys.exit(1)
+
+        # Determine subfolder from source location
+        try:
+            rel = target.parent.relative_to(REPO_ROOT)
+            subfolder = str(rel).replace("docs/", "").replace("requirements", "prd").replace("tech-specs", "tech-specs")
+        except ValueError:
+            subfolder = ""
+
+        if target.is_dir():
+            for md_file in sorted(target.glob("*.md")):
                 if md_file.name.startswith("_") or md_file.name == "README.md":
                     continue
                 files_to_push.append((md_file, _generate_docx(md_file), subfolder))
+        elif target.suffix == ".md":
+            files_to_push.append((target, _generate_docx(target), subfolder))
+        elif target.suffix == ".docx":
+            files_to_push.append((target, target, subfolder))
+    else:
+        # --all: collect from configured folders
+        config_path = REPO_ROOT / ".publisher.yaml"
+        folders = []
+        if config_path.exists():
+            try:
+                import yaml
+                with open(config_path) as f:
+                    cfg = yaml.safe_load(f) or {}
+                folders = cfg.get("folders", [])
+            except Exception:
+                pass
+
+        if not folders:
+            folders = [{"path": "docs/requirements", "pattern": "prd-*.md"}]
+
+        for folder_cfg in folders:
+            folder = REPO_ROOT / folder_cfg["path"]
+            pattern = folder_cfg.get("pattern", "*.md")
+            subfolder = folder_cfg.get("onedrive_subfolder", "")
+            if folder.exists():
+                for md_file in sorted(folder.glob(pattern)):
+                    if md_file.name.startswith("_") or md_file.name == "README.md":
+                        continue
+                    files_to_push.append((md_file, _generate_docx(md_file), subfolder))
 
     if not files_to_push:
         print("No documents found to push.")
