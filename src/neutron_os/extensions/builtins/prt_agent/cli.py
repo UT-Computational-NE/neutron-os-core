@@ -1270,14 +1270,10 @@ def _source_to_subfolder(source: Path, repo_root: Path) -> str:
     """
     resolved = source.resolve()
     try:
-        rel = resolved.parent.relative_to(repo_root / "docs")
+        rel = resolved.parent.relative_to(repo_root)
         return str(rel)
     except ValueError:
-        try:
-            rel = resolved.parent.relative_to(repo_root)
-            return str(rel)
-        except ValueError:
-            return ""
+        return ""
 
 
 def _generate_docx(md_path: Path) -> Path:
