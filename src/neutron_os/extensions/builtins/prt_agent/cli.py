@@ -1209,34 +1209,43 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
 def _postprocess_docx(docx_path: Path) -> None:
     """Post-process a .docx file for quality:
 
-    1. Add borders to all table cells (not just table-level — Word ignores those)
-    2. Set tables to full page width
-    3. Remove pandoc's heading bookmarks (clutter in Word)
+    1. Tables: cell borders, full page width, auto-fit column widths
+    2. Diagrams: keep with preceding heading, size to page width
+    3. Headings: "keep with next" so headings don't orphan from content
+    4. Bookmarks: remove pandoc's heading bookmarks
     """
     try:
         from docx import Document
         from docx.oxml.ns import qn
         from docx.oxml import OxmlElement
+        from docx.shared import Inches, Emu
 
         doc = Document(str(docx_path))
 
-        # --- Table borders (cell-level) ---
+        # --- Tables: borders + full width + auto-fit columns ---
         for table in doc.tables:
             tbl = table._tbl
-
-            # Set table to full page width
             tblPr = tbl.tblPr
             if tblPr is None:
                 tblPr = OxmlElement("w:tblPr")
                 tbl.insert(0, tblPr)
+
+            # Full page width (letter = 8.5" - 1" margins each side = 6.5")
             for existing in tblPr.findall(qn("w:tblW")):
                 tblPr.remove(existing)
             tblW = OxmlElement("w:tblW")
             tblW.set(qn("w:w"), "5000")
-            tblW.set(qn("w:type"), "pct")
+            tblW.set(qn("w:type"), "pct")  # 100% of available width
             tblPr.append(tblW)
 
-            # Add borders to EVERY CELL (table-level borders are unreliable)
+            # Auto-fit: let Word optimize column widths based on content
+            for existing in tblPr.findall(qn("w:tblLayout")):
+                tblPr.remove(existing)
+            layout = OxmlElement("w:tblLayout")
+            layout.set(qn("w:type"), "autofit")
+            tblPr.append(layout)
+
+            # Cell borders
             for row in table.rows:
                 for cell in row.cells:
                     tc = cell._tc
@@ -1245,11 +1254,9 @@ def _postprocess_docx(docx_path: Path) -> None:
                         tcPr = OxmlElement("w:tcPr")
                         tc.insert(0, tcPr)
 
-                    # Remove existing cell borders
                     for existing in tcPr.findall(qn("w:tcBorders")):
                         tcPr.remove(existing)
 
-                    # Add cell borders
                     borders = OxmlElement("w:tcBorders")
                     for border_name in ["top", "left", "bottom", "right"]:
                         border = OxmlElement(f"w:{border_name}")
@@ -1259,6 +1266,35 @@ def _postprocess_docx(docx_path: Path) -> None:
                         border.set(qn("w:color"), "AAAAAA")
                         borders.append(border)
                     tcPr.append(borders)
+
+                    # Remove fixed column widths so autofit works
+                    for existing in tcPr.findall(qn("w:tcW")):
+                        tcPr.remove(existing)
+
+        # --- Headings: keep with next paragraph (prevents orphaned headings) ---
+        for para in doc.paragraphs:
+            if para.style and para.style.name and "Heading" in para.style.name:
+                pPr = para._p.get_or_add_pPr()
+                # Keep with next
+                kwn = pPr.find(qn("w:keepNext"))
+                if kwn is None:
+                    kwn = OxmlElement("w:keepNext")
+                    pPr.append(kwn)
+
+        # --- Images: size to 6 inches wide (fits letter with 1.25" margins) ---
+        max_width = Inches(6)
+        for rel in doc.part.rels.values():
+            if "image" in rel.reltype:
+                # Find all inline drawings that reference this image
+                for drawing in doc.element.body.iter(qn("wp:inline")):
+                    extent = drawing.find(qn("wp:extent"))
+                    if extent is not None:
+                        cx = int(extent.get("cx", "0"))
+                        cy = int(extent.get("cy", "0"))
+                        if cx > max_width:
+                            ratio = max_width / cx
+                            extent.set("cx", str(int(max_width)))
+                            extent.set("cy", str(int(cy * ratio)))
 
         # --- Remove bookmarks ---
         body = doc.element.body
@@ -1270,7 +1306,7 @@ def _postprocess_docx(docx_path: Path) -> None:
         doc.save(str(docx_path))
 
     except ImportError:
-        pass  # python-docx not installed
+        pass
     except Exception as e:
         logger.warning("Docx post-processing failed: %s", e)
 
