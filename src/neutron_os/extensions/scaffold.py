@@ -233,7 +233,7 @@ from typing import Any
 class PptxGenerationProvider:
     """Docflow GenerationProvider for PowerPoint output.
 
-    Implements the same contract as tools.extensions.builtins.publisher.providers.base.GenerationProvider
+    Implements the same contract as tools.extensions.builtins.prt_agent.providers.base.GenerationProvider
     without importing it (keeps extension dependency-free).
     """
 

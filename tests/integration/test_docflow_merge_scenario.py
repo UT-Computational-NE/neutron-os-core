@@ -28,7 +28,7 @@ from neutron_os.extensions.builtins.signal_agent.extractors.docflow_review impor
     DivergenceReport,
     DocFormat,
 )
-from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
+from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
 
 
 # ============================================================================

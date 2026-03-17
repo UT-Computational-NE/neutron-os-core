@@ -46,7 +46,7 @@ def _write_compile_dir(tmp_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 def test_find_manifest_in_directory(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _find_compile_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _find_compile_manifest
 
     manifest = _write_compile_dir(tmp_path)
     result = _find_compile_manifest(tmp_path)  # pass directory
@@ -54,7 +54,7 @@ def test_find_manifest_in_directory(tmp_path):
 
 
 def test_find_manifest_from_file_in_same_dir(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _find_compile_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _find_compile_manifest
 
     _write_compile_dir(tmp_path)
     some_file = tmp_path / "00-intro.md"
@@ -63,7 +63,7 @@ def test_find_manifest_from_file_in_same_dir(tmp_path):
 
 
 def test_find_manifest_returns_none_when_absent(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _find_compile_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _find_compile_manifest
 
     # No .compile.yaml at all
     single_doc = tmp_path / "doc.md"
@@ -76,7 +76,7 @@ def test_find_manifest_returns_none_when_absent(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_assemble_concatenates_sources(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _assemble_from_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _assemble_from_manifest
 
     manifest = _write_compile_dir(tmp_path)
     output = tmp_path / "assembled.md"
@@ -90,7 +90,7 @@ def test_assemble_concatenates_sources(tmp_path):
 
 
 def test_assemble_includes_title(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _assemble_from_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _assemble_from_manifest
 
     manifest = _write_compile_dir(tmp_path)
     output = tmp_path / "out.md"
@@ -101,7 +101,7 @@ def test_assemble_includes_title(tmp_path):
 
 
 def test_assemble_raises_on_missing_source(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _assemble_from_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _assemble_from_manifest
 
     manifest = tmp_path / ".compile.yaml"
     manifest.write_text("output: x\ntitle: X\nsources:\n  - missing.md\n")
@@ -112,7 +112,7 @@ def test_assemble_raises_on_missing_source(tmp_path):
 
 
 def test_assemble_default_output_name(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import _assemble_from_manifest
+    from neutron_os.extensions.builtins.prt_agent.cli import _assemble_from_manifest
 
     manifest = _write_compile_dir(tmp_path)
     result = _assemble_from_manifest(manifest)  # no output_path
@@ -126,7 +126,7 @@ def test_assemble_default_output_name(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_push_parser_registered():
-    from neutron_os.extensions.builtins.publisher.cli import get_parser
+    from neutron_os.extensions.builtins.prt_agent.cli import get_parser
 
     parser = get_parser()
     args = parser.parse_args(["push", "docs/foo.md"])
@@ -137,7 +137,7 @@ def test_push_parser_registered():
 
 
 def test_push_parser_draft_flag():
-    from neutron_os.extensions.builtins.publisher.cli import get_parser
+    from neutron_os.extensions.builtins.prt_agent.cli import get_parser
 
     parser = get_parser()
     args = parser.parse_args(["push", "docs/foo.md", "--draft"])
@@ -145,7 +145,7 @@ def test_push_parser_draft_flag():
 
 
 def test_assemble_parser_registered():
-    from neutron_os.extensions.builtins.publisher.cli import get_parser
+    from neutron_os.extensions.builtins.prt_agent.cli import get_parser
 
     parser = get_parser()
     args = parser.parse_args(["assemble", "path/to/.compile.yaml"])
@@ -155,7 +155,7 @@ def test_assemble_parser_registered():
 
 
 def test_assemble_parser_output_flag():
-    from neutron_os.extensions.builtins.publisher.cli import get_parser
+    from neutron_os.extensions.builtins.prt_agent.cli import get_parser
 
     parser = get_parser()
     args = parser.parse_args(["assemble", ".compile.yaml", "--output", "out.md"])
@@ -167,7 +167,7 @@ def test_assemble_parser_output_flag():
 # ---------------------------------------------------------------------------
 
 def test_cmd_assemble_writes_file(tmp_path, capsys):
-    from neutron_os.extensions.builtins.publisher.cli import cmd_assemble
+    from neutron_os.extensions.builtins.prt_agent.cli import cmd_assemble
 
     manifest = _write_compile_dir(tmp_path)
     output = tmp_path / "result.md"
@@ -185,7 +185,7 @@ def test_cmd_assemble_writes_file(tmp_path, capsys):
 
 
 def test_cmd_assemble_missing_manifest_exits(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import cmd_assemble
+    from neutron_os.extensions.builtins.prt_agent.cli import cmd_assemble
 
     args = MagicMock()
     args.manifest = str(tmp_path / "nonexistent.yaml")
@@ -201,7 +201,7 @@ def test_cmd_assemble_missing_manifest_exits(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_cmd_push_single_file_no_manifest(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import cmd_push
+    from neutron_os.extensions.builtins.prt_agent.cli import cmd_push
 
     doc = tmp_path / "spec.md"
     doc.write_text("# Spec\n\nContent.\n")
@@ -218,7 +218,7 @@ def test_cmd_push_single_file_no_manifest(tmp_path):
     mock_engine = MagicMock()
     mock_engine.publish.return_value = {"version": "v1.0.0", "storage": "local", "url": str(tmp_path)}
 
-    with patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine", return_value=mock_engine):
+    with patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine", return_value=mock_engine):
         cmd_push(args)
 
     mock_engine.publish.assert_called_once()
@@ -232,7 +232,7 @@ def test_cmd_push_single_file_no_manifest(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_cmd_push_with_manifest_assembles_transparently(tmp_path, capsys):
-    from neutron_os.extensions.builtins.publisher.cli import cmd_push
+    from neutron_os.extensions.builtins.prt_agent.cli import cmd_push
 
     _write_compile_dir(tmp_path)
 
@@ -255,7 +255,7 @@ def test_cmd_push_with_manifest_assembles_transparently(tmp_path, capsys):
 
     mock_engine.publish.side_effect = capture_publish
 
-    with patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine", return_value=mock_engine):
+    with patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine", return_value=mock_engine):
         cmd_push(args)
 
     # Should have been called with an assembled file
@@ -269,7 +269,7 @@ def test_cmd_push_with_manifest_assembles_transparently(tmp_path, capsys):
 
 
 def test_cmd_push_cleans_up_temp_on_publish_failure(tmp_path):
-    from neutron_os.extensions.builtins.publisher.cli import cmd_push
+    from neutron_os.extensions.builtins.prt_agent.cli import cmd_push
 
     _write_compile_dir(tmp_path)
 
@@ -291,7 +291,7 @@ def test_cmd_push_cleans_up_temp_on_publish_failure(tmp_path):
 
     mock_engine.publish.side_effect = capture_and_fail
 
-    with patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine", return_value=mock_engine):
+    with patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine", return_value=mock_engine):
         with pytest.raises(RuntimeError):
             cmd_push(args)
 

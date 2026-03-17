@@ -310,7 +310,7 @@ def _handle_send(params: dict) -> dict:
 
     # Try to load SMTP provider
     try:
-        from neutron_os.extensions.builtins.publisher.providers.notification.smtp import SMTPNotificationProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.notification.smtp import SMTPNotificationProvider
         # Try loading config
         config = _load_smtp_config()
         if not config.get("from_address"):

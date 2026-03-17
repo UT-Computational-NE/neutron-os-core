@@ -1,6 +1,6 @@
 """Unit tests for git integration."""
 
-from neutron_os.extensions.builtins.publisher.git_integration import (
+from neutron_os.extensions.builtins.prt_agent.git_integration import (
     get_git_context,
     check_branch_policy,
     SyncStatus,

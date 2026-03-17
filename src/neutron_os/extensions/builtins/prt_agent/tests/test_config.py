@@ -2,7 +2,7 @@
 
 import pytest
 
-from neutron_os.extensions.builtins.publisher.config import (
+from neutron_os.extensions.builtins.prt_agent.config import (
     load_config,
     PublisherConfig,
     _substitute_env_vars,
@@ -137,7 +137,7 @@ class TestConfigDiscoveryHierarchy:
         config_file.write_text("storage:\n  provider: local\n")
         monkeypatch.chdir(tmp_path)
         # Re-evaluate PROJECT_ROOT to point to tmp_path
-        import neutron_os.extensions.builtins.publisher.config as cfg_mod
+        import neutron_os.extensions.builtins.prt_agent.config as cfg_mod
         monkeypatch.setattr(cfg_mod, "PROJECT_ROOT", tmp_path)
         path = _discover_config_path()
         assert path == config_file
@@ -148,7 +148,7 @@ class TestConfigDiscoveryHierarchy:
         config_file = tmp_path / ".publisher.yaml"
         config_file.write_text("storage:\n  provider: local\n")
         monkeypatch.chdir(tmp_path)
-        import neutron_os.extensions.builtins.publisher.config as cfg_mod
+        import neutron_os.extensions.builtins.prt_agent.config as cfg_mod
         monkeypatch.setattr(cfg_mod, "PROJECT_ROOT", tmp_path)
         path = _discover_config_path()
         assert path == config_file
@@ -161,7 +161,7 @@ class TestConfigDiscoveryHierarchy:
         config_file = neut_dir / "config.yaml"
         config_file.write_text("storage:\n  provider: local\n")
         monkeypatch.chdir(tmp_path)
-        import neutron_os.extensions.builtins.publisher.config as cfg_mod
+        import neutron_os.extensions.builtins.prt_agent.config as cfg_mod
         monkeypatch.setattr(cfg_mod, "PROJECT_ROOT", tmp_path)
         path = _discover_config_path()
         assert path == config_file

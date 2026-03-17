@@ -1,8 +1,8 @@
 """Unit tests for document state persistence."""
 
 import pytest
-from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
-from neutron_os.extensions.builtins.publisher.state import StateStore
+from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
+from neutron_os.extensions.builtins.prt_agent.state import StateStore
 
 
 @pytest.fixture

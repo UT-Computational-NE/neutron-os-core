@@ -1,6 +1,6 @@
 """Unit tests for docflow data models."""
 
-from neutron_os.extensions.builtins.publisher.state import (
+from neutron_os.extensions.builtins.prt_agent.state import (
     Comment,
     LinkEntry,
     PublicationRecord,

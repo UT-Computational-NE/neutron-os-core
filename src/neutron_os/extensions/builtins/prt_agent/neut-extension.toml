@@ -11,10 +11,10 @@ agent_identity = "AGENT.md"
 
 [[cli.commands]]
 noun = "pub"
-module = "neutron_os.extensions.builtins.publisher.cli"
+module = "neutron_os.extensions.builtins.prt_agent.cli"
 description = "Document publishing lifecycle"
 
 [[cli.commands]]
 noun = "doc"
-module = "neutron_os.extensions.builtins.publisher.cli"
+module = "neutron_os.extensions.builtins.prt_agent.cli"
 description = "Document publishing lifecycle (alias for pub)"

@@ -11,14 +11,14 @@ import pytest
 class TestBoxBrowserStorage:
 
     def test_has_session_false_when_no_state(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.box_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.box_browser import (
             BoxBrowserStorageProvider,
         )
         provider = BoxBrowserStorageProvider({"session_dir": str(tmp_path / "session")})
         assert not provider.has_session()
 
     def test_has_session_true_when_state_exists(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.box_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.box_browser import (
             BoxBrowserStorageProvider,
         )
         session_dir = tmp_path / "session"
@@ -28,7 +28,7 @@ class TestBoxBrowserStorage:
         assert provider.has_session()
 
     def test_upload_missing_file_returns_error(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.box_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.box_browser import (
             BoxBrowserStorageProvider,
         )
         provider = BoxBrowserStorageProvider({"session_dir": str(tmp_path / "session")})
@@ -37,7 +37,7 @@ class TestBoxBrowserStorage:
         assert "not found" in result.error
 
     def test_clear_session(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.box_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.box_browser import (
             BoxBrowserStorageProvider,
         )
         session_dir = tmp_path / "session"
@@ -48,7 +48,7 @@ class TestBoxBrowserStorage:
         assert not provider.has_session()
 
     def test_needs_login_detects_box_urls(self):
-        from neutron_os.extensions.builtins.publisher.providers.storage.box_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.box_browser import (
             BoxBrowserStorageProvider,
         )
         provider = BoxBrowserStorageProvider()
@@ -61,7 +61,7 @@ class TestBoxBrowserStorage:
         assert not provider._needs_login(mock_page)
 
     def test_canonical_url(self):
-        from neutron_os.extensions.builtins.publisher.providers.storage.box_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.box_browser import (
             BoxBrowserStorageProvider,
         )
         provider = BoxBrowserStorageProvider()
@@ -69,4 +69,4 @@ class TestBoxBrowserStorage:
         assert provider.get_canonical_url("") == ""
 
     def test_import_does_not_fail(self):
-        from neutron_os.extensions.builtins.publisher.providers.storage import box_browser  # noqa: F401
+        from neutron_os.extensions.builtins.prt_agent.providers.storage import box_browser  # noqa: F401

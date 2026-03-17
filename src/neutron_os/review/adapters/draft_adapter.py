@@ -207,7 +207,7 @@ def _register_in_publisher(session: ReviewSession, approved_path: Path) -> None:
     ``neut pub publish`` can pick them up for delivery.
     """
     try:
-        from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord, StateStore
+        from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord, StateStore
 
         state_path = _REPO_ROOT / ".neut" / ".publisher-state.json"
         store = StateStore(state_path)

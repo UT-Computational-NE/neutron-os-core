@@ -313,7 +313,7 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
 
     # Built-in tool handlers (lazy imports)
     if name == "query_docs":
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         engine = PublisherEngine()
         source = Path(params["file"]) if params.get("file") else None
         docs = engine.status(source)
@@ -349,29 +349,29 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
         return {"inbox_raw": counts, "processed": processed, "drafts": drafts}
 
     elif name == "list_providers":
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         engine = PublisherEngine()
         return engine.list_providers()
 
     elif name == "doc_check_links":
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         engine = PublisherEngine()
         return engine.check_links()
 
     elif name == "doc_diff":
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         engine = PublisherEngine()
         return {"changed": engine.diff()}
 
     elif name == "doc_generate":
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         engine = PublisherEngine()
         source = Path(params["source"])
         output = engine.generate(source)
         return {"output": str(output), "exists": output.exists()}
 
     elif name == "doc_publish":
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         engine = PublisherEngine()
         source = Path(params["source"])
         record = engine.publish(

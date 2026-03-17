@@ -2,7 +2,7 @@
 
 Providers register themselves on import:
 
-    from neutron_os.extensions.builtins.publisher.factory import PublisherFactory
+    from neutron_os.extensions.builtins.prt_agent.factory import PublisherFactory
     PublisherFactory.register("storage", "local", LocalStorageProvider)
 
 The factory instantiates providers from YAML config:

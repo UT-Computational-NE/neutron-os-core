@@ -679,7 +679,7 @@ Add to [1] this project  [2] user-global (~/.neut/): 1
 
 ✓ Endpoint 'my-lab-portal' registered in .neut/publisher/workflow.yaml
   To implement a custom StorageProvider for this endpoint, see:
-  src/neutron_os/extensions/builtins/publisher/providers/storage/
+  src/neutron_os/extensions/builtins/prt_agent/providers/storage/
 ```
 
 This writes a `catalog_extensions` entry in `workflow.yaml` and optionally scaffolds a stub `StorageProvider` implementation file. The `neut pub endpoints` output immediately reflects the new entry.
@@ -740,7 +740,7 @@ Without an audience declaration, Publisher falls back to type-level `audience_hi
 ### 7.2 `DocumentAudience` Dataclass
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/audience.py
+# src/neutron_os/extensions/builtins/prt_agent/audience.py
 
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -836,7 +836,7 @@ When `notify_roles: [approver]`, only `david.park@example.org` and `pi@example.o
 ### 7.8 `AudienceResolver` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/audience.py (continued)
+# src/neutron_os/extensions/builtins/prt_agent/audience.py (continued)
 
 from typing import Dict
 
@@ -929,14 +929,14 @@ access_policy:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/audience.py` | `DocumentAudience`, `AudienceResolver`, `PolicyViolationError` |
+| `src/neutron_os/extensions/builtins/prt_agent/audience.py` | `DocumentAudience`, `AudienceResolver`, `PolicyViolationError` |
 | Modify `engine.py` | Call `AudienceResolver.resolve()` at pipeline start; call `check_endpoint_policy()` before generation |
 | Modify `config.py` | Add `audience_contacts: Dict[str, List[str]]` to `PublisherConfig` |
 | Modify `document_types.py` | Pass `audience_hint` from `DocumentType` to `AudienceResolver.resolve()` |
 
 ### 7.11 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_audience.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_audience.py`
 
 1. `test_resolve_from_front_matter` — Provide `audience: {org_scope: partner, access_tier: restricted}` in front matter. Assert resolved audience has correct fields.
 2. `test_resolve_falls_back_to_type_hint` — No `audience:` in front matter; type has `audience_hint: public`. Assert resolved `org_scope == "public"`.
@@ -1061,7 +1061,7 @@ Without a type system every document must be configured from scratch. With it, s
 
 The registry loads from three locations in ascending priority (last wins):
 
-1. **Built-in**: `src/neutron_os/extensions/builtins/publisher/builtin_types.yaml`
+1. **Built-in**: `src/neutron_os/extensions/builtins/prt_agent/builtin_types.yaml`
 2. **User-global**: `~/.neut/publisher/document_types.yaml`
 3. **Project**: `.neut/publisher/document_types.yaml`
 
@@ -1070,7 +1070,7 @@ Later layers may override any field of any type by name. An entry in the project
 ### 11.3 `DocumentType` Dataclass
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/document_types.py
+# src/neutron_os/extensions/builtins/prt_agent/document_types.py
 
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -1099,7 +1099,7 @@ class DocumentType:
 ### 11.4 Built-in Types (`builtin_types.yaml`)
 
 ```yaml
-# src/neutron_os/extensions/builtins/publisher/builtin_types.yaml
+# src/neutron_os/extensions/builtins/prt_agent/builtin_types.yaml
 
 - name: memo
   description: "Short internal memo; no citations, no TOC."
@@ -1358,7 +1358,7 @@ class DocumentType:
 ### 11.5 `DocumentTypeRegistry` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/document_types.py (continued)
+# src/neutron_os/extensions/builtins/prt_agent/document_types.py (continued)
 
 import logging
 from pathlib import Path
@@ -1440,7 +1440,7 @@ class DocumentTypeRegistry:
 ### 11.6 `FrontMatterReader` Helper
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/document_types.py (continued)
+# src/neutron_os/extensions/builtins/prt_agent/document_types.py (continued)
 
 import re
 
@@ -1514,15 +1514,15 @@ regulatory-submission  pdf       pandoc-pdf      Regulatory submission; PDF only
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/document_types.py` | `DocumentType`, `DocumentTypeRegistry`, `FrontMatterReader` |
-| `src/neutron_os/extensions/builtins/publisher/builtin_types.yaml` | Six built-in type definitions |
-| `src/neutron_os/extensions/builtins/publisher/engine.py` | Call `DocumentTypeRegistry.resolve_for_document()`, merge type config |
-| `src/neutron_os/extensions/builtins/publisher/config.py` | Add `merge_document_type()` to `PublisherConfig` |
-| `src/neutron_os/extensions/builtins/publisher/cli.py` | Add `neut pub types` subcommand |
+| `src/neutron_os/extensions/builtins/prt_agent/document_types.py` | `DocumentType`, `DocumentTypeRegistry`, `FrontMatterReader` |
+| `src/neutron_os/extensions/builtins/prt_agent/builtin_types.yaml` | Six built-in type definitions |
+| `src/neutron_os/extensions/builtins/prt_agent/engine.py` | Call `DocumentTypeRegistry.resolve_for_document()`, merge type config |
+| `src/neutron_os/extensions/builtins/prt_agent/config.py` | Add `merge_document_type()` to `PublisherConfig` |
+| `src/neutron_os/extensions/builtins/prt_agent/cli.py` | Add `neut pub types` subcommand |
 
 ### 11.11 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_document_types.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_document_types.py`
 
 1. `test_builtin_types_load` — Instantiate `DocumentTypeRegistry()`, call `.load()`, assert `.list_all()` returns exactly 6 entries with names `memo`, `spec`, `report`, `journal-paper`, `grant-proposal`, `regulatory-submission`.
 
@@ -1545,7 +1545,7 @@ The fallback chain introduced in §5 is useful only if multiple generators exist
 ### 12.2 `PandocPdfProvider`
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/providers/generation/pandoc_pdf.py
+# src/neutron_os/extensions/builtins/prt_agent/providers/generation/pandoc_pdf.py
 
 from __future__ import annotations
 import shutil
@@ -1589,7 +1589,7 @@ class PandocPdfProvider(GenerationProvider):
 ### 12.3 `PandocHtmlProvider`
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/providers/generation/pandoc_html.py
+# src/neutron_os/extensions/builtins/prt_agent/providers/generation/pandoc_html.py
 
 from __future__ import annotations
 import shutil
@@ -1675,13 +1675,13 @@ onedrive         storage      ✓
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/providers/generation/pandoc_pdf.py` | `PandocPdfProvider` |
-| `src/neutron_os/extensions/builtins/publisher/providers/generation/pandoc_html.py` | `PandocHtmlProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/generation/pandoc_pdf.py` | `PandocPdfProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/generation/pandoc_html.py` | `PandocHtmlProvider` |
 | Modify `providers/__init__.py` | Import both new modules to trigger registration |
 
 ### 12.8 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_pdf_html_providers.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_pdf_html_providers.py`
 
 1. `test_pdf_provider_args` — Call `PandocPdfProvider()._build_pandoc_args(src, out, {"pdf_engine": "xelatex", "toc": True, "toc_depth": 2})`. Assert the returned list contains `"--pdf-engine"`, `"xelatex"`, `"--toc"`, `"--toc-depth=2"`. No pandoc binary needed.
 
@@ -1726,7 +1726,7 @@ Run detection in order; the first match wins:
 ### 13.4 `CitationConfig` and `CitationResolver`
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/citations.py
+# src/neutron_os/extensions/builtins/prt_agent/citations.py
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -1859,7 +1859,7 @@ if citation_config.csl_path:
 
 ### 13.6 Built-in CSL Files
 
-Ship three CSL styles in `src/neutron_os/extensions/builtins/publisher/citation_styles/`:
+Ship three CSL styles in `src/neutron_os/extensions/builtins/prt_agent/citation_styles/`:
 
 | File | Style | Use Case |
 |------|-------|----------|
@@ -1884,17 +1884,17 @@ citations:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/citations.py` | `CitationConfig`, `CitationResolver` |
-| `src/neutron_os/extensions/builtins/publisher/citation_styles/ieee.csl` | IEEE CSL (upstream verbatim) |
-| `src/neutron_os/extensions/builtins/publisher/citation_styles/apa.csl` | APA 7th CSL (upstream verbatim) |
-| `src/neutron_os/extensions/builtins/publisher/citation_styles/chicago-author-date.csl` | Chicago CSL (upstream verbatim) |
+| `src/neutron_os/extensions/builtins/prt_agent/citations.py` | `CitationConfig`, `CitationResolver` |
+| `src/neutron_os/extensions/builtins/prt_agent/citation_styles/ieee.csl` | IEEE CSL (upstream verbatim) |
+| `src/neutron_os/extensions/builtins/prt_agent/citation_styles/apa.csl` | APA 7th CSL (upstream verbatim) |
+| `src/neutron_os/extensions/builtins/prt_agent/citation_styles/chicago-author-date.csl` | Chicago CSL (upstream verbatim) |
 | Modify `providers/generation/pandoc_docx.py` | Call `CitationResolver` in `_build_pandoc_args` |
 | Modify `providers/generation/pandoc_pdf.py` | Same |
 | Modify `providers/generation/pandoc_html.py` | Same |
 
 ### 13.9 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_citations.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_citations.py`
 
 1. `test_resolve_from_front_matter` — Create a temp dir with `paper.md` (front matter `bibliography: my.bib`) and `my.bib`. Call `CitationResolver().resolve(paper_md)`. Assert `found_via == "front-matter"` and `bibliography_path.name == "my.bib"`.
 
@@ -1921,7 +1921,7 @@ Many documents are composed from multiple markdown source files — thesis chapt
 ### 14.2 `CompilationManifest` Dataclass
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/compilation.py
+# src/neutron_os/extensions/builtins/prt_agent/compilation.py
 
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -1992,7 +1992,7 @@ All paths in `sources` and `bibliography` are relative to the directory containi
 ### 14.4 `Compiler` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/compilation.py (continued)
+# src/neutron_os/extensions/builtins/prt_agent/compilation.py (continued)
 
 import re
 import tempfile
@@ -2096,13 +2096,13 @@ This was previously called `neut pub compile`. It is renamed to `assemble` to ma
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/compilation.py` | `CompilationManifest`, `Compiler` |
+| `src/neutron_os/extensions/builtins/prt_agent/compilation.py` | `CompilationManifest`, `Compiler` |
 | Modify `cli.py` | Extend `cmd_push` with `_find_compile_manifest()` auto-detection; add `neut pub assemble` plumbing command |
 | Modify `cli.py` `cmd_scan` | Detect `.compile.yaml` files in scan |
 
 ### 14.9 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_compilation.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_compilation.py`
 
 1. `test_compiler_concatenates_sources` — Create 3 fixture `.md` files (no front matter), compile them, read the output. Assert all three body texts appear in the combined file.
 
@@ -2135,7 +2135,7 @@ Same scan, but passes the extracted content to the chat agent's internal API (no
 ### 15.3 `ScaffoldConfig` Dataclass
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/scaffold.py
+# src/neutron_os/extensions/builtins/prt_agent/scaffold.py
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -2155,7 +2155,7 @@ class ScaffoldConfig:
 ### 15.4 `DocumentScaffolder` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/scaffold.py (continued)
+# src/neutron_os/extensions/builtins/prt_agent/scaffold.py (continued)
 
 import re
 import datetime
@@ -2309,12 +2309,12 @@ neut pub draft <title> [--type <type>] [--from-notes <path>] [--llm] [--output <
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/scaffold.py` | `ScaffoldConfig`, `DocumentScaffolder`, `_TYPE_SECTIONS` |
+| `src/neutron_os/extensions/builtins/prt_agent/scaffold.py` | `ScaffoldConfig`, `DocumentScaffolder`, `_TYPE_SECTIONS` |
 | Modify `cli.py` | Add `neut pub draft` subcommand |
 
 ### 15.8 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_scaffold.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_scaffold.py`
 
 1. `test_scaffold_report_sections` — Call `DocumentScaffolder().scaffold(ScaffoldConfig(title="Test", doc_type="report"))`. Read the output file. Assert headings `# Abstract`, `# Introduction`, `# Methods`, `# Results`, `# Discussion`, `# Conclusion` all appear.
 
@@ -2356,7 +2356,7 @@ Paths are relative to the repository root. Publisher resolves them to absolute p
 ### 16.3 `DataSourceRecord` and `ProvenanceWarning` Dataclasses
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/provenance.py
+# src/neutron_os/extensions/builtins/prt_agent/provenance.py
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -2382,7 +2382,7 @@ class ProvenanceWarning:
 ### 16.4 `DataProvenanceChecker` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/provenance.py (continued)
+# src/neutron_os/extensions/builtins/prt_agent/provenance.py (continued)
 
 import hashlib
 import os
@@ -2521,7 +2521,7 @@ doc_state.data_sources = checker.record(source_path, self.workspace_root)
 ### 16.7 `ProvenanceError` Exception
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/provenance.py
+# src/neutron_os/extensions/builtins/prt_agent/provenance.py
 
 class ProvenanceError(RuntimeError):
     """Raised when strict provenance mode blocks a publish due to changed data sources."""
@@ -2554,14 +2554,14 @@ provenance:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/provenance.py` | `DataSourceRecord`, `DataProvenanceChecker`, `ProvenanceWarning`, `ProvenanceError` |
+| `src/neutron_os/extensions/builtins/prt_agent/provenance.py` | `DataSourceRecord`, `DataProvenanceChecker`, `ProvenanceWarning`, `ProvenanceError` |
 | Modify `state.py` | Add `data_sources: List[DataSourceRecord]` to `DocumentState` |
 | Modify `engine.py` | Call `DataProvenanceChecker.record()` on publish; `.check()` on status and publish pre-flight |
 | Modify `config.py` | Add `provenance: ProvenanceConfig` section with `enabled` and `strict` fields |
 
 ### 16.11 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_provenance.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_provenance.py`
 
 1. `test_record_file_source` — Create a temp `.md` with `data-sources: [somefile.csv]` and a corresponding `somefile.csv`. Call `DataProvenanceChecker().record(md_path, repo_root)`. Assert the returned record's `sha256` is a 64-character hex string and `mtime > 0`.
 
@@ -2601,7 +2601,7 @@ An `ExperienceProvider` ABC reserved for full interactive publication scenarios:
 ### 17.3 `ExperienceProvider` ABC (Tier 3 placeholder)
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/providers/generation/experience.py
+# src/neutron_os/extensions/builtins/prt_agent/providers/generation/experience.py
 
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -2646,12 +2646,12 @@ See §6.3 for the complete built-in endpoint catalog including `github-pages` an
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/providers/generation/experience.py` | `ExperienceProvider` ABC (Tier 3 placeholder) |
-| `src/neutron_os/extensions/builtins/publisher/providers/storage/github_pages.py` | Tier 2 GitHub Pages storage provider (future) |
-| `src/neutron_os/extensions/builtins/publisher/providers/storage/gcs.py` | `GcsStorageProvider` — GCS byte-passthrough via `google-cloud-storage` SDK |
-| `src/neutron_os/extensions/builtins/publisher/providers/storage/gcs_static.py` | `GcsStaticStorageProvider` — GCS static site hosting |
-| `src/neutron_os/extensions/builtins/publisher/providers/storage/firebase_hosting.py` | `FirebaseHostingStorageProvider` — Firebase Hosting via Admin SDK or REST API |
-| `src/neutron_os/extensions/builtins/publisher/providers/storage/vertex_ai_search.py` | `VertexAiSearchStorageProvider` — chunk + index via Vertex AI Search API; also implements `PullProvider` for corpus queries |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/generation/experience.py` | `ExperienceProvider` ABC (Tier 3 placeholder) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/storage/github_pages.py` | Tier 2 GitHub Pages storage provider (future) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/storage/gcs.py` | `GcsStorageProvider` — GCS byte-passthrough via `google-cloud-storage` SDK |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/storage/gcs_static.py` | `GcsStaticStorageProvider` — GCS static site hosting |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/storage/firebase_hosting.py` | `FirebaseHostingStorageProvider` — Firebase Hosting via Admin SDK or REST API |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/storage/vertex_ai_search.py` | `VertexAiSearchStorageProvider` — chunk + index via Vertex AI Search API; also implements `PullProvider` for corpus queries |
 
 ---
 
@@ -2963,7 +2963,7 @@ scaffold:
 ### 20.4 `TemplateOnboarder` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/template_onboarder.py
+# src/neutron_os/extensions/builtins/prt_agent/template_onboarder.py
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -3102,14 +3102,14 @@ storage:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/template_onboarder.py` | `TemplateMeta`, `TemplateOnboarder` |
+| `src/neutron_os/extensions/builtins/prt_agent/template_onboarder.py` | `TemplateMeta`, `TemplateOnboarder` |
 | Modify `cli.py` | Add `template` subcommand: `add`, `list`, `remove`, `validate` |
 | `.neut/publisher/templates/` | Template storage directory (per-workspace) |
 | `~/.neut/publisher/templates/` | User-global template storage |
 
 ### 20.8 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_template_onboarder.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_template_onboarder.py`
 
 1. `test_detect_sidecar` — Create a temp `.docx` and matching `.template-meta.yaml`. Call `TemplateMeta.detect()`. Assert returns a `TemplateMeta` with correct name and kind.
 
@@ -3285,10 +3285,10 @@ Options:
   [3] Mark as Owned          (wiki is source of truth; track changes only)
 
 Choice [1]: 1
-Local source path: src/neutron_os/extensions/builtins/publisher/
+Local source path: src/neutron_os/extensions/builtins/prt_agent/
 
 ✓ Declaration recorded: docs/wiki-mirror/database-setup.md
-  describes: src/neutron_os/extensions/builtins/publisher/
+  describes: src/neutron_os/extensions/builtins/prt_agent/
   mode: declared
 ```
 
@@ -3296,21 +3296,21 @@ Local source path: src/neutron_os/extensions/builtins/publisher/
 
 The first implementation of `PullProvider`. Uses the GitLab REST API (`/api/v4/projects/:id/wikis/:slug`) to fetch wiki page content. Converts GitLab-flavored markdown to standard CommonMark (stripping GitLab-specific macros). Requires `GITLAB_PAT` or equivalent auth credential configured in the workspace.
 
-File location: `src/neutron_os/extensions/builtins/publisher/providers/pull/gitlab_wiki.py`
+File location: `src/neutron_os/extensions/builtins/prt_agent/providers/pull/gitlab_wiki.py`
 
 ### 22.6 File Locations
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/providers/pull/__init__.py` | Package init |
-| `src/neutron_os/extensions/builtins/publisher/providers/pull/base.py` | `PullProvider` ABC, `RemoteDocumentRef`, `PullResult` |
-| `src/neutron_os/extensions/builtins/publisher/providers/pull/gitlab_wiki.py` | `GitLabWikiPullProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/pull/__init__.py` | Package init |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/pull/base.py` | `PullProvider` ABC, `RemoteDocumentRef`, `PullResult` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/pull/gitlab_wiki.py` | `GitLabWikiPullProvider` |
 | Modify `cli.py` | Add `neut pub pull-source` subcommand |
 | Modify `state.py` | Add `source_of_truth_declaration` field to `DocumentState` |
 
 ### 22.7 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_pull_provider.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_pull_provider.py`
 
 1. `test_list_documents` — Mock the GitLab REST API response. Assert `GitLabWikiPullProvider.list_documents()` returns a list of `RemoteDocumentRef` with correct `doc_id`, `title`, and `url` fields.
 
@@ -3357,7 +3357,7 @@ class DriftFinding:
 ### 23.4 `DriftDetector` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/drift_detector.py
+# src/neutron_os/extensions/builtins/prt_agent/drift_detector.py
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -3420,12 +3420,12 @@ Run `neut pub agent propose database-setup` to generate an update.
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/drift_detector.py` | `DriftDetector`, `DriftFinding` |
+| `src/neutron_os/extensions/builtins/prt_agent/drift_detector.py` | `DriftDetector`, `DriftFinding` |
 | Modify `state.py` | Add `drift_detected_at` and `drift_findings` fields to `DocumentState` |
 
 ### 23.7 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher/tests/test_drift_detector.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent/tests/test_drift_detector.py`
 
 1. `test_no_drift_for_in_sync_document` — Publisher-managed document whose source SHA has not changed since last push. Assert `DriftDetector.detect()` returns an empty list.
 
@@ -3447,7 +3447,7 @@ Run `neut pub agent propose database-setup` to generate an update.
 
 ### 24.1 Architecture
 
-The publisher agent is a new extension (`publisher_agent/`) that lives at `src/neutron_os/extensions/builtins/publisher_agent/`. Per the NeutronOS agent naming convention (CLAUDE.md), agent extensions must end with `_agent` in their directory name. This keeps it distinct from the `publisher/` tool extension — the tool provides the engine (generation, storage, state); the agent provides autonomous stewardship (scan, propose, approve, push).
+The publisher agent is a new extension (`publisher_agent/`) that lives at `src/neutron_os/extensions/builtins/prt_agent_agent/`. Per the NeutronOS agent naming convention (CLAUDE.md), agent extensions must end with `_agent` in their directory name. This keeps it distinct from the `publisher/` tool extension — the tool provides the engine (generation, storage, state); the agent provides autonomous stewardship (scan, propose, approve, push).
 
 The publisher agent imports and uses the `publisher` tool's engine, `PullProvider` implementations, and `DriftDetector` as its core machinery. It does not duplicate any of this logic — it wraps it in the scan→propose→approve→push loop.
 
@@ -3532,17 +3532,17 @@ Note: the `pub` noun is shared with the `publisher` tool. The agent registers ad
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher_agent/` | Agent extension root |
-| `src/neutron_os/extensions/builtins/publisher_agent/neut-extension.toml` | Extension manifest |
-| `src/neutron_os/extensions/builtins/publisher_agent/agent.py` | `PublisherAgent` class — scan→propose→approve→push loop |
-| `src/neutron_os/extensions/builtins/publisher_agent/proposals.py` | `ProposedUpdate` dataclass; proposal storage/retrieval |
-| `src/neutron_os/extensions/builtins/publisher_agent/cli.py` | `neut pub agent scan`, `propose`, `review` subcommands |
-| `src/neutron_os/extensions/builtins/publisher_agent/tests/` | Agent test suite |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/` | Agent extension root |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/neut-extension.toml` | Extension manifest |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/agent.py` | `PublisherAgent` class — scan→propose→approve→push loop |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/proposals.py` | `ProposedUpdate` dataclass; proposal storage/retrieval |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/cli.py` | `neut pub agent scan`, `propose`, `review` subcommands |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/tests/` | Agent test suite |
 | `.publisher-proposals/` | Proposal storage directory (per-workspace, gitignored) |
 
 ### 24.8 Tests
 
-**File**: `src/neutron_os/extensions/builtins/publisher_agent/tests/test_publisher_agent.py`
+**File**: `src/neutron_os/extensions/builtins/prt_agent_agent/tests/test_publisher_agent.py`
 
 1. `test_scan_finds_no_drift_for_fresh_push` — Publisher-managed document pushed in the same commit. Assert `scan()` returns an empty findings list for that document.
 
@@ -3569,7 +3569,7 @@ Review is the stage between `neut pub push --draft` and `neut pub push` (final).
 ### 25.2 `FeedbackProvider` ABC
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/providers/feedback/base.py
+# src/neutron_os/extensions/builtins/prt_agent/providers/feedback/base.py
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -3653,10 +3653,10 @@ When a compiled document (PLT_PUB_018) is reviewed, `neut pub review` additional
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/providers/feedback/base.py` | `ReviewComment`, `ReviewResult`, `FeedbackProvider` ABC |
-| `src/neutron_os/extensions/builtins/publisher/providers/feedback/docx_comments.py` | Existing `DocxCommentsProvider` |
-| `src/neutron_os/extensions/builtins/publisher/providers/feedback/google_docs.py` | `GoogleDocsCommentsProvider` (planned) |
-| `src/neutron_os/extensions/builtins/publisher/providers/feedback/notion.py` | `NotionCommentsProvider` (planned) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/feedback/base.py` | `ReviewComment`, `ReviewResult`, `FeedbackProvider` ABC |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/feedback/docx_comments.py` | Existing `DocxCommentsProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/feedback/google_docs.py` | `GoogleDocsCommentsProvider` (planned) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/feedback/notion.py` | `NotionCommentsProvider` (planned) |
 
 ### 25.8 Tests
 
@@ -3748,12 +3748,12 @@ notification:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/providers/notification/base.py` | `PushSummary`, `NotificationProvider` ABC |
-| `src/neutron_os/extensions/builtins/publisher/providers/notification/terminal.py` | Existing `TerminalNotificationProvider` |
-| `src/neutron_os/extensions/builtins/publisher/providers/notification/smtp.py` | Existing `SmtpNotificationProvider` |
-| `src/neutron_os/extensions/builtins/publisher/providers/notification/ms_teams.py` | `MsTeamsNotificationProvider` (planned) |
-| `src/neutron_os/extensions/builtins/publisher/providers/notification/slack.py` | `SlackNotificationProvider` (planned) |
-| `src/neutron_os/extensions/builtins/publisher/providers/notification/ntfy.py` | `NtfyNotificationProvider` (planned) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/notification/base.py` | `PushSummary`, `NotificationProvider` ABC |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/notification/terminal.py` | Existing `TerminalNotificationProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/notification/smtp.py` | Existing `SmtpNotificationProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/notification/ms_teams.py` | `MsTeamsNotificationProvider` (planned) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/notification/slack.py` | `SlackNotificationProvider` (planned) |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/notification/ntfy.py` | `NtfyNotificationProvider` (planned) |
 
 ### 26.7 Tests
 
@@ -3873,7 +3873,7 @@ All three read corpora are queried together on every search unless the caller sp
 ### 27.6 `EmbeddingProvider` ABC
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/providers/embedding/base.py
+# src/neutron_os/extensions/builtins/prt_agent/providers/embedding/base.py
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -3951,8 +3951,8 @@ embedding:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/providers/embedding/base.py` | `EmbeddingRecord`, `EmbeddingProvider` ABC |
-| `src/neutron_os/extensions/builtins/publisher/providers/embedding/pgvector.py` | `PgvectorEmbeddingProvider` |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/embedding/base.py` | `EmbeddingRecord`, `EmbeddingProvider` ABC |
+| `src/neutron_os/extensions/builtins/prt_agent/providers/embedding/pgvector.py` | `PgvectorEmbeddingProvider` |
 | Modify `engine.py` | Call `EmbeddingProvider.embed()` after successful multi-destination push |
 | Modify `config.py` | Add `embedding: EmbeddingConfig` section |
 
@@ -4028,8 +4028,8 @@ Neut: I can help with that. The publisher agent can:
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher_agent/scheduler.py` | `AgentScheduler` — cron-based scan trigger |
-| `src/neutron_os/extensions/builtins/publisher_agent/cli.py` | `neut pub agent` subcommands: `start`, `stop`, `status`, `scan`, `propose` |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/scheduler.py` | `AgentScheduler` — cron-based scan trigger |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/cli.py` | `neut pub agent` subcommands: `start`, `stop`, `status`, `scan`, `propose` |
 | Modify `workflow.yaml` schema | Add `agent:` config block |
 
 ---
@@ -4159,7 +4159,7 @@ Creating a `publisher_proposals` row is a simple INSERT. Multiple agents may pro
 ### 29.5 `PublisherStateStore` Class
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/state_store.py
+# src/neutron_os/extensions/builtins/prt_agent/state_store.py
 
 from __future__ import annotations
 from contextlib import contextmanager
@@ -4242,9 +4242,9 @@ Single-agent mode is acceptable for individual researchers who never run `publis
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher/state_store.py` | `PublisherStateStore` — ACID state interface |
-| `src/neutron_os/extensions/builtins/publisher/migrations/001_publisher_schema.sql` | PostgreSQL DDL (documents, destinations, registry, proposals, push_log) |
-| `src/neutron_os/extensions/builtins/publisher/migrate_state.py` | JSON → PostgreSQL migration helper |
+| `src/neutron_os/extensions/builtins/prt_agent/state_store.py` | `PublisherStateStore` — ACID state interface |
+| `src/neutron_os/extensions/builtins/prt_agent/migrations/001_publisher_schema.sql` | PostgreSQL DDL (documents, destinations, registry, proposals, push_log) |
+| `src/neutron_os/extensions/builtins/prt_agent/migrate_state.py` | JSON → PostgreSQL migration helper |
 | Modify `engine.py` | Replace direct JSON reads/writes with `PublisherStateStore` calls; wrap push in `advisory_lock` |
 | Modify `docs/tech-specs/spec-publisher.md §1.3` | Note JSON files are export-only once DB is configured |
 
@@ -4616,11 +4616,11 @@ The two commands share Phase 3 (endpoint reachability), and `neut doctor` will c
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher_agent/warmup.py` | `WarmupScanner` — orchestrates 5 phases, writes `publisher_warmup` row |
-| `src/neutron_os/extensions/builtins/publisher_agent/discovery.py` | Phase 1–2 + 1b–2b: `LocalDiscovery`, `GitContext`, `CoverageGap` dataclasses and scanners |
-| `src/neutron_os/extensions/builtins/publisher_agent/probe.py` | Phase 3: `EndpointProber`, per-endpoint `EndpointProbeResult` |
-| `src/neutron_os/extensions/builtins/publisher_agent/sampler.py` | Phase 4: `RemoteSampler` — parallel pull + SHA comparison |
-| `src/neutron_os/extensions/builtins/publisher_agent/briefing.py` | `BriefingGenerator` — selects experience, renders `briefing_text` |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/warmup.py` | `WarmupScanner` — orchestrates 5 phases, writes `publisher_warmup` row |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/discovery.py` | Phase 1–2 + 1b–2b: `LocalDiscovery`, `GitContext`, `CoverageGap` dataclasses and scanners |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/probe.py` | Phase 3: `EndpointProber`, per-endpoint `EndpointProbeResult` |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/sampler.py` | Phase 4: `RemoteSampler` — parallel pull + SHA comparison |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/briefing.py` | `BriefingGenerator` — selects experience, renders `briefing_text` |
 | `src/neutron_os/extensions/builtins/chat_agent/context.py` | `get_publisher_briefing()` — handoff from publisher agent to chat agent |
 | Modify `publisher_agent/cli.py` | Add `warmup` subcommand with `--phase`, `--show`, `--reset`, `--json` flags |
 | Modify `publisher/state_store.py` | Add `publisher_warmup` table, `get_fresh_warmup_briefing()` method |
@@ -4886,7 +4886,7 @@ doctor-agent        stopped    —      2026-03-12 23:00:00   runtime/logs/docto
 Each always-on agent exposes a `service.py` module with a `main()` function that the launchd/systemd invocation targets:
 
 ```python
-# src/neutron_os/extensions/builtins/publisher_agent/service.py
+# src/neutron_os/extensions/builtins/prt_agent_agent/service.py
 
 import asyncio
 import signal
@@ -4967,7 +4967,7 @@ Publisher Agent
 
 | File | Purpose |
 |------|---------|
-| `src/neutron_os/extensions/builtins/publisher_agent/service.py` | Service entry point (`main()`) for launchd/systemd |
+| `src/neutron_os/extensions/builtins/prt_agent_agent/service.py` | Service entry point (`main()`) for launchd/systemd |
 | `src/neutron_os/extensions/builtins/signal_agent/service.py` | Sense agent service entry point |
 | `src/neutron_os/extensions/builtins/doctor_agent/service.py` | Doctor agent service entry point |
 | `src/neutron_os/setup/agent_registration.py` | `register_launchd()`, `register_systemd()` — plist/unit generation and loading |

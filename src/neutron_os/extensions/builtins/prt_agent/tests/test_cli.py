@@ -7,7 +7,7 @@ import argparse
 import pytest
 from unittest.mock import MagicMock, patch
 
-from neutron_os.extensions.builtins.publisher import cli
+from neutron_os.extensions.builtins.prt_agent import cli
 
 
 class TestCmdPull:
@@ -30,7 +30,7 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "Specify a doc_id or use --all" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_pull_single_doc_no_changes(self, mock_engine_cls, capsys):
         """Pull single doc with no changes reports 'No changes'."""
         mock_engine = MagicMock()
@@ -51,7 +51,7 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "No changes" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_pull_single_doc_with_changes(self, mock_engine_cls, capsys):
         """Pull single doc with changes reports the update."""
         mock_engine = MagicMock()
@@ -77,7 +77,7 @@ class TestCmdPull:
         assert "Updated" in captured.out
         assert "docs/requirements/prd_test.md" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_pull_dry_run_shows_diff(self, mock_engine_cls, capsys):
         """Pull with --dry-run shows diff without updating."""
         mock_engine = MagicMock()
@@ -104,7 +104,7 @@ class TestCmdPull:
         assert "--- local" in captured.out
         assert "+new line" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_pull_with_comments(self, mock_engine_cls, capsys):
         """Pull with --comments extracts and reports comments."""
         mock_engine = MagicMock()
@@ -133,10 +133,10 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "2 comment(s)" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_pull_all_docs(self, mock_engine_cls, capsys):
         """Pull --all iterates over all tracked documents."""
-        from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
+        from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
 
         mock_engine = MagicMock()
         mock_engine.status.return_value = [
@@ -186,10 +186,10 @@ class TestCmdPull:
         captured = capsys.readouterr()
         assert "Pulling 2 document(s)" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_pull_all_handles_errors(self, mock_engine_cls, capsys):
         """Pull --all continues on individual errors."""
-        from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
+        from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
 
         mock_engine = MagicMock()
         mock_engine.status.return_value = [
@@ -288,7 +288,7 @@ class TestMainParser:
 class TestCmdPublish:
     """Tests for the `neut pub publish` command."""
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_publish_file(self, mock_engine_cls, tmp_path):
         """Publish a specific file."""
         mock_engine = MagicMock()
@@ -329,7 +329,7 @@ class TestCmdPublish:
 class TestCmdStatus:
     """Tests for the `neut pub status` command."""
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_status_no_docs(self, mock_engine_cls, capsys):
         """Status with no tracked docs prints message."""
         mock_engine = MagicMock()
@@ -343,10 +343,10 @@ class TestCmdStatus:
         captured = capsys.readouterr()
         assert "No tracked documents" in captured.out
 
-    @patch("neutron_os.extensions.builtins.publisher.engine.PublisherEngine")
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
     def test_status_lists_docs(self, mock_engine_cls, capsys):
         """Status lists all tracked documents."""
-        from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
+        from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
 
         mock_engine = MagicMock()
         mock_engine.status.return_value = [

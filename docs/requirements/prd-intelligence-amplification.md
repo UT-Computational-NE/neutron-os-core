@@ -277,7 +277,7 @@ class IssueTrackingProvider(ABC):
 ### Document Publishing Provider
 
 ```python
-# src/neutron_os/extensions/builtins/publisher/providers/storage.py
+# src/neutron_os/extensions/builtins/prt_agent/providers/storage.py
 class StorageProvider(ABC):
     @abstractmethod
     def upload(self, content: bytes, path: str) -> str: ...

@@ -19,14 +19,14 @@ def _has_playwright() -> bool:
 class TestOneDriveBrowserStorage:
 
     def test_has_session_false_when_no_state(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.onedrive_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive_browser import (
             OneDriveBrowserStorageProvider,
         )
         provider = OneDriveBrowserStorageProvider({"session_dir": str(tmp_path / "session")})
         assert not provider.has_session()
 
     def test_has_session_true_when_state_exists(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.onedrive_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive_browser import (
             OneDriveBrowserStorageProvider,
         )
         session_dir = tmp_path / "session"
@@ -39,7 +39,7 @@ class TestOneDriveBrowserStorage:
         not _has_playwright(), reason="playwright not installed",
     )
     def test_upload_missing_file_returns_error(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.onedrive_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive_browser import (
             OneDriveBrowserStorageProvider,
         )
         provider = OneDriveBrowserStorageProvider({"session_dir": str(tmp_path / "session")})
@@ -48,7 +48,7 @@ class TestOneDriveBrowserStorage:
         assert "not found" in result.error
 
     def test_clear_session(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.onedrive_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive_browser import (
             OneDriveBrowserStorageProvider,
         )
         session_dir = tmp_path / "session"
@@ -59,7 +59,7 @@ class TestOneDriveBrowserStorage:
         assert not provider.has_session()
 
     def test_needs_login_detects_microsoft_urls(self):
-        from neutron_os.extensions.builtins.publisher.providers.storage.onedrive_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive_browser import (
             OneDriveBrowserStorageProvider,
         )
         provider = OneDriveBrowserStorageProvider()
@@ -75,7 +75,7 @@ class TestOneDriveBrowserStorage:
         not _has_playwright(), reason="playwright not installed",
     )
     def test_batch_upload_returns_results_per_file(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.providers.storage.onedrive_browser import (
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive_browser import (
             OneDriveBrowserStorageProvider,
         )
         provider = OneDriveBrowserStorageProvider({"session_dir": str(tmp_path / "session")})
@@ -99,4 +99,4 @@ class TestOneDriveBrowserStorage:
         assert all(not r.success for r in results)
 
     def test_import_does_not_fail(self):
-        from neutron_os.extensions.builtins.publisher.providers.storage import onedrive_browser  # noqa: F401
+        from neutron_os.extensions.builtins.prt_agent.providers.storage import onedrive_browser  # noqa: F401

@@ -220,9 +220,9 @@ Publisher extension manages document lifecycle: markdown → docx → published.
 
 ### Key Files
 
-- `src/neutron_os/extensions/builtins/publisher/engine.py` — Core engine
-- `src/neutron_os/extensions/builtins/publisher/factory.py` — Provider factory
-- `src/neutron_os/extensions/builtins/publisher/providers/` — Generation, storage, feedback
+- `src/neutron_os/extensions/builtins/prt_agent/engine.py` — Core engine
+- `src/neutron_os/extensions/builtins/prt_agent/factory.py` — Provider factory
+- `src/neutron_os/extensions/builtins/prt_agent/providers/` — Generation, storage, feedback
 
 ### Configuration
 

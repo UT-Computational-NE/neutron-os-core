@@ -139,14 +139,14 @@ class TestDocflowFullPipeline:
 
     def _make_engine(self, workspace):
         """Create an engine rooted at the workspace."""
-        from neutron_os.extensions.builtins.publisher.config import load_config
+        from neutron_os.extensions.builtins.prt_agent.config import load_config
 
         config = load_config(workspace / ".publisher.yaml")
         config.repo_root = workspace
         config.git.publish_branches = ["*"]
         config.git.require_clean = False
 
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         return PublisherEngine(config)
 
     def test_generate_creates_docx(self, workspace):

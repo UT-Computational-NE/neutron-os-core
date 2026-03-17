@@ -6,8 +6,8 @@ ensuring all components work together correctly.
 
 import pytest
 
-from neutron_os.extensions.builtins.publisher.config import PublisherConfig, GitPolicy, ProviderConfig
-from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 
 
 @pytest.fixture
@@ -123,16 +123,16 @@ class TestEngineProviderAgnostic:
     def test_engine_has_no_provider_imports(self):
         """Verify engine.py doesn't import specific providers."""
         import inspect
-        from neutron_os.extensions.builtins.publisher import engine
+        from neutron_os.extensions.builtins.prt_agent import engine
 
         source = inspect.getsource(engine)
 
         # Should NOT import from any specific provider module
-        assert "from neutron_os.extensions.builtins.publisher.providers.generation." not in source
-        assert "from neutron_os.extensions.builtins.publisher.providers.storage." not in source
-        assert "from neutron_os.extensions.builtins.publisher.providers.feedback." not in source
-        assert "from neutron_os.extensions.builtins.publisher.providers.notification.terminal" not in source
-        assert "from neutron_os.extensions.builtins.publisher.providers.embedding." not in source
+        assert "from neutron_os.extensions.builtins.prt_agent.providers.generation." not in source
+        assert "from neutron_os.extensions.builtins.prt_agent.providers.storage." not in source
+        assert "from neutron_os.extensions.builtins.prt_agent.providers.feedback." not in source
+        assert "from neutron_os.extensions.builtins.prt_agent.providers.notification.terminal" not in source
+        assert "from neutron_os.extensions.builtins.prt_agent.providers.embedding." not in source
 
     def test_swapping_storage_provider(self, tmp_path):
         """Changing storage provider in config changes behavior."""

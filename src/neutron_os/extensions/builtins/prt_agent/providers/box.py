@@ -23,7 +23,7 @@ Configuration:
   }
 
 Usage:
-    from neutron_os.extensions.builtins.publisher.providers.box import BoxProvider
+    from neutron_os.extensions.builtins.prt_agent.providers.box import BoxProvider
     provider = BoxProvider()
 
     # Upload

@@ -21,34 +21,34 @@ class TestPushParser:
     """Verify the push command accepts all expected arguments."""
 
     def test_push_with_path(self):
-        from neutron_os.extensions.builtins.publisher.cli import get_parser
+        from neutron_os.extensions.builtins.prt_agent.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["push", "docs/requirements/prd_executive.md"])
         assert args.path == "docs/requirements/prd_executive.md"
         assert args.command == "push"
 
     def test_push_all_flag(self):
-        from neutron_os.extensions.builtins.publisher.cli import get_parser
+        from neutron_os.extensions.builtins.prt_agent.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["push", "--all"])
         assert args.all is True
         assert args.path is None
 
     def test_push_headed_flag(self):
-        from neutron_os.extensions.builtins.publisher.cli import get_parser
+        from neutron_os.extensions.builtins.prt_agent.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["push", "--all", "--headed"])
         assert args.headed is True
         assert args.all is True
 
     def test_push_storage_override(self):
-        from neutron_os.extensions.builtins.publisher.cli import get_parser
+        from neutron_os.extensions.builtins.prt_agent.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["push", "file.md", "--endpoint", "local"])
         assert args.endpoint == "local"
 
     def test_push_draft_flag(self):
-        from neutron_os.extensions.builtins.publisher.cli import get_parser
+        from neutron_os.extensions.builtins.prt_agent.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["push", "file.md", "--draft"])
         assert args.draft is True
@@ -58,7 +58,7 @@ class TestGenerateDocx:
     """Test the _generate_docx helper."""
 
     def test_generates_docx_from_md(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.cli import _generate_docx
+        from neutron_os.extensions.builtins.prt_agent.cli import _generate_docx
 
         md_file = tmp_path / "test-doc.md"
         md_file.write_text("# Test Document\n\nHello world.\n")
@@ -72,7 +72,7 @@ class TestGenerateDocx:
         assert ".neut" in str(result) or "generated" in str(result)
 
     def test_extracts_title_from_first_line(self, tmp_path: Path):
-        from neutron_os.extensions.builtins.publisher.cli import _generate_docx
+        from neutron_os.extensions.builtins.prt_agent.cli import _generate_docx
 
         md_file = tmp_path / "prd_my-feature.md"
         md_file.write_text("# My Feature PRD\n\nContent here.\n")
@@ -111,11 +111,11 @@ class TestPushAllWorkflow:
         # Mock the push function to just collect files
         collected = []
 
-        from neutron_os.extensions.builtins.publisher.cli import cmd_push
+        from neutron_os.extensions.builtins.prt_agent.cli import cmd_push
 
         with mock.patch("neutron_os.REPO_ROOT", tmp_path), \
-             mock.patch("neutron_os.extensions.builtins.publisher.cli._generate_docx") as mock_gen, \
-             mock.patch("neutron_os.extensions.builtins.publisher.cli.OneDriveBrowserStorageProvider", create=True) as MockProvider:
+             mock.patch("neutron_os.extensions.builtins.prt_agent.cli._generate_docx") as mock_gen, \
+             mock.patch("neutron_os.extensions.builtins.prt_agent.cli.OneDriveBrowserStorageProvider", create=True) as MockProvider:
 
             mock_gen.side_effect = lambda p: tmp_path / ".neut" / "generated" / (p.stem + ".docx")
 
@@ -139,7 +139,7 @@ class TestPushAllWorkflow:
             )
 
             with mock.patch(
-                "neutron_os.extensions.builtins.publisher.cli.OneDriveBrowserStorageProvider",
+                "neutron_os.extensions.builtins.prt_agent.cli.OneDriveBrowserStorageProvider",
                 MockProvider,
             ):
                 # This would run the full workflow — just verify it doesn't crash
@@ -155,7 +155,7 @@ class TestPushSessionCheck:
 
     def test_no_session_without_headed_exits(self):
         """When no browser session exists and --headed not passed, exit with guidance."""
-        from neutron_os.extensions.builtins.publisher.cli import get_parser
+        from neutron_os.extensions.builtins.prt_agent.cli import get_parser
         parser = get_parser()
         args = parser.parse_args(["push", "--all"])
 

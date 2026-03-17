@@ -6,7 +6,7 @@ Features:
 - Save .docx to `.neut/downloads/` and optionally convert to Markdown using `pandoc` if available
 
 Usage:
-    from neutron_os.extensions.builtins.publisher.providers.sharepoint import SharePointProvider
+    from neutron_os.extensions.builtins.prt_agent.providers.sharepoint import SharePointProvider
     p = SharePointProvider()
     p.pull(sharepoint_url, Path('docs/requirements/mydoc.md'))
 

@@ -41,7 +41,7 @@ def _check_sense_status() -> bool:
 def _check_doc_status() -> bool:
     """Validate publisher is accessible."""
     try:
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 
         PublisherEngine()
         return True

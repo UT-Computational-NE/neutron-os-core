@@ -40,7 +40,7 @@ class PublisherEngine:
 
         # Ensure provider registration by importing providers package
         try:
-            import neutron_os.extensions.builtins.publisher.providers  # noqa: F401
+            import neutron_os.extensions.builtins.prt_agent.providers  # noqa: F401
         except ImportError:
             pass
 

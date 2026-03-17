@@ -6,9 +6,9 @@ Validates that publisher works correctly when installed standalone
 
 import pytest
 
-from neutron_os.extensions.builtins.publisher.config import PublisherConfig, GitPolicy, ProviderConfig
-from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
-from neutron_os.extensions.builtins.publisher.git_integration import get_git_context
+from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
+from neutron_os.extensions.builtins.prt_agent.git_integration import get_git_context
 
 
 class TestGitContextFallback:
