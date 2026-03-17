@@ -1206,12 +1206,12 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     print(f"\n  {success}/{len(just_files)} published successfully.\n")
 
 
-def _add_table_borders(docx_path: Path) -> None:
-    """Post-process: add borders to all tables in a .docx file.
+def _postprocess_docx(docx_path: Path) -> None:
+    """Post-process a .docx file for quality:
 
-    Pandoc generates tables without borders by default. This adds
-    single-line borders to all table edges and internal gridlines,
-    and sets tables to full page width.
+    1. Add borders to all table cells (not just table-level — Word ignores those)
+    2. Set tables to full page width
+    3. Remove pandoc's heading bookmarks (clutter in Word)
     """
     try:
         from docx import Document
@@ -1219,31 +1219,16 @@ def _add_table_borders(docx_path: Path) -> None:
         from docx.oxml import OxmlElement
 
         doc = Document(str(docx_path))
-        modified = False
 
+        # --- Table borders (cell-level) ---
         for table in doc.tables:
             tbl = table._tbl
+
+            # Set table to full page width
             tblPr = tbl.tblPr
             if tblPr is None:
                 tblPr = OxmlElement("w:tblPr")
                 tbl.insert(0, tblPr)
-
-            # Remove existing borders
-            for existing in tblPr.findall(qn("w:tblBorders")):
-                tblPr.remove(existing)
-
-            # Add borders
-            borders = OxmlElement("w:tblBorders")
-            for border_name in ["top", "left", "bottom", "right", "insideH", "insideV"]:
-                border = OxmlElement(f"w:{border_name}")
-                border.set(qn("w:val"), "single")
-                border.set(qn("w:sz"), "4")
-                border.set(qn("w:space"), "0")
-                border.set(qn("w:color"), "999999")
-                borders.append(border)
-            tblPr.append(borders)
-
-            # Set table to full page width
             for existing in tblPr.findall(qn("w:tblW")):
                 tblPr.remove(existing)
             tblW = OxmlElement("w:tblW")
@@ -1251,15 +1236,43 @@ def _add_table_borders(docx_path: Path) -> None:
             tblW.set(qn("w:type"), "pct")
             tblPr.append(tblW)
 
-            modified = True
+            # Add borders to EVERY CELL (table-level borders are unreliable)
+            for row in table.rows:
+                for cell in row.cells:
+                    tc = cell._tc
+                    tcPr = tc.tcPr
+                    if tcPr is None:
+                        tcPr = OxmlElement("w:tcPr")
+                        tc.insert(0, tcPr)
 
-        if modified:
-            doc.save(str(docx_path))
+                    # Remove existing cell borders
+                    for existing in tcPr.findall(qn("w:tcBorders")):
+                        tcPr.remove(existing)
+
+                    # Add cell borders
+                    borders = OxmlElement("w:tcBorders")
+                    for border_name in ["top", "left", "bottom", "right"]:
+                        border = OxmlElement(f"w:{border_name}")
+                        border.set(qn("w:val"), "single")
+                        border.set(qn("w:sz"), "4")
+                        border.set(qn("w:space"), "0")
+                        border.set(qn("w:color"), "AAAAAA")
+                        borders.append(border)
+                    tcPr.append(borders)
+
+        # --- Remove bookmarks ---
+        body = doc.element.body
+        for bookmark_start in body.findall(".//" + qn("w:bookmarkStart")):
+            bookmark_start.getparent().remove(bookmark_start)
+        for bookmark_end in body.findall(".//" + qn("w:bookmarkEnd")):
+            bookmark_end.getparent().remove(bookmark_end)
+
+        doc.save(str(docx_path))
 
     except ImportError:
         pass  # python-docx not installed
     except Exception as e:
-        logger.warning("Table border post-processing failed: %s", e)
+        logger.warning("Docx post-processing failed: %s", e)
 
 
 def _source_to_subfolder(source: Path, repo_root: Path) -> str:
@@ -1338,8 +1351,8 @@ def _generate_docx(md_path: Path) -> Path:
         if processed_path != md_path and processed_path.exists():
             processed_path.unlink()
 
-        # Post-process: add table borders (pandoc's default has none)
-        _add_table_borders(output_path)
+        # Post-process: cell borders, full-width tables, remove bookmarks
+        _postprocess_docx(output_path)
     except subprocess.CalledProcessError as e:
         print(f"\n    Warning: pandoc failed for {md_path.name}: {e.stderr.decode()[:200]}")
     except FileNotFoundError:

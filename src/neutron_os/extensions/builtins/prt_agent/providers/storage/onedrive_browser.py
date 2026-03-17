@@ -311,8 +311,11 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             if "sharepoint.com" in actual_url:
                 self._save_discovered_url(actual_url)
 
-            # Navigate into target folder using DOUBLE-CLICK (single click selects, doesn't navigate)
-            for part in [fp for fp in target_folder.strip("/").split("/") if fp]:
+            # Navigate into target folder using DOUBLE-CLICK
+            parts = [fp for fp in target_folder.strip("/").split("/") if fp]
+            missing_from = None
+
+            for i, part in enumerate(parts):
                 folder_el = page.query_selector(
                     f"[data-automationid='field-LinkFilename']:has-text('{part}')"
                 )
@@ -320,36 +323,45 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                     folder_el.dblclick()
                     page.wait_for_timeout(3000)
                 else:
-                    # Folder doesn't exist — create it
-                    try:
-                        page.click("text=Create or upload", timeout=5000)
-                        page.wait_for_timeout(1000)
-                        page.click("text=Folder", timeout=5000)
-                        page.wait_for_timeout(1000)
-                        page.keyboard.type(part)
-                        page.keyboard.press("Enter")
-                        page.wait_for_timeout(3000)
-                        # Double-click to enter the new folder
-                        new_folder = page.query_selector(
-                            f"[data-automationid='field-LinkFilename']:has-text('{part}')"
-                        )
-                        if new_folder:
-                            new_folder.dblclick()
-                            page.wait_for_timeout(3000)
-                    except Exception as folder_err:
-                        logger.warning("Could not create folder '%s': %s", part, folder_err)
-                        break
+                    # This folder and all remaining don't exist
+                    missing_from = i
+                    break
 
-            # Upload file via "Create or upload" → "Files upload" → file chooser
-            page.click("text=Create or upload", timeout=5000)
-            page.wait_for_timeout(1000)
+            if missing_from is not None:
+                # Use "Folder upload" to create missing folders + upload in one step.
+                # Build a temp directory with the missing folder structure.
+                import shutil
+                import tempfile
 
-            with page.expect_file_chooser(timeout=10000) as fc_info:
-                page.click("text=Files upload", timeout=5000)
+                remaining_parts = parts[missing_from:]
+                tmp_root = Path(tempfile.mkdtemp())
+                nested = tmp_root
+                for part in remaining_parts:
+                    nested = nested / part
+                nested.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(local_path), str(nested / local_path.name))
 
-            fc = fc_info.value
-            fc.set_files(str(local_path))
-            page.wait_for_timeout(5000)
+                # Upload the top-level missing folder
+                upload_dir = tmp_root / remaining_parts[0]
+
+                page.click("text=Create or upload", timeout=5000)
+                page.wait_for_timeout(1000)
+                with page.expect_file_chooser(timeout=10000) as fc_info:
+                    page.click("text=Folder upload", timeout=5000)
+                fc = fc_info.value
+                fc.set_files(str(upload_dir))
+                page.wait_for_timeout(8000)
+
+                shutil.rmtree(tmp_root, ignore_errors=True)
+            else:
+                # All folders exist — upload file directly
+                page.click("text=Create or upload", timeout=5000)
+                page.wait_for_timeout(1000)
+                with page.expect_file_chooser(timeout=10000) as fc_info:
+                    page.click("text=Files upload", timeout=5000)
+                fc = fc_info.value
+                fc.set_files(str(local_path))
+                page.wait_for_timeout(5000)
 
             return UploadResult(
                 success=True,
