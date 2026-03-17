@@ -14,7 +14,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from neutron_os.extensions.builtins.doctor_agent.tools import TOOL_DEFS, execute
+from neutron_os.extensions.builtins.dfib_agent.tools import TOOL_DEFS, execute
 
 # Read-only subset of doctor tools
 _REVIEWER_TOOLS = [

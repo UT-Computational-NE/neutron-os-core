@@ -35,7 +35,7 @@ ALLOWED_EDIT_PREFIXES = [
 ]
 
 BLOCKED_EDIT_PREFIXES = [
-    "src/neutron_os/extensions/builtins/doctor_agent/",
+    "src/neutron_os/extensions/builtins/dfib_agent/",
     "src/neutron_os/platform/orchestrator/",
     "src/neutron_os/neut_cli.py",
 ]

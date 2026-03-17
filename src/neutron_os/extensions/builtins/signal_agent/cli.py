@@ -1682,7 +1682,7 @@ def main():
 
         # Doctor agent as primary error handler (soft — no-ops if unavailable)
         try:
-            from neutron_os.extensions.builtins.doctor_agent.subscriber import register as register_doctor
+            from neutron_os.extensions.builtins.dfib_agent.subscriber import register as register_doctor
             register_doctor(bus)
         except ImportError:
             pass

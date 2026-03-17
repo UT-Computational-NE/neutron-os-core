@@ -143,7 +143,7 @@ def _release_lock() -> None:
 
 def _rollback_from_backup(files_changed: list[str]) -> None:
     """Roll back edited files from backups."""
-    from neutron_os.extensions.builtins.doctor_agent.tools import rollback_file
+    from neutron_os.extensions.builtins.dfib_agent.tools import rollback_file
     for f in files_changed:
         rollback_file(f)
 
@@ -166,7 +166,7 @@ def doctor_handler(topic: str, data: dict[str, Any]) -> None:
 
     # Recursion guard: skip if the error came from doctor code
     tb = data.get("traceback", "")
-    if "src/neutron_os/extensions/builtins/doctor_agent/" in tb:
+    if "src/neutron_os/extensions/builtins/dfib_agent/" in tb:
         return
 
     # Cooldown: skip if recently processed
@@ -180,7 +180,7 @@ def doctor_handler(topic: str, data: dict[str, Any]) -> None:
                 "fingerprint": fingerprint,
                 "reason": f"Rate limit: {MAX_PATCHES_PER_HOUR} patches/hour exceeded",
                 **data,
-            }, source="doctor_agent")
+            }, source="dfib_agent")
         return
 
     # Lockfile
@@ -195,10 +195,10 @@ def doctor_handler(topic: str, data: dict[str, Any]) -> None:
                 _bus.publish("doctor.llm_unavailable", {
                     "fingerprint": fingerprint,
                     **data,
-                }, source="doctor_agent")
+                }, source="dfib_agent")
             return
 
-        from neutron_os.extensions.builtins.doctor_agent.agent import DoctorAgent
+        from neutron_os.extensions.builtins.dfib_agent.agent import DoctorAgent
         agent = DoctorAgent(gateway=gateway, bus=_bus)
         result = agent.diagnose_and_patch(data)
 
@@ -209,19 +209,19 @@ def doctor_handler(topic: str, data: dict[str, Any]) -> None:
                     **result.to_dict(),
                     "error_signal": data,
                     "attempt": 1,
-                }, source="doctor_agent")
+                }, source="dfib_agent")
         elif result.status == "llm_unavailable":
             if _bus:
                 _bus.publish("doctor.llm_unavailable", {
                     "fingerprint": fingerprint,
                     **result.to_dict(),
-                }, source="doctor_agent")
+                }, source="dfib_agent")
         else:
             if _bus:
                 _bus.publish("doctor.patch_failed", {
                     **result.to_dict(),
                     "error_signal": data,
-                }, source="doctor_agent")
+                }, source="dfib_agent")
     finally:
         _release_lock()
 
@@ -243,7 +243,7 @@ def review_handler(topic: str, data: dict[str, Any]) -> None:
             _bus.publish("review.approved", data, source="reviewer")
         return
 
-    from neutron_os.extensions.builtins.doctor_agent.reviewer import Reviewer
+    from neutron_os.extensions.builtins.dfib_agent.reviewer import Reviewer
     reviewer = Reviewer(gateway=gateway)
     verdict = reviewer.evaluate(data)
 
@@ -269,16 +269,16 @@ def commit_handler(topic: str, data: dict[str, Any]) -> None:
     if commit_sha:
         # Already committed during diagnosis
         if _bus:
-            _bus.publish("doctor.patch_complete", data, source="doctor_agent")
+            _bus.publish("doctor.patch_complete", data, source="dfib_agent")
         return
 
     # Try to commit now
-    from neutron_os.extensions.builtins.doctor_agent.tools import execute as exec_tool
+    from neutron_os.extensions.builtins.dfib_agent.tools import execute as exec_tool
     files = data.get("files_changed", [])
     fingerprint = data.get("fingerprint", "")
     if not files or not fingerprint:
         if _bus:
-            _bus.publish("doctor.patch_complete", data, source="doctor_agent")
+            _bus.publish("doctor.patch_complete", data, source="dfib_agent")
         return
 
     error_signal = data.get("error_signal", {})
@@ -295,7 +295,7 @@ def commit_handler(topic: str, data: dict[str, Any]) -> None:
         _bus.publish("doctor.patch_complete", {
             **data,
             **result,
-        }, source="doctor_agent")
+        }, source="dfib_agent")
 
 
 def retry_handler(topic: str, data: dict[str, Any]) -> None:
@@ -304,7 +304,7 @@ def retry_handler(topic: str, data: dict[str, Any]) -> None:
     if attempt >= 2:
         # Already retried — give up
         if _bus:
-            _bus.publish("doctor.patch_failed", data, source="doctor_agent")
+            _bus.publish("doctor.patch_failed", data, source="dfib_agent")
         return
 
     # Roll back the previous edit
@@ -315,16 +315,16 @@ def retry_handler(topic: str, data: dict[str, Any]) -> None:
         gateway = Gateway()
     except Exception:
         if _bus:
-            _bus.publish("doctor.patch_failed", data, source="doctor_agent")
+            _bus.publish("doctor.patch_failed", data, source="dfib_agent")
         return
 
     if not gateway.available:
         if _bus:
-            _bus.publish("doctor.patch_failed", data, source="doctor_agent")
+            _bus.publish("doctor.patch_failed", data, source="dfib_agent")
         return
 
     # Doctor retries with reviewer feedback
-    from neutron_os.extensions.builtins.doctor_agent.agent import DoctorAgent
+    from neutron_os.extensions.builtins.dfib_agent.agent import DoctorAgent
     feedback = data.get("review", {}).get("feedback", "")
     agent = DoctorAgent(gateway=gateway, bus=_bus)
     error_signal = data.get("error_signal", {})
@@ -336,13 +336,13 @@ def retry_handler(topic: str, data: dict[str, Any]) -> None:
                 **result.to_dict(),
                 "error_signal": error_signal,
                 "attempt": 2,
-            }, source="doctor_agent")
+            }, source="dfib_agent")
     else:
         if _bus:
             _bus.publish("doctor.patch_failed", {
                 **result.to_dict(),
                 "error_signal": error_signal,
-            }, source="doctor_agent")
+            }, source="dfib_agent")
 
 
 # --- After Action Report ---
@@ -371,7 +371,7 @@ def aar_handler(topic: str, data: dict[str, Any]) -> None:
             "outcome": outcome,
             "report_path": str(report_path),
             "summary": summary,
-        }, source="doctor_agent")
+        }, source="dfib_agent")
 
     # Print summary if interactive
     if sys.stdout.isatty():

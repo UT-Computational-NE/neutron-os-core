@@ -1,7 +1,7 @@
 [extension]
-name = "doctor"
+name = "dfib"
 version = "0.1.0"
-description = "AI-powered diagnostics and self-healing for Neutron OS"
+description = "D-FIB (Defib) — diagnostics and system health"
 author = "Neutron OS Team"
 builtin = true
 kind = "agent"
