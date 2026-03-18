@@ -152,7 +152,7 @@ class OllamaClassifier:
         self._available: Optional[bool] = None  # None = not yet checked
 
     def _check_available(self) -> bool:
-        """Quick HEAD-style check that Ollama is running."""
+        """Check that Ollama is running, auto-starting if needed."""
         if self._available is not None:
             return self._available
         try:
@@ -161,6 +161,14 @@ class OllamaClassifier:
                 pass
             self._available = True
         except Exception:
+            # Try auto-start via the owning extension's lifecycle manager
+            try:
+                from neutron_os.extensions.builtins.neut_agent.connections import ensure_ollama_running
+                if ensure_ollama_running():
+                    self._available = True
+                    return True
+            except ImportError:
+                pass
             self._available = False
         return self._available
 
