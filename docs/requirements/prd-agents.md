@@ -153,6 +153,93 @@ These guardrails apply across all domain agents and cannot be disabled:
 
 ---
 
+## RACI-Based Human-in-the-Loop Framework
+
+### The Problem with Binary Approval Gates
+
+The current design (NSG-005) treats human-in-the-loop as binary: every
+write action requires explicit approval. This is correct for safety, but
+wrong for productivity. Posting a status update to a GitLab issue shouldn't
+require the same approval gate as publishing a document to SharePoint.
+
+### RACI Model for Agent Actions
+
+Every agent action is categorized using the RACI model. Users set their
+preferred level per **action category** and can change it at any time:
+
+| Level | Meaning | Agent Behavior | Example |
+|-------|---------|---------------|---------|
+| **R** (Responsible) | Human does the work | Agent assists, suggests, drafts — human executes | Writing a PRD |
+| **A** (Approve) | Agent does the work, human approves | Agent prepares action, pauses for confirmation | Publishing to OneDrive |
+| **C** (Consulted) | Agent does the work, asks at key decisions | Agent executes but pauses at decision points | Routing a signal to a new initiative |
+| **I** (Informed) | Agent acts autonomously | Agent executes and notifies after the fact | Updating a GitLab issue with status |
+
+### Action Categories
+
+| Category | Default RACI | Applies To |
+|----------|-------------|------------|
+| `publish.document` | **A** (Approve) | PR-T: push to OneDrive/SharePoint |
+| `publish.draft` | **C** (Consulted) | PR-T: generate .docx from .md |
+| `issue.update` | **A** (Approve) | EVE/PR-T: comment on GitLab/GitHub issues |
+| `issue.create` | **A** (Approve) | D-FIB: file self-heal issues |
+| `issue.close` | **A** (Approve) | EVE: close completed issues |
+| `signal.ingest` | **I** (Informed) | EVE: process inbox signals |
+| `signal.brief` | **I** (Informed) | EVE: generate executive briefing |
+| `signal.draft` | **C** (Consulted) | EVE: synthesize weekly changelog |
+| `credential.rotate` | **A** (Approve) | M-O: refresh expired credentials |
+| `service.restart` | **I** (Informed) | M-O: restart stalled services |
+| `code.patch` | **A** (Approve) | D-FIB: apply self-heal patches |
+| `code.commit` | **A** (Approve) | D-FIB: commit approved patches |
+
+### User Configuration
+
+Users set their RACI level per category via settings:
+
+```bash
+# Start cautious — approve everything
+neut settings set raci.issue.update approve
+
+# Build trust — move to informed (autonomous + notify)
+neut settings set raci.issue.update informed
+
+# Override for a specific topic
+neut settings set raci.publish.document consulted
+```
+
+### Safety Override
+
+NSG-005 (Human-in-the-Loop Mandate) takes precedence for safety-adjacent
+actions. Even if a user sets `raci.code.patch = informed`, safety-related
+patches remain at **A** (Approve). The RACI system respects the guardrail
+hierarchy — it cannot weaken safety controls, only loosen productivity
+controls.
+
+### Notification Surface
+
+How users are informed depends on their RACI level and the notification
+providers configured:
+
+| RACI Level | Notification |
+|-----------|-------------|
+| **R** | Agent shows suggestions inline (chat, CLI output) |
+| **A** | Agent pauses with prompt: `[approve/reject/skip]` |
+| **C** | Agent pauses at decision points with context |
+| **I** | Post-fact notification via configured channel (terminal, Slack, email, Teams) |
+
+Notification routing is a separate concern — see the future Notifications
+PRD. For now, terminal output is the default for all levels.
+
+### Implementation Notes
+
+- RACI preferences stored in `neut settings` (per-user, per-project)
+- Defaults defined per action category (see table above)
+- `ActionCategory.READ` (from the tool system) maps to **I** (Informed)
+- `ActionCategory.WRITE` maps to **A** (Approve) by default
+- Agents check RACI before executing: `check_raci("publish.document")`
+- Returns: `"execute"` (R/I), `"approve"` (A), `"consult"` (C)
+
+---
+
 ## Platform Infrastructure
 
 These capabilities are not agents — they are the infrastructure that makes agents safe, smart, and compliant. They are prerequisites for everything above them.

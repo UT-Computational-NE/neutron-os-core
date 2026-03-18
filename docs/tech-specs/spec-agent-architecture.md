@@ -422,6 +422,49 @@ class EVEAgent:
         return self._gateway.complete(text, profile=self.ROUTING_PROFILE)
 ```
 
+### RACI-Based Human-in-the-Loop (v0.5.0)
+
+Every agent action checks the user's RACI preference before executing.
+See [Agents PRD — RACI Framework](../requirements/prd-agents.md) for
+the full design.
+
+```python
+# In any agent before taking action:
+from neutron_os.infra.raci import check_raci
+
+level = check_raci("issue.update")  # Reads from neut settings
+
+if level == "execute":
+    # R or I — just do it (notify if I)
+    provider.add_comment(issue_url, body)
+    if level_is_informed:
+        notify(f"Updated issue #{iid}")
+
+elif level == "approve":
+    # A — pause for human
+    print(f"  Update issue #{iid}? [Y/n]")
+    if confirmed():
+        provider.add_comment(issue_url, body)
+
+elif level == "consult":
+    # C — show context, ask for input
+    print(f"  Proposed comment on #{iid}:")
+    print(f"  {body[:200]}...")
+    feedback = input("  Edit, approve, or skip? ")
+    ...
+```
+
+**Settings storage:**
+```bash
+neut settings set raci.issue.update informed    # Trust EVE to update issues
+neut settings set raci.publish.document approve  # Still approve publishes
+```
+
+**Default RACI per ActionCategory:**
+- `ActionCategory.READ` → Informed (auto-execute, notify)
+- `ActionCategory.WRITE` → Approve (pause for confirmation)
+- Safety-adjacent actions → always Approve (NSG-005 override)
+
 For RAG: the gateway doesn't own RAG. RAG is a capability of the extractors
 and the `neut chat` module. The extractors use the gateway to call an LLM,
 but they also have access to the retrieval layer (GitLab issues, Linear
