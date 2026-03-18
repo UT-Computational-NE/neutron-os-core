@@ -1124,12 +1124,25 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
                 {"path": "docs/tech-specs", "pattern": "*.md"},
             ]
 
+        # Filter to changed files only (unless --force)
+        changed_set = None
+        if not force:
+            try:
+                from .engine import PublisherEngine
+                changed_docs = PublisherEngine().diff()
+                changed_set = {(REPO_ROOT / d).resolve() for d in changed_docs}
+            except Exception:
+                pass  # Fall back to all files
+
         for folder_cfg in folders:
             folder = REPO_ROOT / folder_cfg["path"]
             pattern = folder_cfg.get("pattern", "*.md")
             if folder.exists():
                 for md_file in sorted(folder.glob(pattern)):
                     if md_file.name.startswith("_") or md_file.name == "README.md":
+                        continue
+                    # Skip unchanged files (fast path)
+                    if changed_set is not None and md_file.resolve() not in changed_set:
                         continue
                     subfolder = _source_to_subfolder(md_file, REPO_ROOT)
                     files_to_push.append((md_file, _generate_docx(md_file), subfolder))
