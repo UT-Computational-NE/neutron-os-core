@@ -166,11 +166,16 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         *,
         draft: bool = False,
         headed: bool = False,
+        folders: list[str] | None = None,
     ) -> list[UploadResult]:
         """Upload multiple files in a single browser session.
 
         More efficient than calling upload() per file — reuses the same
         browser context and authentication.
+
+        Args:
+            folders: Optional per-file folder paths. If provided, must be
+                     same length as files. Otherwise uses default target folder.
         """
         self._ensure_playwright()
         from playwright.sync_api import sync_playwright
@@ -180,7 +185,7 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             headless = False
 
         self.session_dir.mkdir(parents=True, exist_ok=True)
-        target = self.draft_folder if draft else self.target_folder
+        default_target = self.draft_folder if draft else self.target_folder
         results: list[UploadResult] = []
 
         with sync_playwright() as p:
@@ -203,6 +208,7 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                               flush=True)
                         continue
 
+                    target = folders[i] if folders else default_target
                     print(f"    [{i+1}/{len(files)}] Uploading {local_path.name}...",
                           end=" ", flush=True)
                     result = self._upload_to_onedrive(

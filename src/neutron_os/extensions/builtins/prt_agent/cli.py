@@ -1130,12 +1130,17 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             print("    neut pub push --all --endpoint onedrive --headed\n")
             sys.exit(1)
     else:
-        # Default to Graph API (most reliable)
-        from .providers.storage.onedrive_graph import OneDriveGraphStorageProvider
-        provider = OneDriveGraphStorageProvider({
+        # Default to browser upload (Graph API requires Azure AD credentials)
+        provider = OneDriveBrowserStorageProvider({
             "folder": onedrive_root,
+            "site_url": site_url,
+            "headless": not headed,
         })
-        dest_label = f"OneDrive/{onedrive_root} (Graph API)"
+        dest_label = f"OneDrive/{onedrive_root}"
+        if not provider.has_session() and not headed:
+            print("\n  No saved session. Run with --headed for first-time login:")
+            print("    neut pub push --all --headed\n")
+            sys.exit(1)
 
     # Build per-file folder paths
     just_files = [df[0] for df in docx_files]
