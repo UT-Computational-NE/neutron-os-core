@@ -246,20 +246,29 @@ class Gateway:
                 file=sys.stderr,
             )
 
-        # Check if user prefers VPN provider when connected
-        if routing_tier in ("any", "public"):
-            try:
-                from neutron_os.extensions.builtins.settings.store import SettingsStore
-                settings = SettingsStore()
-                if settings.get("routing.prefer_vpn_provider", False):
-                    vpn_name = settings.get("routing.vpn_provider", "")
-                    if vpn_name:
-                        for p in self.providers:
-                            if p.name == vpn_name and p.api_key and p.requires_vpn:
-                                if self._check_vpn(p):
+        # Check if user has a preferred provider
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            settings = SettingsStore()
+            prefer = settings.get("routing.prefer_provider", "")
+            if prefer:
+                condition = settings.get("routing.prefer_when", "reachable")
+                # Try each preferred provider (comma-separated list)
+                for pref_name in [n.strip() for n in prefer.split(",") if n.strip()]:
+                    for p in self.providers:
+                        if p.name == pref_name and p.api_key:
+                            if condition == "always":
+                                return self._apply_model_override(p)
+                            elif condition == "reachable":
+                                if p.requires_vpn:
+                                    if self._check_vpn(p):
+                                        return self._apply_model_override(p)
+                                else:
                                     return self._apply_model_override(p)
-            except Exception:
-                pass
+                            # Other conditions can be added here:
+                            # "business_hours", "on_network", etc.
+        except Exception:
+            pass
 
         candidates = [
             p for p in self.providers

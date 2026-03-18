@@ -34,8 +34,8 @@ _DEFAULTS: dict[str, Any] = {
     # Routing
     "routing.default_mode": "auto",
     "routing.cloud_provider": "anthropic",
-    "routing.vpn_provider": "qwen-rascal",
-    "routing.prefer_vpn_provider": False,
+    "routing.prefer_provider": "",
+    "routing.prefer_when": "reachable",
     "routing.on_vpn_unavailable": "warn",
     "routing.ollama_model": "llama3.2:1b",
     "routing.audit_log": True,
