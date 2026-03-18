@@ -44,6 +44,9 @@ _DEFAULTS: dict[str, Any] = {
     "interface.stream": True,
     "interface.theme": "dark",
 
+    # RACI trust level (1-5): 1=locked_down, 2=cautious, 3=balanced, 4=autonomous, 5=full_trust
+    "raci.trust": 2,
+
     # Publisher
     "publisher.cooldown_seconds": 300,  # 5 min debounce — skip republish during active editing
 

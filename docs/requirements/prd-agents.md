@@ -132,9 +132,15 @@ Nuclear facilities lose network connectivity. All core agent capabilities degrad
 
 NeutronOS does not hard-code any LLM provider. Every model reference goes through `infra/gateway.py`. The same agent works with Anthropic Claude, OpenAI, or a locally-hosted Qwen model on UT's rascal server — configured in `models.toml`.
 
-### 5. Human-in-the-Loop for All Writes
+### 5. Human-in-the-Loop with RACI-Configurable Autonomy
 
-No agent creates a permanent record, publishes a document, or submits to an external system without explicit human confirmation. This is non-negotiable and is enforced in the guardrail layer, not by convention.
+Agent autonomy follows a **layered model**:
+
+1. **Safety-critical actions** — Always require explicit human approval. This is enforced in the guardrail layer (NSG-005), not by convention, and cannot be overridden by user settings.
+
+2. **Productivity actions** — Governed by user-configurable RACI levels. Users can set actions like issue updates or service restarts to run autonomously with post-fact notification, or require approval at each step.
+
+The full RACI framework is defined in [RACI-Based Human-in-the-Loop Framework](#raci-based-human-in-the-loop-framework) below.
 
 ---
 
@@ -155,17 +161,14 @@ These guardrails apply across all domain agents and cannot be disabled:
 
 ## RACI-Based Human-in-the-Loop Framework
 
-### The Problem with Binary Approval Gates
+NeutronOS uses a **RACI model** to balance safety (where human approval is mandatory) with productivity (where users can grant agents increasing autonomy as trust develops).
 
-The current design (NSG-005) treats human-in-the-loop as binary: every
-write action requires explicit approval. This is correct for safety, but
-wrong for productivity. Posting a status update to a GitLab issue shouldn't
-require the same approval gate as publishing a document to SharePoint.
+**Key insight:** NSG-005 (Human-in-the-Loop Mandate) applies to *safety-related* actions — these always require approval. But posting a status update to GitLab shouldn't require the same approval gate as publishing a safety analysis to SharePoint. RACI lets users configure autonomy per action category.
 
 ### RACI Model for Agent Actions
 
-Every agent action is categorized using the RACI model. Users set their
-preferred level per **action category** and can change it at any time:
+Every agent action is categorized using the RACI model. Neut manages these
+preferences conversationally, adjusting autonomy as users build trust:
 
 | Level | Meaning | Agent Behavior | Example |
 |-------|---------|---------------|---------|
@@ -193,18 +196,84 @@ preferred level per **action category** and can change it at any time:
 
 ### User Configuration
 
-Users set their RACI level per category via settings:
+RACI levels are typically adjusted **conversationally** — Neut proposes changes based on observed patterns and user feedback:
+
+```
+User: "Stop asking me to approve every issue comment."
+Neut: "I'll update your settings so I comment on issues autonomously
+       and notify you afterward. You can always say 'show my RACI settings'
+       to review, or 'require approval for issue comments' to revert."
+       [Setting raci.issue.update → informed]
+```
+
+Neut tracks trust signals (approval rate, reversions, explicit feedback) and may suggest loosening or tightening autonomy over time. Users can also query or adjust settings directly:
 
 ```bash
-# Start cautious — approve everything
-neut settings set raci.issue.update approve
-
-# Build trust — move to informed (autonomous + notify)
-neut settings set raci.issue.update informed
-
-# Override for a specific topic
-neut settings set raci.publish.document consulted
+neut settings get raci                     # show all RACI levels
+neut settings set raci.issue.update approve   # manual override if needed
 ```
+
+The conversational interface is primary; CLI is available for scripting and bulk configuration.
+
+### Trust Slider (Coarse-Grained Control)
+
+Instead of adjusting 12 individual RACI settings, users move a single
+**trust slider** with 5 positions. Each position sets all action
+categories to appropriate RACI levels:
+
+| Position | Label | Behavior |
+|----------|-------|----------|
+| 1 | **Locked Down** | Everything = Approve. Agent cannot act without explicit confirmation for every action. |
+| 2 | **Cautious** | Writes = Approve, reads = Informed. Agent reads freely, asks before any change. (Default for new users) |
+| 3 | **Balanced** | Routine writes = Consulted, publishing = Approve. Agent handles day-to-day autonomously, checks in on important decisions. |
+| 4 | **Autonomous** | Most actions = Informed, safety = Approve. Agent works independently, notifies after the fact. |
+| 5 | **Full Trust** | Everything = Informed except safety-critical (which remains Approve per NSG-005). Maximum autonomy. |
+
+```bash
+neut settings set raci.trust 2            # Cautious (default)
+neut settings set raci.trust 4            # Autonomous — been using it a while, trust is earned
+```
+
+Conversational:
+```
+User: "I trust you more now. Loosen up."
+Neut: "Moving trust from Cautious → Balanced. I'll handle routine
+       updates autonomously and check in on publishing and code changes."
+```
+
+The trust slider sets the baseline. Individual action overrides still
+work — `neut settings set raci.issue.update approve` overrides the
+slider for that one category.
+
+### Emergency Controls
+
+**Approve All (Emergency Brake):**
+
+If an agent is doing something unexpected, pull the brake:
+
+```bash
+neut raci halt                # Immediately set ALL actions to Approve
+```
+
+Conversational: `"Stop. Approve everything from now on."`
+
+This sets `raci.trust = 1` and clears all individual overrides.
+Every subsequent agent action pauses for confirmation until the user
+explicitly loosens trust again. The halt event is logged for the
+After Action Report.
+
+**Factory Reset:**
+
+Return all RACI settings to their defaults (Cautious / position 2):
+
+```bash
+neut raci reset               # Clear all overrides, trust → 2 (Cautious)
+```
+
+Conversational: `"Reset all my approval settings to defaults."`
+
+This removes all per-category overrides from settings.toml and resets
+the trust slider to position 2.
 
 ### Safety Override
 
