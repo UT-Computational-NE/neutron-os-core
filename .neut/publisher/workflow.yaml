@@ -10,7 +10,7 @@
 #   Developer:      pandoc-docx + local + docx-comments + terminal
 
 # --- Source directories for `neut pub push --all` ---
-publish_folders:
+source_dirs:
   - path: docs/requirements
     pattern: "*.md"
   - path: docs/tech-specs

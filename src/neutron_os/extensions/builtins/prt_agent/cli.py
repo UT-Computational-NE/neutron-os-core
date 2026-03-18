@@ -1051,7 +1051,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
                     import yaml
                     with open(config_path) as f:
                         cfg = yaml.safe_load(f) or {}
-                    folders = cfg.get("publish_folders", cfg.get("folders", []))
+                    folders = cfg.get("source_dirs", cfg.get("folders", []))
                     if folders:
                         break
                 except Exception:
