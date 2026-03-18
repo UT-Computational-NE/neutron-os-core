@@ -234,93 +234,63 @@ class SetupWizard:
             renderer.text("You can complete setup later with: neut infra")
             self.state.infra_configured = False
 
-        # Check Ollama for local AI (export control routing)
-        self._check_ollama()
-
         renderer.blank()
 
-    def _check_ollama(self) -> None:
-        """Check Ollama installation and pull the routing model if needed."""
-        from neutron_os.extensions.builtins.settings.store import SettingsStore
-
-        settings = SettingsStore()
-        model = settings.get("routing.ollama_model", "llama3.2:1b")
-
-        # Check if ollama is installed
-        if not shutil.which("ollama"):
-            renderer.blank()
-            renderer.heading("Ollama (Local AI)")
-            renderer.text(
-                "Ollama runs a small local model for export-control classification.\n"
-                "It keeps sensitive routing decisions off the network.\n"
-            )
-            if platform.system() == "Darwin":
-                if renderer.prompt_yn("Install Ollama via Homebrew?", default=True):
-                    renderer.text("  Installing...")
-                    try:
-                        subprocess.run(
-                            ["brew", "install", "ollama"],
-                            check=True, capture_output=True, timeout=120,
-                        )
-                        renderer.success("Ollama installed")
-                    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                        renderer.warning("Could not install Ollama automatically.")
-                        renderer.text("  Install manually: https://ollama.com/download")
-                        return
-                else:
-                    renderer.info("Skipped — install later: brew install ollama")
-                    return
-            else:
-                renderer.warning("Ollama not found. Install from: https://ollama.com/download")
-                return
-
-        # Check if ollama is serving
-        try:
-            import urllib.request
-            urllib.request.urlopen("http://localhost:11434", timeout=2)
-        except Exception:
-            renderer.blank()
-            renderer.warning("Ollama is installed but not running.")
-            renderer.text("  Start it with: ollama serve")
-            return
-
-        # Check if routing model is pulled
-        try:
-            result = subprocess.run(
-                ["ollama", "list"], capture_output=True, text=True, timeout=10,
-            )
-            if model not in result.stdout:
-                renderer.blank()
-                renderer.text(f"  Pulling routing model ({model})...")
-                try:
-                    subprocess.run(
-                        ["ollama", "pull", model],
-                        check=True, timeout=300,
-                    )
-                    renderer.success(f"Routing model {model} ready")
-                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                    renderer.warning(f"Could not pull {model}. Run manually: ollama pull {model}")
-            else:
-                renderer.success(f"Ollama ready ({model})")
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-
     # ------------------------------------------------------------------
-    # Phase: CREDENTIALS
+    # Phase: CREDENTIALS (delegates to neut connect)
     # ------------------------------------------------------------------
 
     def _phase_credentials(self) -> None:
         renderer.heading("Connection Settings")
         renderer.text("Let's set up your connections. You can skip any for now.\n")
 
-        # Re-hydrate probe result if needed
+        try:
+            from neutron_os.infra.connections import get_registry, has_credential, get_cli_tool
+            from neutron_os.extensions.builtins.connect.cli import _setup_connection
+
+            registry = get_registry()
+            connections = registry.all()
+
+            if not connections:
+                renderer.info("No connections registered yet.")
+                return
+
+            # Walk through each connection via neut connect's setup flow
+            # Required connections first, then by category
+            for conn in sorted(connections, key=lambda c: (not c.required, c.category, c.name)):
+                # Skip already-configured connections
+                if self.state.credentials_configured.get(conn.name):
+                    continue
+
+                if conn.kind == "cli":
+                    tool = get_cli_tool(conn.name, registry=registry)
+                    if tool:
+                        renderer.success(f"{conn.display_name} — {tool.version or 'installed'}")
+                        self.state.credentials_configured[conn.name] = True
+                        save_state(self.state, self.root)
+                        continue
+                elif conn.credential_type not in ("none", ""):
+                    if has_credential(conn.name, registry=registry):
+                        renderer.success(f"{conn.display_name} — already set")
+                        self.state.credentials_configured[conn.name] = True
+                        save_state(self.state, self.root)
+                        continue
+
+                # Delegate to neut connect's interactive setup
+                _setup_connection(conn.name, registry)
+                self.state.credentials_configured[conn.name] = True
+                save_state(self.state, self.root)
+
+        except ImportError:
+            # Fallback to legacy credential guides if connect module unavailable
+            self._phase_credentials_legacy()
+
+    def _phase_credentials_legacy(self) -> None:
+        """Legacy credential setup — used if connections module is unavailable."""
         if self.probe_result is None:
             self.probe_result = ProbeResult.from_dict(self.state.probe_result)
 
-        # Group MS 365 credentials
         ms_vars = {"MS_GRAPH_CLIENT_ID", "MS_GRAPH_CLIENT_SECRET", "MS_GRAPH_TENANT_ID"}
-
-        # Process LLM guides first (enables chat-assisted mode), then the rest
         llm_envs = {g.env_var for g in get_llm_guides()}
         llm_guides = [g for g in CREDENTIAL_GUIDES if g.env_var in llm_envs]
         non_ms_guides = [
@@ -330,7 +300,6 @@ class SetupWizard:
         ms_guides = [g for g in CREDENTIAL_GUIDES if g.env_var in ms_vars]
 
         for guide in llm_guides + non_ms_guides:
-            # Skip already-configured credentials
             if self.state.credentials_configured.get(guide.env_var):
                 continue
             if self.probe_result.env_vars_set.get(guide.env_var):
@@ -338,10 +307,8 @@ class SetupWizard:
                 self.state.credentials_configured[guide.env_var] = True
                 save_state(self.state, self.root)
                 continue
-
             self._configure_credential(guide)
 
-        # Handle MS 365 as a group
         ms_all_set = all(
             self.state.credentials_configured.get(g.env_var)
             or self.probe_result.env_vars_set.get(g.env_var)
