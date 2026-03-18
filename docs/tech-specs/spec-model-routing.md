@@ -1007,3 +1007,98 @@ pytest tests/routing/ -k "public" -v
 # Reset to default
 neut settings reset routing.sensitivity
 ```
+
+---
+
+## 10. Per-Agent Routing Profiles (v0.5.0)
+
+> **Status:** Designed, not yet implemented. Tracked for v0.5.0.
+
+### 10.1 Problem
+
+Today, all agents share one priority-sorted provider list. But each agent
+has different needs:
+
+| Agent | Priority | Failure Mode | Example Providers |
+|-------|----------|-------------|-------------------|
+| **Neut** (chat) | Quality | Queue (don't skip) | Opus → Sonnet → local |
+| **EVE** (extraction) | Speed + cost | Skip gracefully | Haiku → local Qwen → skip |
+| **D-FIB** (diagnosis) | Reliability | Queue (must complete) | Sonnet → Haiku → queue |
+| **PR-T** (publishing) | Quality | Retry | Sonnet → Opus → retry |
+| **Embeddings** | Cost | Skip | OpenAI small → Ollama → skip |
+| **EC classifier** | Privacy | Keyword fallback | Ollama only → keywords |
+
+### 10.2 Solution: Routing Profiles
+
+Named strategies declared in `models.toml`:
+
+```toml
+[routing_profiles.chat]
+providers = ["anthropic", "openai", "qwen-local"]
+on_all_fail = "queue"           # Queue request, retry when provider returns
+
+[routing_profiles.extraction]
+providers = ["haiku", "qwen-local"]
+on_all_fail = "skip"            # Return empty result, don't block pipeline
+
+[routing_profiles.diagnosis]
+providers = ["sonnet", "haiku"]
+on_all_fail = "queue"           # Must complete — queue indefinitely
+
+[routing_profiles.embedding]
+providers = ["openai-embed", "ollama-embed"]
+on_all_fail = "skip"            # Fall back to keyword search
+
+[routing_profiles.classification]
+providers = ["ollama-classifier"]
+on_all_fail = "keyword_fallback"  # Never send to cloud
+cloud_allowed = false             # Hard constraint: no cloud providers
+```
+
+### 10.3 API Change
+
+```python
+# Current (v0.4.x):
+gateway.complete(prompt, system=system, max_tokens=4096)
+
+# Future (v0.5.0):
+gateway.complete(prompt, system=system, max_tokens=4096, profile="extraction")
+```
+
+`profile` defaults to `"chat"` for backward compatibility. Each agent
+sets its profile at construction:
+
+```python
+class EVEAgent:
+    def __init__(self, gateway):
+        self._gateway = gateway
+        self._profile = "extraction"  # Cheap, fast, skip-on-fail
+
+    def extract(self, text):
+        return self._gateway.complete(text, profile=self._profile)
+```
+
+### 10.4 RAG Implications
+
+Embedding models must match the corpus being searched. Routing profiles
+for embedding interact with the RAG tier model:
+
+```
+Public corpus    → routing_profiles.embedding → OpenAI → Ollama → skip
+EC corpus        → routing_profiles.ec_embedding → Ollama on rascal only
+Personal corpus  → routing_profiles.embedding → same as public
+```
+
+The RAG retrieval layer reads the active embedding profile for the target
+`access_tier` and embeds the query with the matching model. Cross-tier
+similarity search is not meaningful (different dimensions/models).
+
+### 10.5 Implementation Plan
+
+1. Add `RoutingProfile` dataclass to `gateway.py`
+2. Parse `[routing_profiles.*]` from `models.toml`
+3. Add `profile` parameter to `gateway.complete()` and `gateway.complete_with_tools()`
+4. Update each agent to declare its profile
+5. Add `on_all_fail` behavior: "queue", "skip", "retry", "keyword_fallback"
+6. Update RAG `embed_texts()` to accept profile
+7. Tests: verify each profile routes to expected provider chain

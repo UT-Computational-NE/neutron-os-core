@@ -378,6 +378,29 @@ The gateway tries providers in priority order with fallback. Any IDE that
 can call the OpenAI API format (Cursor, Claude Code, Copilot) can also use
 the gateway endpoint if exposed locally.
 
+### Per-Agent Routing Profiles (v0.5.0)
+
+Each agent declares a routing profile that defines its provider preferences
+and failure behavior. See [Model Routing Spec §10](spec-model-routing.md)
+for the full design.
+
+| Agent | Profile | Priority | On Failure |
+|-------|---------|----------|------------|
+| Neut (chat) | `chat` | Quality (Opus → Sonnet → local) | Queue |
+| EVE (extraction) | `extraction` | Speed (Haiku → local → skip) | Skip |
+| D-FIB (diagnosis) | `diagnosis` | Reliability (Sonnet → Haiku) | Queue |
+| PR-T (publishing) | `publishing` | Quality (Sonnet → Opus) | Retry |
+| M-O (steward) | `extraction` | Speed (shared with EVE) | Skip |
+
+```python
+# Agent declares its profile at construction
+class EVEAgent:
+    ROUTING_PROFILE = "extraction"  # Cheap, fast, skip-on-fail
+
+    def extract(self, text):
+        return self._gateway.complete(text, profile=self.ROUTING_PROFILE)
+```
+
 For RAG: the gateway doesn't own RAG. RAG is a capability of the extractors
 and the `neut chat` module. The extractors use the gateway to call an LLM,
 but they also have access to the retrieval layer (GitLab issues, Linear

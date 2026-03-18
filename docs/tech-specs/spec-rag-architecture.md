@@ -658,6 +658,24 @@ dims         = 768
 `embed_texts(texts, access_tier)` calls `gateway._select_provider("embedding", access_tier)`,
 so swapping the embedding model is a `models.toml` change — no Python changes needed.
 
+**Routing profiles (v0.5.0):** Embedding providers will be selected via
+routing profiles rather than flat `use_for` tags. See
+[Model Routing Spec §10](spec-model-routing.md) for the design.
+
+```toml
+[routing_profiles.embedding]
+providers = ["openai-embed", "ollama-embed"]
+on_all_fail = "skip"            # Fall back to keyword search
+
+[routing_profiles.ec_embedding]
+providers = ["ollama-rascal"]   # Never cloud
+on_all_fail = "error"           # EC content must be embedded locally
+cloud_allowed = false
+```
+
+Each RAG corpus declares which embedding profile to use, ensuring EC
+content is never sent to a cloud embedding API.
+
 ### 9.1 The Dimension Problem
 
 Vector dimensions are fixed at index time. Mixing providers (e.g., 1536-dim public +
