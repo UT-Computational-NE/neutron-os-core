@@ -32,7 +32,27 @@ interval = 10                # seconds
 path = "runtime/inbox/raw"
 
 [[connections]]
-name = "onedrive"
-display_name = "Microsoft OneDrive"
-kind = "storage"
-category = "documents"
+name = "github"
+display_name = "GitHub"
+kind = "api"
+credential_env_var = "GITHUB_TOKEN"
+health_check = "http_get"
+health_endpoint = "https://api.github.com"
+category = "code"
+docs_url = "https://github.com/settings/tokens"
+
+[[connections]]
+name = "gitlab"
+display_name = "GitLab (TACC)"
+kind = "api"
+credential_env_var = "GITLAB_TOKEN"
+category = "code"
+docs_url = "https://rsicc-gitlab.tacc.utexas.edu/-/user_settings/personal_access_tokens"
+
+[[connections]]
+name = "openai"
+display_name = "OpenAI (Embeddings)"
+kind = "api"
+credential_env_var = "OPENAI_API_KEY"
+category = "llm"
+docs_url = "https://platform.openai.com/api-keys"

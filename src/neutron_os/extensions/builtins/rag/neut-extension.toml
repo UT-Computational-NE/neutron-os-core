@@ -9,3 +9,12 @@ module = "platform"
 [[cli.commands]]
 noun = "rag"
 module = "neutron_os.extensions.builtins.rag.cli"
+
+[[connections]]
+name = "postgresql"
+display_name = "PostgreSQL (pgvector)"
+kind = "api"
+endpoint = "localhost:5432"
+credential_env_var = "NEUT_DB_URL"
+health_check = "tcp_connect"
+category = "data"

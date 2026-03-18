@@ -16,3 +16,32 @@ description = "Interactive agent with tool calling"
 noun = "code"
 module = "neutron_os.extensions.builtins.neut_agent.cli"
 description = "Interactive agent with tool calling (alias for chat)"
+
+[[connections]]
+name = "anthropic"
+display_name = "Anthropic Claude"
+kind = "api"
+credential_env_var = "ANTHROPIC_API_KEY"
+category = "llm"
+required = true
+docs_url = "https://console.anthropic.com/settings/keys"
+
+[[connections]]
+name = "ollama"
+display_name = "Ollama"
+kind = "cli"
+endpoint = "ollama"
+credential_type = "none"
+health_check = "cli_version"
+category = "llm"
+docs_url = "https://ollama.com/download"
+
+[[connections]]
+name = "pandoc"
+display_name = "Pandoc"
+kind = "cli"
+endpoint = "pandoc"
+credential_type = "none"
+health_check = "cli_version"
+category = "tools"
+docs_url = "https://pandoc.org/installing.html"

@@ -594,6 +594,17 @@ def format_health_table(health: SystemHealth, use_color: bool = True) -> str:
                 if "pgvector" in svc.details and svc.details["pgvector"] != "not installed":
                     lines.append(f"      pgvector: {svc.details['pgvector']}")
 
+    # Connections section
+    try:
+        from neutron_os.extensions.builtins.connect.cli import format_status_section
+        conn_output = format_status_section()
+        if conn_output and "No connections" not in conn_output:
+            lines.append("-" * 50)
+            lines.append(f"{bold}Connections{reset}")
+            lines.append(conn_output)
+    except Exception:
+        pass
+
     lines.append("-" * 50)
 
     # Overall status
