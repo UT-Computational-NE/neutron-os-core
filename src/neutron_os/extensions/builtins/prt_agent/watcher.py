@@ -166,3 +166,38 @@ class PublishWatcher:
     def stop(self) -> None:
         """Stop the watcher loop."""
         self._running = False
+
+
+# ---------------------------------------------------------------------------
+# Singleton for daemon mode (M-O heartbeat calls this)
+# ---------------------------------------------------------------------------
+
+_daemon_watcher: PublishWatcher | None = None
+
+
+def run_watcher_cycle() -> int:
+    """Run a single watcher poll cycle. Called by M-O on each heartbeat.
+
+    Returns the number of documents published (0 if nothing changed).
+    Initializes the watcher on first call. Stateful across calls —
+    tracks file mtimes and cooldowns between heartbeats.
+    """
+    global _daemon_watcher
+    if _daemon_watcher is None:
+        cooldown = 300
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            cooldown = int(SettingsStore().get("publisher.cooldown_seconds", 300))
+        except Exception:
+            pass
+        _daemon_watcher = PublishWatcher(cooldown=cooldown)
+        # Initial scan — populate state without publishing
+        for path_str, mtime in _daemon_watcher._scan_files().items():
+            _daemon_watcher._file_state[path_str] = {
+                "mtime": mtime,
+                "last_changed_at": 0,
+                "published": True,
+            }
+        log.info("PR-T watcher initialized: tracking %d files", len(_daemon_watcher._file_state))
+
+    return _daemon_watcher._check_and_publish()
