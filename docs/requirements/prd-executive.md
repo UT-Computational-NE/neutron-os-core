@@ -70,7 +70,7 @@ NeutronOS is a **modular digital platform for nuclear facilities**. It replaces 
 | Capability | Details |
 |------------|---------|
 | [Export Control](../tech-specs/spec-model-routing.md) | Keyword + SLM classification, VPN-gated private endpoints |
-| [Security & Access Control](prd-security-identity-credentials.md) | OpenFGA (ReBAC/RBAC/ABAC), prompt injection defense |
+| [Security & Access Control](prd-security.md) | OpenFGA (ReBAC/RBAC/ABAC), prompt injection defense |
 | [TACC Integration](../tech-specs/spec-model-routing.md#9-deployment-options-for-the-private-endpoint) | Data locality for export-controlled simulation codes |
 
 ---
@@ -157,7 +157,7 @@ This executive PRD is the entry point. Each capability has its own detailed PRD 
 | [Publisher](prd-publisher.md) | ✅ Shipped |
 | [Reactor Ops Log](prd-reactor-ops-log.md) | 🔲 Planned |
 | [Scheduling System](prd-scheduling-system.md) | 🔲 Planned |
-| [Security & Access Control](prd-security-identity-credentials.md) | 📋 Spec'd |
+| [Security & Access Control](prd-security.md) | 📋 Spec'd |
 
 ### Technical Specifications
 

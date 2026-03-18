@@ -1,10 +1,13 @@
-# NeutronOS Security, Identity & Credential Management PRD
+# NeutronOS Security PRD
 
 **Status:** Draft
 **Owner:** Ben Booth
 **Created:** 2026-03-15
 **Last Updated:** 2026-03-18
-**Tech Spec:** [Security, Identity & Credentials Spec](../tech-specs/spec-security-identity-credentials.md)
+**Tech Spec:** [Security Spec](../tech-specs/spec-security.md)
+
+**Scope:** Identity, Authentication (AuthN), Authorization (AuthZ), RBAC,
+ReBAC, ABAC, Credential & Key Management, Export Control Defense, Audit Logging
 
 ---
 
@@ -74,6 +77,39 @@ identity server that handles:
 identity providers *in Kratos*, not as separate auth backends in neut.
 Kratos handles the protocol complexity. Neut talks to Kratos. One integration
 point, N identity sources.
+
+### FR-ID-001a: Kratos → OpenFGA Webhook Bridge
+
+Kratos and OpenFGA connect via post-flow webhooks. When a user registers
+or logs in, Kratos fires a webhook. NeutronOS handles it by writing
+OpenFGA relationship tuples:
+
+```
+User logs in via Google → Kratos authenticates
+    ↓ post-login webhook fires
+    ↓
+NeutronOS hook-service:
+    1. Read identity traits (email, groups, org)
+    2. Map IdP claims to NeutronOS roles (via auth.toml role_mapping)
+    3. Write OpenFGA tuples:
+       user:ben@utexas.edu → role:export_controlled_access#member
+       user:ben@utexas.edu → connection:anthropic#can_access
+       user:ben@utexas.edu → rag_corpus:triga-wiki#can_query
+    4. Return session to Kratos → user is logged in with roles
+```
+
+**Events that trigger tuple updates:**
+- **Registration:** Create user, assign default roles
+- **Login:** Refresh session, sync group memberships from IdP claims
+- **Admin action:** `neut admin grant <user> <role>` → write tuple
+- **Deprovisioning:** Remove all tuples for a user
+
+**Why OpenFGA, not Ory Keto:**
+- Both implement Google Zanzibar (relationship-based access control)
+- OpenFGA has better maintenance trajectory (backed by Auth0/Okta)
+- OpenFGA supports multiple authorization models, contextual tuples, audit log
+- OpenFGA has richer SDK ecosystem and documentation
+- Ory Keto development has stagnated (minimal commits since 2024)
 
 ### FR-ID-002: Configuration (`auth.toml`)
 
@@ -214,6 +250,42 @@ post_setup_function = "setup_kratos"
 [connections.install_commands]
 macos = "brew install ory/tap/kratos"
 linux = "bash <(curl https://raw.githubusercontent.com/ory/meta/master/install.sh) -b /usr/local/bin kratos"
+```
+
+### FR-ID-006: OpenFGA as Managed Service
+
+OpenFGA runs alongside Kratos, also managed by `ServiceManager`:
+
+```toml
+# identity extension manifest
+[[connections]]
+name = "openfga"
+display_name = "OpenFGA (Authorization)"
+kind = "cli"
+endpoint = "openfga"
+credential_type = "none"
+health_check = "http_get"
+health_endpoint = "http://localhost:8080/healthz"
+category = "identity"
+capabilities = ["read", "write"]
+ensure_module = "neutron_os.extensions.builtins.identity.connections"
+ensure_function = "ensure_openfga_running"
+post_setup_module = "neutron_os.extensions.builtins.identity.connections"
+post_setup_function = "setup_openfga"
+
+[connections.install_commands]
+macos = "brew install openfga/tap/openfga"
+linux = "bash <(curl https://raw.githubusercontent.com/openfga/openfga/main/install.sh) -b /usr/local/bin openfga"
+```
+
+**Full identity stack (all managed services):**
+
+```
+neut connect kratos    → Install + register service + create DB schema
+neut connect openfga   → Install + register service + load auth model
+neut login             → Kratos authenticates → webhook writes OpenFGA tuples
+neut chat              → Gateway checks OpenFGA before routing to EC tier
+neut status            → Shows Kratos + OpenFGA health
 ```
 
 ---

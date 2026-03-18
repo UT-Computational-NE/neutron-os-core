@@ -25,7 +25,7 @@
 | [Experiment Manager PRD](prd-experiment-manager.md) | O5, O7 | 🔲 Not started |
 | [Analytics Dashboards PRD](prd-analytics-dashboards.md) | O1, O3, O5 | 🔲 Not started |
 | [Medical Isotope PRD](prd-medical-isotope.md) | **O6** | 🔲 Not started |
-| [Security & Access Control PRD](prd-security-identity-credentials.md) | O7, O8 | 🔲 Not started |
+| [Security & Access Control PRD](prd-security.md) | O7, O8 | 🔲 Not started |
 | [Media Library PRD](prd-media-library.md) | O7 | 🔲 Not started |
 
 **PRDs not linked to any OKR:** None — all PRDs map to at least one objective.
@@ -194,7 +194,7 @@ When a Houston cancer clinic needs isotopes:
 ## Objective 7: Community & Adoption
 > Researchers and students actively using NeutronOS
 
-**Aligns with:** [Publisher PRD](prd-publisher.md), [Security & Access Control PRD](prd-security-identity-credentials.md), [Media Library PRD](prd-media-library.md), [Connections PRD](prd-connections.md)
+**Aligns with:** [Publisher PRD](prd-publisher.md), [Security & Access Control PRD](prd-security.md), [Media Library PRD](prd-media-library.md), [Connections PRD](prd-connections.md)
 
 | Key Result | Target | Timeline | Status |
 |------------|--------|----------|--------|
@@ -306,7 +306,7 @@ When a Houston cancer clinic needs isotopes:
 - [Experiment Manager PRD](prd-experiment-manager.md) — Sample lifecycle
 - [Analytics Dashboards PRD](prd-analytics-dashboards.md) — Visualization
 - [Medical Isotope PRD](prd-medical-isotope.md) — Isotope production
-- [Security & Access Control PRD](prd-security-identity-credentials.md) — Auth & permissions
+- [Security & Access Control PRD](prd-security.md) — Auth & permissions
 - [Media Library PRD](prd-media-library.md) — Media asset management
 
 ### Tech Specs
