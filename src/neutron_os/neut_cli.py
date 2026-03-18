@@ -522,7 +522,10 @@ def _copy_top_level_args(
         elif action.nargs is not None:
             kwargs["nargs"] = action.nargs
         try:
-            dst_parser.add_argument(*names, **kwargs)
+            new_action = dst_parser.add_argument(*names, **kwargs)
+            # Carry over argcomplete completers
+            if hasattr(action, "completer") and action.completer is not None:
+                new_action.completer = action.completer
         except Exception:
             pass
 

@@ -418,11 +418,24 @@ Examples:
 """,
     )
 
-    parser.add_argument(
+    name_arg = parser.add_argument(
         "name",
         nargs="?",
         help="Connection to set up or manage",
     )
+
+    # argcomplete: offer registered connection names as completions
+    try:
+        def _complete_connection_names(prefix, parsed_args, **kwargs):
+            try:
+                return [c.name for c in get_registry().all()
+                        if c.name.startswith(prefix)]
+            except Exception:
+                return []
+
+        name_arg.completer = _complete_connection_names  # type: ignore[attr-defined]
+    except Exception:
+        pass
     parser.add_argument(
         "--check",
         action="store_true",
