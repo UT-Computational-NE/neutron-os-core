@@ -28,6 +28,35 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def _all_source_docs(engine) -> list[str]:
+    """Collect all docs from configured source_dirs."""
+    from neutron_os import REPO_ROOT
+    config_path = REPO_ROOT / ".neut" / "publisher" / "workflow.yaml"
+    folders = []
+    if config_path.exists():
+        try:
+            import yaml
+            with open(config_path) as f:
+                cfg = yaml.safe_load(f) or {}
+            folders = cfg.get("source_dirs", cfg.get("folders", []))
+        except Exception:
+            pass
+    if not folders:
+        folders = [
+            {"path": "docs/requirements", "pattern": "*.md"},
+            {"path": "docs/tech-specs", "pattern": "*.md"},
+        ]
+    docs = []
+    for folder_cfg in folders:
+        folder = REPO_ROOT / folder_cfg["path"]
+        pattern = folder_cfg.get("pattern", "*.md")
+        if folder.exists():
+            for md_file in sorted(folder.glob(pattern)):
+                if not md_file.name.startswith("_") and md_file.name != "README.md":
+                    docs.append(str(md_file.relative_to(REPO_ROOT)))
+    return docs
+
+
 def cmd_publish(args: argparse.Namespace) -> None:
     """Publish document(s) to configured storage."""
     from .engine import PublisherEngine
@@ -35,29 +64,36 @@ def cmd_publish(args: argparse.Namespace) -> None:
     engine = PublisherEngine()
     force = getattr(args, 'force', False)
 
-    if args.all:
-        # Batch publish
-        if args.changed_only:
-            changed = engine.diff()
-            if not changed:
-                print("✓ No documents changed since last publish.")
-                return
-            print(f"\n📝 Found {len(changed)} changed document(s):\n")
-            for doc in changed:
-                print(f"  • {doc}")
-            print()
-            for doc in changed:
-                source = engine.config.repo_root / doc
-                if source.exists():
-                    engine.publish(
-                        source,
-                        storage_override=args.endpoint,
-                        draft=args.draft,
-                        force=force,
-                    )
-        else:
-            print("Use --changed-only with --all to avoid publishing everything.")
-            sys.exit(1)
+    if args.all and force:
+        # Force-publish everything (explicit opt-in)
+        changed = engine.diff()
+        if not changed:
+            changed = _all_source_docs(engine)
+        for doc in changed:
+            source = engine.config.repo_root / doc
+            if source.exists():
+                engine.publish(source, storage_override=args.endpoint,
+                               draft=args.draft, force=force)
+    elif args.all or (not args.file and not getattr(args, 'path', None)):
+        # Default behavior: publish only what changed (incremental)
+        changed = engine.diff()
+        if not changed:
+            print("  No documents changed since last publish.")
+            print("  Use --force to republish everything.")
+            return
+        print(f"\n  {len(changed)} document(s) changed:\n")
+        for doc in changed:
+            print(f"    {doc}")
+        print()
+        for doc in changed:
+            source = engine.config.repo_root / doc
+            if source.exists():
+                engine.publish(
+                    source,
+                    storage_override=args.endpoint,
+                    draft=args.draft,
+                    force=force,
+                )
     elif args.file:
         source = Path(args.file).resolve()
         if not source.exists():
