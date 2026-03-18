@@ -1042,19 +1042,27 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             files_to_push.append((target, target, subfolder))
     else:
         # --all: collect from configured folders
-        config_path = REPO_ROOT / ".publisher.yaml"
+        # Check workflow.yaml and .publisher.yaml for folder config
         folders = []
-        if config_path.exists():
-            try:
-                import yaml
-                with open(config_path) as f:
-                    cfg = yaml.safe_load(f) or {}
-                folders = cfg.get("folders", [])
-            except Exception:
-                pass
+        for config_name in [".neut/publisher/workflow.yaml", ".publisher.yaml"]:
+            config_path = REPO_ROOT / config_name
+            if config_path.exists():
+                try:
+                    import yaml
+                    with open(config_path) as f:
+                        cfg = yaml.safe_load(f) or {}
+                    folders = cfg.get("publish_folders", cfg.get("folders", []))
+                    if folders:
+                        break
+                except Exception:
+                    pass
 
         if not folders:
-            folders = [{"path": "docs/requirements", "pattern": "prd-*.md"}]
+            # Scan all standard doc directories
+            folders = [
+                {"path": "docs/requirements", "pattern": "*.md"},
+                {"path": "docs/tech-specs", "pattern": "*.md"},
+            ]
 
         for folder_cfg in folders:
             folder = REPO_ROOT / folder_cfg["path"]
