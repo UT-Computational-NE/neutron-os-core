@@ -290,15 +290,19 @@ Connections
 
 ## Phased Implementation
 
-### Phase 1: Credential Resolution + `neut connect` (build now)
+### Phase 1: Credential Resolution + `neut connect` ✅ SHIPPED v0.4.2
 
 - `src/neutron_os/infra/connections.py` — `get_credential()`, `has_credential()`, `check_health()`, `get_cli_tool()`
-- `neut connect` CLI command (list, setup, check, clear)
-- Migrate existing extractors to use `get_credential()`
-- Connection declarations in `neut-extension.toml`
+- `neut connect` CLI command (list, setup, check, clear, tab completion, JSON)
+- Migrated extractors to `get_credential()` (8 files)
+- Connection declarations in `neut-extension.toml` (11 connections across 5 extensions)
 - `neut status` connection health display
+- Adaptive rate limiter (learns from API response headers)
+- Managed service lifecycle (launchd/systemd/Windows)
+- Capabilities (read/write), usage tracking, throttle detection
+- Provider preference chain (`routing.prefer_provider`)
 
-### Phase 1.5: D-FIB Self-Healing Integration (build now)
+### Phase 1.5: D-FIB Self-Healing Integration ✅ SHIPPED v0.4.2
 
 - Connection events on EventBus: `connections.healthy`, `connections.degraded`, `connections.unhealthy`, `connections.throttled`
 - D-FIB subscribes to connection events for proactive remediation
@@ -310,15 +314,17 @@ Connections
 - Usage tracking: per-connection request count, error count, throttle count, avg latency
 - Capabilities reporting: read/write/admin/stream per connection
 
-### Phase 2: Auth Method Negotiation + Onboarding
+### Phase 2: Auth Method Negotiation + Onboarding ✅ SHIPPED v0.4.2
 
-- Multiple auth methods per connection
-- `neut connect <name>` presents options
-- `neut config` wizard uses connection registry for guided setup
-- Playwright lifecycle management (install, session refresh)
+- Multiple auth methods per connection (browser, graph_api, manual)
+- `neut connect <name>` presents auth method choices
+- `neut config` wizard delegates to `neut connect`
+- Playwright browser auth with session persistence
+- Playwright auto-install if missing
 
-### Phase 3: OpenFGA Authorization
+### Phase 3: OpenFGA Authorization (deferred to Security PRD v0.5.x+)
 
+- Requires Ory Kratos (identity) — see [Security PRD](prd-security.md) Phase 3-6
 - OpenFGA sidecar deployment (K3D/K8S)
 - Connection-level access control
 - Document/corpus-level access control
