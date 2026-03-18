@@ -129,7 +129,7 @@ neut <noun> <verb> [args] [--flags]
 ## Security Architecture
 
 **Authoritative specs:**
-- [Security & Access Control PRD](../requirements/prd-security-access-control.md)
+- [Security & Access Control PRD](../requirements/prd-security-identity-credentials.md)
 - [Model Routing Spec §7-8-10](spec-model-routing.md)
 - [Connections Spec §8](spec-connections.md)
 

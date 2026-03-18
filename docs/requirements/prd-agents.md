@@ -327,7 +327,7 @@ EC documents must remain on authorized systems (rascal). Ingest, embedding, and 
 
 Defense against RAG poisoning, indirect injection, cross-tier escalation, tool-use injection, and signal pipeline injection. Includes chunk sanitization, audit logging, response scanning, and routing mode immutability.
 
-**Full specification:** [Model Routing Spec §8](../tech-specs/spec-model-routing.md) | [Security & Access Control PRD](prd-security-access-control.md)
+**Full specification:** [Model Routing Spec §8](../tech-specs/spec-model-routing.md) | [Security & Access Control PRD](prd-security-identity-credentials.md)
 
 ---
 
@@ -338,7 +338,7 @@ Defense against RAG poisoning, indirect injection, cross-tier escalation, tool-u
 
 Four-tier automated response protocol for EC content appearing in unauthorized locations (cloud responses, public RAG store, application logs, signal pipeline). Includes source identification via `security_events` table and monitoring via `neut status` / `neut doctor --security`.
 
-**Full specification:** [Model Routing Spec §10](../tech-specs/spec-model-routing.md) | [Security & Access Control PRD](prd-security-access-control.md)
+**Full specification:** [Model Routing Spec §10](../tech-specs/spec-model-routing.md) | [Security & Access Control PRD](prd-security-identity-credentials.md)
 
 ---
 

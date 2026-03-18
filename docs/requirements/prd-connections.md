@@ -391,7 +391,7 @@ if token is None:
 ## Related Documents
 
 - [Connections & Credentials Spec](../tech-specs/spec-connections.md) — Technical specification
-- [Security & Access Control PRD](prd-security-access-control.md) — OpenFGA authorization, FR-008
+- [Security & Access Control PRD](prd-security-identity-credentials.md) — OpenFGA authorization, FR-008
 - [Model Routing Spec](../tech-specs/spec-model-routing.md) — LLM provider connections
 - [Agent State Management PRD](prd-agent-state-management.md) — Credential state in registry
 - [NeutronOS Executive PRD](prd-executive.md)

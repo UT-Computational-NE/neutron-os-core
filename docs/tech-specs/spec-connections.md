@@ -714,7 +714,7 @@ requires.
 ## Related Documents
 
 - [Connections PRD](../requirements/prd-connections.md) — User-facing requirements for `neut connect`
-- [Security & Access Control PRD](../requirements/prd-security-access-control.md) — OpenFGA authorization (FR-008), ReBAC/RBAC/ABAC
+- [Security & Access Control PRD](../requirements/prd-security-identity-credentials.md) — OpenFGA authorization (FR-008), ReBAC/RBAC/ABAC
 - [Model Routing Spec](spec-model-routing.md) — LLM provider credentials, routing tier authorization
 - [Agent State Management Spec](spec-agent-state-management.md) — Credential storage in state registry
 - [NeutronOS Master Tech Spec](spec-executive.md) — Extension system
