@@ -121,6 +121,10 @@ class Connection:
     # Capabilities
     capabilities: list[str] = None  # type: ignore[assignment]  # ["read", "write", "admin", "stream"]
 
+    # VPN guidance (shown on connection failure)
+    vpn_name: str = ""  # e.g., "UT VPN"
+    vpn_connect_guide: str = ""  # e.g., "Open Cisco AnyConnect → connect to vpn.utexas.edu"
+
     # Extensible lifecycle hooks
     post_setup_module: str = ""
     post_setup_function: str = ""
@@ -162,6 +166,8 @@ class Connection:
             post_setup_module=cdef.post_setup_module,
             post_setup_function=cdef.post_setup_function,
             capabilities=list(cdef.capabilities) if cdef.capabilities else [],
+            vpn_name=cdef.vpn_name,
+            vpn_connect_guide=cdef.vpn_connect_guide,
             ensure_module=cdef.ensure_module,
             ensure_function=cdef.ensure_function,
             install_commands=dict(cdef.install_commands) if cdef.install_commands else {},
@@ -496,7 +502,7 @@ def _check_cli_version(conn: Connection) -> ConnectionHealth:
 
 
 def _check_tcp_connect(conn: Connection) -> ConnectionHealth:
-    """TCP connect to host:port with 1s timeout."""
+    """TCP connect to host:port with 1s timeout. Includes VPN guidance on failure."""
     endpoint = conn.health_endpoint or conn.endpoint
     if ":" not in endpoint:
         return ConnectionHealth(
@@ -525,10 +531,16 @@ def _check_tcp_connect(conn: Connection) -> ConnectionHealth:
         )
     except Exception:
         elapsed = (time.monotonic() - start) * 1000
+        # Include VPN guidance if this connection has it
+        msg = f"Cannot reach {host}:{port}"
+        if conn.vpn_name:
+            msg += f" — connect to {conn.vpn_name}"
+        if conn.vpn_connect_guide:
+            msg += f" ({conn.vpn_connect_guide})"
         return ConnectionHealth(
             status=HealthStatus.UNHEALTHY,
             latency_ms=round(elapsed, 1),
-            message=f"Cannot reach {host}:{port}",
+            message=msg,
         )
 
 

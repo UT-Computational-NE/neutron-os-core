@@ -60,6 +60,8 @@ required = false
 docs_url = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
 post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
 post_setup_function = "setup_qwen_rascal"
+vpn_name = "UT VPN"
+vpn_connect_guide = "Open Cisco AnyConnect → connect to vpn.utexas.edu → authenticate with UT EID + Duo MFA"
 
 [[connections]]
 name = "pandoc"

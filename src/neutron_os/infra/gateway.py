@@ -483,42 +483,70 @@ class Gateway:
     def _handle_vpn_unavailable(
         self, vpn_provider: LLMProvider, task: str, routing_tier: str
     ) -> CompletionResponse:
-        """Handle VPN model unreachable according to configured policy."""
+        """Handle VPN model unreachable — clear guidance on reconnecting."""
         from neutron_os.extensions.builtins.settings.store import SettingsStore
         try:
             policy = SettingsStore().get("routing.on_vpn_unavailable", "warn")
         except Exception:
             policy = "warn"
 
-        msg = (
-            f"[ROUTING NOTE] VPN model ({vpn_provider.name}) is unreachable. "
-            "Connect to UT VPN to route export-controlled queries securely."
-        )
+        # Pull VPN-specific guidance from the connection registry
+        vpn_name = ""
+        connect_guide = ""
+        try:
+            from neutron_os.infra.connections import get_registry
+            conn = get_registry().get(vpn_provider.name)
+            if conn:
+                vpn_name = conn.vpn_name
+                connect_guide = conn.vpn_connect_guide
+        except Exception:
+            pass
+
+        # Build clear, concise message
+        provider_label = vpn_name or vpn_provider.name
+        lines = [
+            f"Cannot reach {provider_label} — VPN not connected.",
+            "",
+        ]
+        if connect_guide:
+            lines.append(f"  To connect: {connect_guide}")
+        else:
+            lines.append("  Connect to your facility VPN and retry.")
+        lines.append("")
+        lines.append("  Your query was classified as export-controlled and requires")
+        lines.append(f"  the private endpoint ({vpn_provider.name}) which is VPN-gated.")
+        lines.append("")
+        lines.append("  Options:")
+        lines.append("    1. Connect to VPN and retry")
+        lines.append("    2. Rephrase as a general (non-EC) question")
+        lines.append("    3. Use --mode public to force public routing (no EC data)")
+
+        msg = "\n".join(lines)
 
         if policy == "fail":
             return CompletionResponse(
                 text=msg,
                 provider="stub",
                 success=False,
-                error="VPN model unreachable and policy=fail.",
+                error="VPN not connected.",
             )
 
-        # "warn" or "queue" — fall back to a public-tier provider
+        # "warn" — fall back to public tier with warning
         fallback = self._select_provider(task, "public")
         if fallback is None:
             return CompletionResponse(
-                text=msg + " No public provider available either.",
+                text=msg,
                 provider="stub",
                 success=False,
-                error="VPN model unreachable, no fallback available.",
+                error="VPN not connected, no public provider available.",
             )
 
-        print(f"Warning: {msg}", file=sys.stderr)
+        print(msg, file=sys.stderr)
         return CompletionResponse(
             text=msg,
             provider="stub",
             success=False,
-            error="VPN model unreachable — see routing note above.",
+            error="VPN not connected.",
         )
 
     def _call_provider_with_tools(

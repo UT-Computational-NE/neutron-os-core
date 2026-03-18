@@ -136,6 +136,8 @@ class ConnectionDef:
     ensure_function: str = ""
     install_commands: dict[str, str] = field(default_factory=dict)
     capabilities: list[str] = field(default_factory=list)
+    vpn_name: str = ""
+    vpn_connect_guide: str = ""
 
 
 @dataclass
@@ -307,6 +309,8 @@ def parse_manifest(manifest_path: Path) -> Extension:
                     ensure_function=conn_data.get("ensure_function", ""),
                     install_commands=conn_data.get("install_commands", {}),
                     capabilities=conn_data.get("capabilities", []),
+                    vpn_name=conn_data.get("vpn_name", ""),
+                    vpn_connect_guide=conn_data.get("vpn_connect_guide", ""),
                 )
             )
 
