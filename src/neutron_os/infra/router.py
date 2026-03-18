@@ -161,13 +161,13 @@ class OllamaClassifier:
                 pass
             self._available = True
         except Exception:
-            # Try auto-start via the owning extension's lifecycle manager
+            # Auto-start via the connection's declared ensure hook
             try:
-                from neutron_os.extensions.builtins.neut_agent.connections import ensure_ollama_running
-                if ensure_ollama_running():
+                from neutron_os.infra.connections import ensure_available
+                if ensure_available("ollama"):
                     self._available = True
                     return True
-            except ImportError:
+            except Exception:
                 pass
             self._available = False
         return self._available

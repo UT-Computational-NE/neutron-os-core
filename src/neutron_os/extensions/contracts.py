@@ -76,9 +76,11 @@ class ConnectionDef:
     health_endpoint: str = ""
     auto_refresh: bool = False
     docs_url: str = ""
-    # Extensible setup hooks
-    post_setup_module: str = ""  # dotted module path
-    post_setup_function: str = ""  # function name in that module
+    # Extensible lifecycle hooks
+    post_setup_module: str = ""  # dotted module path for one-time setup
+    post_setup_function: str = ""  # function name for one-time setup
+    ensure_module: str = ""  # dotted module path for auto-start
+    ensure_function: str = ""  # function name: () -> bool (silent, no prompts)
     install_commands: dict[str, str] = field(default_factory=dict)  # platform → command
 
 
@@ -247,6 +249,8 @@ def parse_manifest(manifest_path: Path) -> Extension:
                     docs_url=conn_data.get("docs_url", ""),
                     post_setup_module=conn_data.get("post_setup_module", ""),
                     post_setup_function=conn_data.get("post_setup_function", ""),
+                    ensure_module=conn_data.get("ensure_module", ""),
+                    ensure_function=conn_data.get("ensure_function", ""),
                     install_commands=conn_data.get("install_commands", {}),
                 )
             )

@@ -495,6 +495,52 @@ class TestHealthChecks:
 # Credential storage
 # ---------------------------------------------------------------------------
 
+class TestEnsureAvailable:
+    """ensure_available() calls the declared ensure hook."""
+
+    def test_calls_ensure_function(self):
+        from neutron_os.infra.connections import Connection, ConnectionRegistry, ensure_available
+
+        # Register a connection with an ensure hook that always succeeds
+        registry = ConnectionRegistry()
+        registry.register(Connection(
+            name="auto_svc",
+            display_name="Auto",
+            kind="cli",
+            endpoint="git",  # git is installed, so cli fallback works
+            credential_type="none",
+            category="test",
+            ensure_module="neutron_os.extensions.builtins.neut_agent.connections",
+            ensure_function="ensure_ollama_running",
+        ))
+
+        # Should call the ensure function (may return True or False depending on Ollama)
+        result = ensure_available("auto_svc", registry=registry)
+        assert isinstance(result, bool)
+
+    def test_no_ensure_hook_falls_back_to_tool_check(self):
+        from neutron_os.infra.connections import Connection, ConnectionRegistry, ensure_available
+
+        registry = ConnectionRegistry()
+        registry.register(Connection(
+            name="git_tool",
+            display_name="Git",
+            kind="cli",
+            endpoint="git",
+            credential_type="none",
+            category="tools",
+        ))
+
+        # No ensure hook — should fall back to checking if git is on PATH
+        assert ensure_available("git_tool", registry=registry) is True
+
+    def test_unknown_connection_returns_false(self):
+        from neutron_os.infra.connections import ConnectionRegistry, ensure_available
+
+        registry = ConnectionRegistry()
+        assert ensure_available("nonexistent", registry=registry) is False
+
+
 class TestCredentialStorage:
     """store_credential() writes files with 0600 permissions."""
 

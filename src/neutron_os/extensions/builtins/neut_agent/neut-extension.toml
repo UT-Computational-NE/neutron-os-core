@@ -37,6 +37,8 @@ category = "llm"
 docs_url = "https://ollama.com/download"
 post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
 post_setup_function = "setup_ollama"
+ensure_module = "neutron_os.extensions.builtins.neut_agent.connections"
+ensure_function = "ensure_ollama_running"
 
 [connections.install_commands]
 macos = "brew install ollama"

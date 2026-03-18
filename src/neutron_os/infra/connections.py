@@ -85,9 +85,11 @@ class Connection:
     extension: str = ""
     docs_url: str = ""
 
-    # Extensible setup hooks
+    # Extensible lifecycle hooks
     post_setup_module: str = ""
     post_setup_function: str = ""
+    ensure_module: str = ""  # auto-start: module path
+    ensure_function: str = ""  # auto-start: () -> bool, silent, no prompts
     install_commands: dict[str, str] = None  # type: ignore[assignment]
 
     def __post_init__(self):
@@ -121,6 +123,8 @@ class Connection:
             docs_url=cdef.docs_url,
             post_setup_module=cdef.post_setup_module,
             post_setup_function=cdef.post_setup_function,
+            ensure_module=cdef.ensure_module,
+            ensure_function=cdef.ensure_function,
             install_commands=dict(cdef.install_commands) if cdef.install_commands else {},
         )
 
@@ -520,6 +524,42 @@ def reset_registry() -> None:
 # ---------------------------------------------------------------------------
 # Extensible setup hooks
 # ---------------------------------------------------------------------------
+
+def ensure_available(
+    name: str,
+    *,
+    registry: Optional[ConnectionRegistry] = None,
+) -> bool:
+    """Silently ensure a connection's service is running.
+
+    Calls the connection's declared ensure_function if the service
+    isn't responding. Never prompts, never prints — this is a
+    background operation that agents call before using a dependency.
+
+    Returns True if the connection is available, False otherwise.
+    """
+    if registry is None:
+        registry = _get_global_registry()
+
+    conn = registry.get(name)
+    if conn is None:
+        return False
+
+    if not conn.ensure_module or not conn.ensure_function:
+        # No lifecycle hook — just check if credential/tool exists
+        if conn.kind == "cli":
+            return get_cli_tool(name, registry=registry) is not None
+        return has_credential(name, registry=registry)
+
+    try:
+        import importlib
+        mod = importlib.import_module(conn.ensure_module)
+        func = getattr(mod, conn.ensure_function)
+        return func()
+    except Exception as e:
+        log.debug("ensure_available(%s) failed: %s", name, e)
+        return False
+
 
 def run_post_setup_hook(conn: Connection) -> int:
     """Run an extension-provided post-setup hook if declared.
