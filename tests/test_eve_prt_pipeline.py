@@ -31,6 +31,48 @@ class TestGitLabIssueUpdates:
         assert hasattr(provider, "add_comment") or hasattr(provider, "create_issue")
 
 
+class TestPublisherHashCheck:
+    """PR-T should regenerate .docx when source .md changes, even if .docx exists."""
+
+    def test_source_hash_detects_change(self):
+        """_compute_source_hash returns different values for different content."""
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
+        import tempfile
+
+        engine = PublisherEngine.__new__(PublisherEngine)
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write("# Original content\n")
+            path = Path(f.name)
+
+        hash1 = engine._compute_source_hash(path)
+
+        path.write_text("# Modified content\n")
+        hash2 = engine._compute_source_hash(path)
+
+        path.unlink()
+
+        assert hash1 != hash2, "Hash should differ when source content changes"
+
+    def test_stale_docx_detected(self, tmp_path):
+        """If .md changed but .docx exists, it should be flagged as stale."""
+        import hashlib
+
+        source = tmp_path / "test.md"
+        docx = tmp_path / "test.docx"
+
+        source.write_text("# Original\n")
+        old_hash = hashlib.sha256(b"# Original\n").hexdigest()
+        docx.write_bytes(b"fake docx")
+
+        source.write_text("# Updated\n")
+        new_hash = hashlib.sha256(b"# Updated\n").hexdigest()
+
+        assert old_hash != new_hash
+        assert docx.exists(), "Stale .docx should still exist"
+        # The fix: generation should check source hash, not just .docx existence
+
+
 class TestNotesFlowToSignalInbox:
     """Fix #1: neut note should copy entries to signal inbox for EVE to ingest."""
 

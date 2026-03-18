@@ -16,6 +16,7 @@ import hashlib
 import json
 import logging
 import re
+import urllib.error
 import urllib.request
 import zlib
 from pathlib import Path
@@ -43,6 +44,9 @@ def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
     if "gantt" in code.lower() or code.count("subgraph") > 2 or code.count("-->") > 15:
         width = 1800
 
+    # Clean up common syntax issues that cause mermaid.ink 400 errors
+    code = _sanitize_mermaid(code)
+
     payload = json.dumps({
         "code": code,
         "mermaid": {"theme": "default"},
@@ -61,16 +65,43 @@ def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
             content = resp.read()
 
         if len(content) < 100:
-            logger.warning("Mermaid render returned tiny image (%d bytes)", len(content))
+            first_line = code.split("\n")[0][:60]
+            logger.warning("Mermaid render returned tiny image for diagram %d (%s...)", index, first_line)
             return None
 
         cached.write_bytes(content)
         logger.info("Rendered diagram %d (%d bytes) → %s", index, len(content), cached.name)
         return cached
 
-    except Exception as e:
-        logger.warning("Mermaid render failed for diagram %d: %s", index, e)
+    except urllib.error.HTTPError as e:
+        first_line = code.split("\n")[0][:60]
+        logger.warning(
+            "Mermaid render failed for diagram %d (%s...): %s — "
+            "diagram will be included as text",
+            index, first_line, e,
+        )
         return None
+    except Exception as e:
+        first_line = code.split("\n")[0][:60]
+        logger.warning("Mermaid render failed for diagram %d (%s...): %s", index, first_line, e)
+        return None
+
+
+def _sanitize_mermaid(code: str) -> str:
+    """Fix common syntax issues that cause mermaid.ink 400 errors."""
+    # Remove HTML-style comments that mermaid.ink doesn't support
+    code = re.sub(r"%%\{.*?\}%%", "", code)
+    # Fix unescaped special chars in node labels
+    # Replace problematic Unicode that mermaid.ink chokes on
+    code = code.replace("\u2014", "--")  # em dash → double dash
+    code = code.replace("\u2013", "-")   # en dash → dash
+    code = code.replace("\u2018", "'")   # smart quote → straight
+    code = code.replace("\u2019", "'")
+    code = code.replace("\u201c", '"')
+    code = code.replace("\u201d", '"')
+    # Strip leading/trailing whitespace per line (indentation can break rendering)
+    lines = [line.rstrip() for line in code.splitlines()]
+    return "\n".join(lines)
 
 
 def render_mermaid_blocks(md_content: str, output_dir: Path) -> str:

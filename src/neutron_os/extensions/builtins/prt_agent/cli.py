@@ -1074,12 +1074,34 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     print(f"\n  Generating {len(files_to_push)} document(s)...\n")
     docx_files: list[tuple[Path, str]] = []  # (docx_path, subfolder)
     for source_md, docx_path, subfolder in files_to_push:
-        if source_md.suffix == ".md" and not docx_path.exists():
+        needs_regen = False
+        if source_md.suffix == ".md":
+            if not docx_path.exists():
+                needs_regen = True
+            else:
+                # Check if source changed since .docx was generated
+                import hashlib
+                source_hash = hashlib.sha256(source_md.read_bytes()).hexdigest()
+                hash_file = docx_path.with_suffix(".docx.sha256")
+                if hash_file.exists():
+                    stored_hash = hash_file.read_text(encoding="utf-8").strip()
+                    if source_hash != stored_hash:
+                        needs_regen = True
+                else:
+                    # No hash record — check mtime as fallback
+                    if source_md.stat().st_mtime > docx_path.stat().st_mtime:
+                        needs_regen = True
+
+        if needs_regen:
             print(f"    Generating {docx_path.name}...", end=" ", flush=True)
             docx_path = _generate_docx(source_md)
-            print("✓")
+            # Store source hash alongside .docx for future comparison
+            import hashlib
+            source_hash = hashlib.sha256(source_md.read_bytes()).hexdigest()
+            docx_path.with_suffix(".docx.sha256").write_text(source_hash, encoding="utf-8")
+            print("\u2713")
         else:
-            print(f"    {docx_path.name} (already generated)")
+            print(f"    {docx_path.name} (unchanged)")
         docx_files.append((docx_path, subfolder))
 
     # Resolve browser storage provider
