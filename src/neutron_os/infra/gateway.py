@@ -63,6 +63,7 @@ class LLMProvider:
     routing_tier: str = "any"      # "public" | "export_controlled" | "any" (legacy; still respected)
     routing_tags: list[str] = field(default_factory=list)  # facility policy tags e.g. ["mcnp", "private_network"]
     requires_vpn: bool = False     # if True, TCP-check endpoint before calling
+    verify_ssl: bool = True        # set False for private servers with self-signed certs
     max_tokens_default: int = 0    # 0 = use caller's value; set >0 for reasoning models that need headroom
 
     @property
@@ -374,6 +375,7 @@ class Gateway:
                     routing_tier=p.get("routing_tier", "any"),
                     routing_tags=p.get("routing_tags", []),
                     requires_vpn=p.get("requires_vpn", False),
+                    verify_ssl=p.get("verify_ssl", True),
                     max_tokens_default=p.get("max_tokens_default", 0),
                 ))
 
@@ -741,15 +743,16 @@ class Gateway:
             payload["tools"] = tools
 
         url = provider.endpoint.rstrip("/") + "/chat/completions"
+        ssl_verify = provider.verify_ssl
 
         try:
-            response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120)
+            response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=180, verify=ssl_verify)
         except Exception as e:
             # Fall back to no-tools call if tools param rejected
             if tools:
                 payload.pop("tools", None)
                 try:
-                    response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120)
+                    response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=180, verify=ssl_verify)
                 except Exception:
                     raise e
             else:
