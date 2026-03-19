@@ -70,6 +70,7 @@ format = "openai"
 # routing_tier = "export_controlled"
 # routing_tags = ["export_controlled", "private_network", "mcnp"]
 # requires_vpn = true
+# max_tokens_default = 8192   # reasoning models need headroom; 0 = use caller's value
 # use_for = ["extraction", "synthesis", "fallback"]
 
 # Second private-network provider example — different capability tag:

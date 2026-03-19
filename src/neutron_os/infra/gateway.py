@@ -63,6 +63,7 @@ class LLMProvider:
     routing_tier: str = "any"      # "public" | "export_controlled" | "any" (legacy; still respected)
     routing_tags: list[str] = field(default_factory=list)  # facility policy tags e.g. ["mcnp", "private_network"]
     requires_vpn: bool = False     # if True, TCP-check endpoint before calling
+    max_tokens_default: int = 0    # 0 = use caller's value; set >0 for reasoning models that need headroom
 
     @property
     def api_key(self) -> Optional[str]:
@@ -373,6 +374,7 @@ class Gateway:
                     routing_tier=p.get("routing_tier", "any"),
                     routing_tags=p.get("routing_tags", []),
                     requires_vpn=p.get("requires_vpn", False),
+                    max_tokens_default=p.get("max_tokens_default", 0),
                 ))
 
             # Sort by priority
@@ -729,10 +731,11 @@ class Gateway:
         if system and not any(m.get("role") == "system" for m in api_messages):
             api_messages.insert(0, {"role": "system", "content": system})
 
+        effective_max_tokens = provider.max_tokens_default if provider.max_tokens_default > 0 else max_tokens
         payload: dict[str, Any] = {
             "model": provider.model,
             "messages": api_messages,
-            "max_tokens": max_tokens,
+            "max_tokens": effective_max_tokens,
         }
         if tools:
             payload["tools"] = tools
@@ -756,6 +759,19 @@ class Gateway:
         choice = data.get("choices", [{}])[0]
         message = choice.get("message", {})
         text = message.get("content", "") or ""
+
+        # Qwen3 / reasoning models: answer is in `content`, chain-of-thought in
+        # `reasoning_content`.  If content is empty the response was cut before
+        # the model finished reasoning — surface the reasoning so the user isn't
+        # left with a blank response.
+        if not text.strip() and message.get("reasoning_content"):
+            reasoning = message["reasoning_content"]
+            finish = choice.get("finish_reason", "")
+            if finish == "length":
+                text = f"[Response truncated during reasoning — increase max_tokens]\n\n{reasoning}"
+            else:
+                text = reasoning
+
         tool_blocks = []
 
         for tc in message.get("tool_calls", []):
