@@ -1148,11 +1148,10 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
                     files_to_push.append((md_file, _generate_docx(md_file), subfolder))
 
     if not files_to_push:
-        print("No documents found to push.")
+        print("\n  All documents up to date. Nothing to publish.")
         return
 
-    # Generate .docx files
-    print(f"\n  Generating {len(files_to_push)} document(s)...\n")
+    print(f"\n  {len(files_to_push)} document(s) changed since last publish:\n")
     docx_files: list[tuple[Path, str]] = []  # (docx_path, subfolder)
     for source_md, docx_path, subfolder in files_to_push:
         needs_regen = False
