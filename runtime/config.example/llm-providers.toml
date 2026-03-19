@@ -1,0 +1,45 @@
+# LLM Provider Configuration
+# Copy to runtime/config/models.toml and fill in your keys.
+#
+# The gateway tries providers in priority order with automatic fallback.
+# All providers must speak the OpenAI chat completions format.
+
+[gateway]
+format = "openai"
+
+# Uncomment and configure providers you have access to:
+
+# routing_tier = "public"            → safe for cloud LLMs (no VPN needed)
+# routing_tier = "export_controlled" → VPN-gated, for nuclear export-controlled queries
+# routing_tier = "any"               → no restriction (default)
+# requires_vpn = true                → TCP reachability check before each call
+
+# Uncomment and configure providers you have access to:
+
+# [[gateway.providers]]
+# name = "anthropic"
+# endpoint = "https://api.anthropic.com/v1"
+# model = "claude-sonnet-4-20250514"
+# api_key_env = "ANTHROPIC_API_KEY"    # reads from environment variable
+# priority = 1
+# routing_tier = "public"              # safe for cloud
+# use_for = ["extraction", "synthesis", "correlation", "fallback"]
+
+# [[gateway.providers]]
+# name = "qwen-rascal"
+# endpoint = "https://10.159.142.118:41883/v1"   # UT rascal server (UT VPN required)
+# model = "qwen"
+# api_key_env = "QWEN_API_KEY"
+# priority = 2
+# routing_tier = "export_controlled"   # nuclear export-controlled content only
+# requires_vpn = true                  # check reachability before calling
+# use_for = ["extraction", "synthesis", "fallback"]
+
+# [[gateway.providers]]
+# name = "openai"
+# endpoint = "https://api.openai.com/v1"
+# model = "gpt-4o"
+# api_key_env = "OPENAI_API_KEY"
+# priority = 3
+# routing_tier = "public"
+# use_for = ["multimodal", "fallback"]

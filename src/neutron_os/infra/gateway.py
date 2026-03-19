@@ -308,10 +308,14 @@ class Gateway:
             return False
 
     def _load_config(self):
-        """Load provider config from models.toml."""
-        models_path = self.config_dir / "models.toml"
-        if not models_path.exists():
+        """Load LLM provider config from llm-providers.toml (previously models.toml)."""
+        # Support both names during migration; prefer llm-providers.toml
+        providers_path = self.config_dir / "llm-providers.toml"
+        if not providers_path.exists():
+            providers_path = self.config_dir / "models.toml"
+        if not providers_path.exists():
             return
+        models_path = providers_path
 
         try:
             # Use tomllib (Python 3.11+) or tomli
@@ -346,7 +350,7 @@ class Gateway:
             self.providers.sort(key=lambda p: p.priority)
 
         except Exception as e:
-            print(f"Warning: Could not load models.toml: {e}", file=sys.stderr)
+            print(f"Warning: Could not load llm-providers.toml: {e}", file=sys.stderr)
 
     @property
     def available(self) -> bool:

@@ -435,7 +435,7 @@ STATE_LOCATIONS: list[StateLocation] = [
     # Configuration — indefinite, critical
     StateLocation("runtime/config/people.md", "config", "Team roster with aliases", "medium"),
     StateLocation("runtime/config/initiatives.md", "config", "Active initiatives list", "low"),
-    StateLocation("runtime/config/models.toml", "config", "LLM endpoint configuration", "low"),
+    StateLocation("runtime/config/llm-providers.toml", "config", "LLM provider configuration", "low"),
     StateLocation("runtime/config/facility.toml", "config", "Facility metadata", "low"),
 
     # Documents — publisher lifecycle

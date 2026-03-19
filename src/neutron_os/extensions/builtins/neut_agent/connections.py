@@ -146,82 +146,115 @@ def ensure_ollama_running() -> bool:
 
 
 def setup_qwen_rascal() -> int:
-    """Post-setup hook for Qwen on Rascal: configure models.toml with EC routing."""
-    from neutron_os import REPO_ROOT
-    models_path = REPO_ROOT / "runtime" / "config" / "models.toml"
+    """Post-setup hook for a private-network LLM provider (export-controlled routing).
 
-    if not models_path.exists():
-        print("  \u2717 models.toml not found — run neut config first")
+    Reads all connection details (endpoint, credential_env_var, health_endpoint,
+    vpn_name, vpn_connect_guide) from the 'qwen-rascal' connection definition in
+    the extension manifest.  No values are hardcoded here — the manifest is the
+    single source of truth.
+
+    The function name is kept as 'setup_qwen_rascal' so existing manifests that
+    declare post_setup_function = "setup_qwen_rascal" continue to work without
+    migration.  The implementation is fully instance-agnostic.
+    """
+    return _setup_private_network_llm("qwen-rascal")
+
+
+def _setup_private_network_llm(connection_name: str) -> int:
+    """Generic setup for any private-network LLM provider.
+
+    Reads connection metadata from the registry (populated from neut-extension.toml)
+    so this function never hardcodes hostnames, ports, model names, or credentials.
+
+    Args:
+        connection_name: The `name` field from the [[connections]] block in the manifest.
+    """
+    import re
+    import socket
+    from neutron_os import REPO_ROOT
+
+    # -- Resolve connection metadata from the registry -----------------------
+    conn = None
+    try:
+        from neutron_os.infra.connections import get_registry
+        conn = get_registry().get(connection_name)
+    except Exception:
+        pass
+
+    if conn is None:
+        print(f"  \u2717 Connection '{connection_name}' not found in registry.")
         return 1
 
-    content = models_path.read_text(encoding="utf-8")
+    endpoint = conn.endpoint or ""
+    cred_env = conn.credential_env_var or ""
+    display = conn.display_name or connection_name
+    vpn_name = conn.vpn_name or "VPN"
+    vpn_guide = conn.vpn_connect_guide or f"Connect to {vpn_name} and retry."
 
-    # Check if qwen-rascal is already properly configured
-    if 'routing_tier = "export_controlled"' in content and "qwen-rascal" in content:
-        print("  \u2713 Qwen on Rascal already configured for EC routing")
-
-        # Check VPN reachability
-        import socket
+    # health_endpoint may be "host:port" for tcp_connect checks
+    health_host = ""
+    health_port = 0
+    if conn.health_endpoint:
         try:
-            sock = socket.create_connection(("10.159.142.118", 41883), timeout=2)
-            sock.close()
-            print("  \u2713 VPN connected — rascal is reachable")
-        except Exception:
-            print("  \u26a0 Rascal not reachable — connect to UT VPN first")
+            h, p = conn.health_endpoint.rsplit(":", 1)
+            health_host, health_port = h, int(p)
+        except ValueError:
+            pass
 
-        print()
-        return 0
+    # -- Locate llm-providers.toml (support legacy models.toml name) ---------
+    config_dir = REPO_ROOT / "runtime" / "config"
+    providers_path = config_dir / "llm-providers.toml"
+    if not providers_path.exists():
+        providers_path = config_dir / "models.toml"
+    if not providers_path.exists():
+        print(f"  \u2717 llm-providers.toml not found — run: neut config")
+        return 1
 
-    # Update existing qwen entry or add new one
-    if "qwen-local" in content or "qwen-rascal" in content:
-        # Replace existing qwen provider with properly configured one
-        import re
-        # Remove old qwen provider block
+    content = providers_path.read_text(encoding="utf-8")
+
+    # -- Check if already configured -----------------------------------------
+    if f'name = "{connection_name}"' in content and 'routing_tier = "export_controlled"' in content:
+        print(f"  \u2713 {display} already configured for EC routing")
+    else:
+        # Remove any stale block with this name
         content = re.sub(
             r'\[\[gateway\.providers\]\]\s*\n'
-            r'name\s*=\s*"qwen-(?:local|rascal)".*?'
+            rf'name\s*=\s*"{re.escape(connection_name)}".*?'
             r'(?=\[\[gateway\.providers\]\]|\Z)',
             '',
             content,
             flags=re.DOTALL,
         )
 
-    # Add properly configured qwen-rascal provider
-    qwen_block = '''
-[[gateway.providers]]
-name = "qwen-rascal"
-endpoint = "https://10.159.142.118:41883/v1"
-model = "qwen"
-api_key_env = "QWEN_API_KEY"
-priority = 1
-routing_tier = "export_controlled"
-requires_vpn = true
-use_for = ["extraction", "synthesis", "fallback"]
-'''
-    content = content.rstrip() + "\n" + qwen_block
+        # Derive model name from connection name (best-effort; user can edit the file)
+        model_guess = connection_name.split("-")[0] if "-" in connection_name else connection_name
 
-    # Also ensure anthropic has routing_tier = "public"
-    if 'name = "anthropic"' in content and "routing_tier" not in content.split('name = "anthropic"')[1].split("[[")[0]:
-        content = content.replace(
-            'use_for = ["extraction", "synthesis", "correlation", "fallback"]',
-            'routing_tier = "public"\n'
-            'use_for = ["extraction", "synthesis", "correlation", "fallback"]',
-            1,
+        new_block = (
+            f'\n[[gateway.providers]]\n'
+            f'name = "{connection_name}"\n'
+            f'endpoint = "{endpoint}"\n'
+            f'model = "{model_guess}"\n'
+            f'api_key_env = "{cred_env}"\n'
+            f'priority = 1\n'
+            f'routing_tier = "export_controlled"\n'
+            f'requires_vpn = true\n'
+            f'use_for = ["extraction", "synthesis", "fallback"]\n'
         )
+        providers_path.write_text(content.rstrip() + "\n" + new_block, encoding="utf-8")
+        print(f"  \u2713 Configured {display} for export-controlled routing")
+        print(f"    Anthropic/OpenAI → public queries")
+        print(f"    {display} → export-controlled queries ({vpn_name} required)")
 
-    models_path.write_text(content, encoding="utf-8")
-    print("  \u2713 Configured Qwen on Rascal for export-controlled routing")
-    print("    Anthropic → public queries")
-    print("    Qwen/Rascal → export-controlled queries (VPN required)")
-
-    # Check VPN
-    import socket
-    try:
-        sock = socket.create_connection(("10.159.142.118", 41883), timeout=2)
-        sock.close()
-        print("  \u2713 VPN connected — rascal is reachable")
-    except Exception:
-        print("  \u26a0 Rascal not reachable — connect to UT VPN to use EC routing")
+    # -- Check VPN / network reachability ------------------------------------
+    if health_host and health_port:
+        try:
+            with socket.create_connection((health_host, health_port), timeout=2):
+                pass
+            print(f"  \u2713 {vpn_name} connected — {display} is reachable")
+        except OSError:
+            print(f"  \u26a0 {display} not reachable — {vpn_guide}")
+    else:
+        print(f"  \u2139 No health endpoint configured for {display}; skipping reachability check")
 
     print()
     return 0

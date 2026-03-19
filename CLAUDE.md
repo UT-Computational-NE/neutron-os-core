@@ -167,6 +167,9 @@ For the full glossary (especially the digital twin model ecosystem), see `docs/g
 | DataTransformer | Transformer | Avoids collision with ML transformer terminology |
 | `neut model` | `neut corral` | CLI nouns are generic English, not brand names |
 | Model (physics) | Model (ML/LLM) | "Model" in NeutronOS means physics input deck or ROM. LLMs are always "LLM" |
+| `llm-providers.toml` | `models.toml` | "models" is ambiguous — could mean physics input models |
+| LLM provider | LLM model | Config refers to providers (Anthropic, Ollama, etc.), not models |
+| Private network LLM | "Qwen/rascal" or instance name | Generalise: any provider with `requires_vpn=true` on a private network |
 
 ---
 

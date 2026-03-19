@@ -3,7 +3,7 @@
 Runs entirely locally. No cloud calls are made to determine routing.
 Classification result determines which provider tier handles the request:
   - "public"            → cloud LLM (Anthropic, OpenAI, etc.)
-  - "export_controlled" → VPN-gated model (qwen-rascal on rascal.tacc.utexas.edu)
+  - "export_controlled" → private-network LLM (any provider with requires_vpn=true)
 
 Classification pipeline (in order, short-circuits on first definitive result):
   1. Session mode override  → immediate (fastest)
