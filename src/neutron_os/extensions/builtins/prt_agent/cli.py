@@ -1095,9 +1095,13 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             for md_file in sorted(target.glob("*.md")):
                 if md_file.name.startswith("_") or md_file.name == "README.md":
                     continue
-                files_to_push.append((md_file, _generate_docx(md_file), subfolder))
+                docx_path = _docx_output_path(md_file)
+                if force or _needs_regeneration(md_file, docx_path):
+                    files_to_push.append((md_file, docx_path, subfolder))
         elif target.suffix == ".md":
-            files_to_push.append((target, _generate_docx(target), subfolder))
+            docx_path = _docx_output_path(target)
+            if force or _needs_regeneration(target, docx_path):
+                files_to_push.append((target, docx_path, subfolder))
         elif target.suffix == ".docx":
             files_to_push.append((target, target, subfolder))
     else:
@@ -1124,16 +1128,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
                 {"path": "docs/tech-specs", "pattern": "*.md"},
             ]
 
-        # Filter to changed files only (unless --force)
-        changed_set = None
-        if not force:
-            try:
-                from .engine import PublisherEngine
-                changed_docs = PublisherEngine().diff()
-                changed_set = {(REPO_ROOT / d).resolve() for d in changed_docs}
-            except Exception:
-                pass  # Fall back to all files
-
+        # Collect candidate files, filtering by content hash (not git diff)
         for folder_cfg in folders:
             folder = REPO_ROOT / folder_cfg["path"]
             pattern = folder_cfg.get("pattern", "*.md")
@@ -1141,48 +1136,27 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
                 for md_file in sorted(folder.glob(pattern)):
                     if md_file.name.startswith("_") or md_file.name == "README.md":
                         continue
-                    # Skip unchanged files (fast path)
-                    if changed_set is not None and md_file.resolve() not in changed_set:
-                        continue
-                    subfolder = _source_to_subfolder(md_file, REPO_ROOT)
-                    files_to_push.append((md_file, _generate_docx(md_file), subfolder))
+                    docx_path = _docx_output_path(md_file)
+                    # Only include files that actually need regeneration
+                    if force or _needs_regeneration(md_file, docx_path):
+                        subfolder = _source_to_subfolder(md_file, REPO_ROOT)
+                        files_to_push.append((md_file, docx_path, subfolder))
 
     if not files_to_push:
         print("\n  All documents up to date. Nothing to publish.")
         return
 
-    print(f"\n  {len(files_to_push)} document(s) changed since last publish:\n")
-    docx_files: list[tuple[Path, str]] = []  # (docx_path, subfolder)
+    print(f"\n  {len(files_to_push)} update(s) ready to publish:\n")
+    docx_files: list[tuple[Path, Path, str]] = []  # (source_md, docx_path, subfolder)
     for source_md, docx_path, subfolder in files_to_push:
-        needs_regen = False
-        if source_md.suffix == ".md":
-            if not docx_path.exists():
-                needs_regen = True
-            else:
-                # Check if source changed since .docx was generated
-                import hashlib
-                source_hash = hashlib.sha256(source_md.read_bytes()).hexdigest()
-                hash_file = docx_path.with_suffix(".docx.sha256")
-                if hash_file.exists():
-                    stored_hash = hash_file.read_text(encoding="utf-8").strip()
-                    if source_hash != stored_hash:
-                        needs_regen = True
-                else:
-                    # No hash record — check mtime as fallback
-                    if source_md.stat().st_mtime > docx_path.stat().st_mtime:
-                        needs_regen = True
-
-        if needs_regen:
-            print(f"    Generating {docx_path.name}...", end=" ", flush=True)
-            docx_path = _generate_docx(source_md)
-            # Store source hash alongside .docx for future comparison
-            import hashlib
-            source_hash = hashlib.sha256(source_md.read_bytes()).hexdigest()
-            docx_path.with_suffix(".docx.sha256").write_text(source_hash, encoding="utf-8")
-            print("\u2713")
-        else:
-            print(f"    {docx_path.name} (unchanged)")
-        docx_files.append((docx_path, subfolder))
+        print(f"    Generating {docx_path.name}...", end=" ", flush=True)
+        docx_path = _generate_docx(source_md)
+        if docx_path is None:
+            # Mermaid rendering failed — skip this file
+            continue
+        # NOTE: Hash written AFTER successful upload, not here
+        print("\u2713")
+        docx_files.append((source_md, docx_path, subfolder))
 
     # Resolve browser storage provider
     try:
@@ -1244,9 +1218,10 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             sys.exit(1)
 
     # Build per-file folder paths
-    just_files = [df[0] for df in docx_files]
+    # docx_files is (source_md, docx_path, subfolder)
+    just_files = [df[1] for df in docx_files]  # docx_path
     per_file_folders = [
-        f"{onedrive_root}/{df[1]}" if df[1] else onedrive_root
+        f"{onedrive_root}/{df[2]}" if df[2] else onedrive_root
         for df in docx_files
     ]
 
@@ -1284,17 +1259,18 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         print(f"    {icon} {f.name}  {msg}")
         if result.success:
             success += 1
+            # Write hash AFTER successful upload (not during generation)
+            # This ensures cancelled uploads don't mark files as "up to date"
+            source_md, docx_path, subfolder = docx_files[i]
+            import hashlib
+            source_hash = hashlib.sha256(source_md.read_bytes()).hexdigest()
+            docx_path.with_suffix(".docx.sha256").write_text(source_hash, encoding="utf-8")
+            
             # Record in registry so EVE knows the baseline
-            source_md = docx_files[i][0]  # (docx_path, subfolder) — get source from files_to_push
             doc_id = f.stem  # e.g., "prd-executive"
             folder = per_file_folders[i] if i < len(per_file_folders) else ""
             try:
-                # Find the original source .md
-                source_path = ""
-                for src, _, _ in files_to_push:
-                    if src.stem == f.stem or _generate_docx(src).name == f.name:
-                        source_path = str(src.relative_to(REPO_ROOT))
-                        break
+                source_path = str(source_md.relative_to(REPO_ROOT))
 
                 registry.record_publication(
                     doc_id=doc_id,
@@ -1470,6 +1446,42 @@ def _source_to_subfolder(source: Path, repo_root: Path) -> str:
         return str(rel)
     except ValueError:
         return ""
+
+
+def _docx_output_path(md_path: Path) -> Path:
+    """Compute the expected .docx output path without generating."""
+    from neutron_os import REPO_ROOT
+
+    try:
+        rel = md_path.parent.relative_to(REPO_ROOT)
+        output_dir = REPO_ROOT / ".neut" / "generated" / rel
+    except ValueError:
+        output_dir = REPO_ROOT / ".neut" / "generated"
+
+    return output_dir / (md_path.stem + ".docx")
+
+
+def _needs_regeneration(md_path: Path, docx_path: Path) -> bool:
+    """Check if the docx needs to be regenerated based on content hash.
+    
+    Hash is written ONLY after successful upload. So if no hash exists,
+    either we never generated/uploaded, or we generated but cancelled.
+    Either way, we need to regenerate.
+    """
+    import hashlib
+
+    if not docx_path.exists():
+        return True
+
+    hash_file = docx_path.with_suffix(".docx.sha256")
+
+    if not hash_file.exists():
+        # No hash = never successfully uploaded. Regenerate.
+        return True
+
+    source_hash = hashlib.sha256(md_path.read_bytes()).hexdigest()
+    stored_hash = hash_file.read_text(encoding="utf-8").strip()
+    return source_hash != stored_hash
 
 
 def _generate_docx(md_path: Path) -> Path:

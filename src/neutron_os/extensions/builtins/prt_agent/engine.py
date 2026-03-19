@@ -117,7 +117,7 @@ class PublisherEngine:
         if footer_metadata:
             options.footer_metadata = footer_metadata
 
-        print(f"Generating {output_path.name}...", flush=True)
+        print(f"Rebuilding {output_path.name}...", flush=True)
         result = gen.generate(source_path, output_path, options)
 
         if result.warnings:
