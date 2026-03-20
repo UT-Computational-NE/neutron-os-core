@@ -16,7 +16,7 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".odt", ".txt", ".md"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".odt", ".txt", ".md", ".xlsx", ".doc"}
 
 
 def extract_text(path: Path) -> Optional[str]:
@@ -36,6 +36,10 @@ def extract_text(path: Path) -> Optional[str]:
         return _extract_pptx(path)
     elif suffix == ".odt":
         return _extract_odt(path)
+    elif suffix == ".xlsx":
+        return _extract_xlsx(path)
+    elif suffix == ".doc":
+        return _extract_doc(path)
     else:
         log.debug("Unsupported format: %s", suffix)
         return None
@@ -136,6 +140,48 @@ def _extract_odt(path: Path) -> Optional[str]:
             return text
     except Exception as e:
         log.warning("ODT extraction failed for %s: %s", path, e)
+    return None
+
+
+def _extract_xlsx(path: Path) -> Optional[str]:
+    """Extract text from Excel spreadsheets using openpyxl."""
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+        sheets = []
+        for sheet in wb.worksheets:
+            rows = []
+            for row in sheet.iter_rows(values_only=True):
+                cells = [str(c) for c in row if c is not None]
+                if cells:
+                    rows.append("\t".join(cells))
+            if rows:
+                sheets.append(f"--- Sheet: {sheet.title} ---\n" + "\n".join(rows))
+        wb.close()
+        if sheets:
+            return "\n\n".join(sheets)
+    except ImportError:
+        log.warning("openpyxl not installed — pip install openpyxl")
+    except Exception as e:
+        log.warning("XLSX extraction failed for %s: %s", path, e)
+    return None
+
+
+def _extract_doc(path: Path) -> Optional[str]:
+    """Extract text from legacy .doc files via antiword CLI (best-effort)."""
+    try:
+        result = subprocess.run(
+            ["antiword", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout
+    except FileNotFoundError:
+        log.debug("antiword not installed — .doc files will be skipped")
+    except subprocess.TimeoutExpired:
+        log.warning("antiword timed out on %s", path)
+    except Exception as e:
+        log.warning("DOC extraction failed for %s: %s", path, e)
     return None
 
 

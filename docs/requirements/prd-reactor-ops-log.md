@@ -453,7 +453,7 @@ Per Jim's requirement ("No deleting an entry—you should simply be able to add 
 
 1. **Append-only storage**: Entries are INSERT-only. No UPDATE or DELETE operations on entry content.
 
-2. **Cryptographic signatures**: Each entry is hashed with the previous entry's hash (blockchain-style chain), making retroactive modification detectable.
+2. **Cryptographic signatures**: Each entry is hashed with the previous entry's hash (HMAC-SHA256 chain), making retroactive modification detectable. Implementation: `TamperEvidentChain` in `neutron_os.infra.state` — the same class used by the System Audit Log. Key source: `NEUT_OPS_LOG_HMAC_KEY` (separate from the audit log key). See [Logging Tech Spec §7](../tech-specs/spec-logging.md#7-hmac-chain) for the shared algorithm.
 
 3. **Supplements for corrections**: Any modification is captured as a linked supplement with its own timestamp and author.
 

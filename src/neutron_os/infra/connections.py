@@ -121,6 +121,11 @@ class Connection:
     # Capabilities
     capabilities: list[str] = None  # type: ignore[assignment]  # ["read", "write", "admin", "stream"]
 
+    # LLM provider metadata (used by setup_qwen_rascal / _setup_private_network_llm)
+    routing_tier: str = ""     # "public" | "restricted" | "export_controlled"
+    model: str = ""            # LLM model name for llm-providers.toml
+    verify_ssl: bool = True    # set False for self-signed certs
+
     # VPN guidance (shown on connection failure)
     vpn_name: str = ""
     vpn_connect_guide: str = ""

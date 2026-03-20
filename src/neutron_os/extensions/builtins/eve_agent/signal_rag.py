@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INDEX_PATH = _RUNTIME_DIR / "inbox" / "cache" / "signal_index.json"
 EMBEDDINGS_PATH = _RUNTIME_DIR / "inbox" / "cache" / "signal_embeddings.json"
@@ -355,9 +356,8 @@ class VectorStore:
         index_path.parent.mkdir(parents=True, exist_ok=True)
 
         index_data = [c.to_dict() for c in self.chunks]
-        index_path.write_text(json.dumps(index_data, indent=2))
-
-        embeddings_path.write_text(json.dumps(self.embeddings))
+        atomic_write(index_path, index_data)
+        atomic_write(embeddings_path, self.embeddings)
 
     def load(self, index_path: Path, embeddings_path: Path) -> bool:
         """Load from disk. Returns True if successful."""

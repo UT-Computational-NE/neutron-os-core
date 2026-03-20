@@ -12,12 +12,12 @@ Enabled by default (routing.audit_log = true in settings).
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import locked_append_jsonl
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +61,7 @@ def log_routing_decision(
         entry["sensitivity"] = sensitivity
 
     try:
-        _AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(_AUDIT_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, default=str) + "\n")
+        locked_append_jsonl(_AUDIT_PATH, entry)
     except OSError:
         logger.debug("Failed to write routing audit log", exc_info=True)
 

@@ -1,10 +1,21 @@
 """Shared test fixtures for neut signal and publisher test suites."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
 import pytest
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip @benchmark tests unless -m benchmark is explicitly requested."""
+    if config.option.markexpr and "benchmark" in config.option.markexpr:
+        return  # user asked for benchmarks — let them run
+    skip_benchmark = pytest.mark.skip(reason="benchmark — run with: pytest -m benchmark")
+    for item in items:
+        if item.get_closest_marker("benchmark"):
+            item.add_marker(skip_benchmark)
 
 # Ensure repo root is on path
 REPO_ROOT = Path(__file__).resolve().parent.parent

@@ -1,10 +1,10 @@
 # NeutronOS RAG Architecture Spec
 
-**Status:** Design approved — Phase 1 schema migration pending
+**Status:** Active — Phase 1 schema migration pending
 **Owner:** Ben Booth
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-13
-**Related:** `spec-model-routing.md`, `prd-agents.md`
+**Last Updated:** 2026-03-20 (updated: local DuckDB store, pack format, query fan-out, IAM dependency)
+**Related:** `spec-model-routing.md`, `prd-agents.md`, `spec-rag-knowledge-maturity.md`, `spec-prompt-registry.md`, `adr-014-rag-tiered-local-cache.md`
 
 ---
 
@@ -13,25 +13,37 @@
 NeutronOS has a working RAG store (`src/neutron_os/rag/`) using pgvector. It has
 two unresolved architectural gaps that become critical as the platform grows:
 
-**Gap 1 — Export control violation in the embedding pipeline.**
-`embeddings.py` always calls the OpenAI cloud API. Content is transmitted to a
-cloud endpoint *before* it ever reaches the retrieval stage. For export-controlled
-documents (MCNP inputs, facility-specific procedures, licensed simulation materials),
-this constitutes an unauthorized export of the content itself — not just the query.
-
-**Gap 1b — Export-controlled files cannot be copied to a user's local machine.**
-Under EAR and 10 CFR 810, the act of copying EC material off an authorized computing
-environment is itself a transfer — even if the destination is a personal machine with
-no external network access. EC documents must remain on authorized systems (e.g.,
-rascal). Users access them via VPN/SSH; the content does not travel to the client.
-This invalidates any architecture that proposes "local embedding" of EC files on
-a user's workstation. EC ingest, embedding, and storage must all run on rascal.
-
-**Gap 2 — No scope model.**
+**Gap 1 — No scope model.**
 The store's `tier` column conflates two independent concerns: content sensitivity
 (`public | export_controlled`) and content scope (`community | facility | personal`).
 Without separating these, it's impossible to build the per-user personalization that
-makes Neut irreplaceable in daily use.
+makes Neut irreplaceable in daily use. This affects all deployments.
+
+**Gap 2 — Cloud embedding of sensitive content (EC deployments only).**
+`embeddings.py` always calls the OpenAI cloud API. For deployments handling
+export-controlled documents (MCNP inputs, facility-specific procedures, licensed
+simulation materials), this constitutes an unauthorized export of the content
+itself — not just the query. Non-EC deployments are unaffected.
+
+**Gap 2b — EC files cannot be copied to a user's local machine (EC deployments only).**
+Under EAR and 10 CFR 810, the act of copying EC material off an authorized computing
+environment is itself a transfer — even if the destination is a personal machine with
+no external network access. EC documents must remain on authorized systems. This
+invalidates any architecture that proposes "local embedding" of EC files on a user's
+workstation. EC ingest, embedding, and storage must all run on the authorized system.
+
+> **Current state:** The private server Rascal (a physical server at UT Austin running
+> Qwen via Ollama) serves as the no-cloud environment for the **restricted** tier. A
+> proper export-controlled / classified environment (TACC or equivalent) is a future
+> design item and has not yet been built. The architecture is designed to accommodate
+> it when ready. References to "authorized EC environment" throughout this spec describe
+> the target design; Rascal represents the current restricted-tier implementation.
+
+> **Non-EC deployments:** Single-store mode (local postgres) is the default. The
+> restricted/EC store, private server connection, and dual-store retrieval are opt-in
+> features activated only when a restricted-tier provider is configured. No
+> configuration or infrastructure beyond local postgres and an embedding provider is
+> required for standard operation.
 
 ---
 
@@ -44,12 +56,19 @@ Every document in the RAG store has two independent attributes:
 | `access_tier` | Meaning | Embedding pipeline | Store location | Retrieval gate |
 |---------------|---------|-------------------|----------------|----------------|
 | `public` | Safe for cloud processing | Cloud (OpenAI, Anthropic) or local Ollama | Local postgres or cloud | Any authenticated user |
-| `export_controlled` | EAR/10 CFR 810 regulated | Ollama **on rascal only** — never on client | **rascal postgres** (authorized env) | `export_controlled_access` role + VPN |
+| `restricted` | No-cloud; private server only | Ollama on **private server** (e.g. Rascal running Qwen) — never cloud | Private server postgres (e.g. Rascal) | `restricted_access` role + VPN |
+| `export_controlled` | EAR/10 CFR 810 regulated; classified/export-controlled material | Ollama on **authorized EC environment** (TACC — future, not yet built) — never cloud | Authorized EC environment postgres (TACC — future) | `export_controlled_access` role + VPN + authorized system |
 
 > **Compliance note:** EC material cannot be copied to a user's workstation under any
 > circumstances. All EC ingest, embedding, and storage must execute on an authorized
-> system (currently rascal). Retrieval is proxied via VPN; only the LLM-synthesized
-> response crosses the boundary (via qwen-rascal, which also runs on rascal).
+> system. Retrieval is proxied via VPN; only the LLM-synthesized response crosses the
+> boundary.
+>
+> **Current implementation:** Rascal (private UT Austin server, running Qwen via Ollama)
+> is the implementation of the **restricted** tier — it provides no-cloud LLM for
+> sensitive-but-not-classified content. The `export_controlled` tier (TACC or equivalent
+> authorized computing environment) is a future design item. The architecture separates
+> these tiers by design so that TACC can be wired in when available without restructuring.
 
 ### 2.2 Scope (visibility axis)
 
@@ -111,36 +130,168 @@ flowchart TB
         S1 --> R1[Chunks → cloud LLM\nAnthropic]
     end
 
-    subgraph ECPath["EC path — VPN required"]
-        QC -->|export_controlled| VPN[VPN tunnel\nUT network]
-        VPN --> RAPI["Retrieval API\non rascal"]
-        RAPI --> S2["EC RAG store\nrascal postgres\naccess_tier=export_controlled"]
-        S2 --> LLM2["qwen-rascal\n(runs on rascal)"]
+    subgraph ECPath["Restricted/EC path — VPN required"]
+        QC -->|restricted or\nexport_controlled| VPN[VPN tunnel\nUT network]
+        VPN --> RAPI["Retrieval API\non private server\n(Rascal today;\nTACC for classified)"]
+        RAPI --> S2["Restricted RAG store\nprivate server postgres\naccess_tier=restricted\n(or export_controlled\nwhen TACC is built)"]
+        S2 --> LLM2["Qwen on private server\n(Rascal today;\nTACC LLM for classified)"]
         LLM2 --> Resp[Response only\ncrosses VPN boundary]
     end
 
-    subgraph RaskalIngest["EC Ingest — rascal only"]
-        ED[EC Document\non rascal]
-        OL[Ollama on rascal\nnomic-embed-text]
+    subgraph PrivateIngest["Restricted Ingest — private server only"]
+        ED[Restricted/EC Document\non private server]
+        OL[Ollama on private server\nnomic-embed-text]
         ED --> OL --> S2
     end
 ```
 
 **Key invariants:**
 
-1. **EC text never touches a cloud API** and **never leaves the authorized environment.**
-   Under EAR/10 CFR 810, copying EC material to a client workstation is itself an
-   unauthorized transfer. All EC ingest, embedding, storage, and retrieval happen on rascal.
+1. **Restricted/EC text never touches a cloud API** and **never leaves the private/authorized
+   environment.** Under EAR/10 CFR 810, copying EC material to a client workstation is itself
+   an unauthorized transfer. All restricted/EC ingest, embedding, storage, and retrieval happen
+   on the private server (Rascal for the restricted tier today; TACC for the classified/EC tier
+   when built).
 2. **Two physical stores, same logical schema.** Both run pgvector with identical
-   `access_tier`/`scope` columns. The public store is local; the EC store is on rascal.
-   The client connects to each via different connection strings.
+   `access_tier`/`scope` columns. The public store is local; the restricted/EC store is on the
+   private server. The client connects to each via different connection strings.
 3. **Query embedding must match document embedding.** Public queries embed on cloud/local
-   and search the local store. EC queries embed on rascal and search the rascal store.
-4. **Only the synthesized response crosses the VPN boundary.** qwen-rascal runs on rascal;
-   its text output returns to the client. Retrieved EC chunks are consumed server-side.
-   Whether chunk text appears in the response is a facility policy decision (redaction scope).
-5. **Personal EC content follows the same rule.** A user's EC work files must be indexed
-   on rascal, not on their local machine, even if they authored the files.
+   and search the local store. Restricted/EC queries embed on the private server and search the
+   private server store.
+4. **Only the synthesized response crosses the VPN boundary.** The private-server LLM (Qwen on
+   Rascal) runs server-side; its text output returns to the client. Retrieved restricted/EC
+   chunks are consumed server-side. Whether chunk text appears in the response is a facility
+   policy decision (redaction scope).
+5. **Personal restricted/EC content follows the same rule.** A user's restricted or EC work
+   files must be indexed on the private server, not on their local machine, even if they
+   authored the files.
+
+---
+
+## 3a. Local Store (DuckDB)
+
+The local store is a DuckDB database with the `vss` extension for vector similarity
+search. It lives at `~/.neut/rag/local.duckdb` (or `$NEUT_HOME/rag/local.duckdb`).
+It holds:
+
+- **`rag-internal` corpus:** always synced here first; this IS the primary store for
+  personal content.
+- **`rag-org` pack cache:** chunks loaded from downloaded `.neutpack` files; never
+  written by ingestion directly.
+
+### Schema (DuckDB)
+
+```sql
+CREATE TABLE chunks (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    doc_path     TEXT        NOT NULL,
+    chunk_index  INT         NOT NULL,
+    text         TEXT        NOT NULL,
+    corpus       TEXT        NOT NULL,  -- rag-internal | rag-org
+    pack_id      TEXT,                  -- NULL for rag-internal; pack version for rag-org
+    checksum     TEXT,
+    indexed_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    embedding    FLOAT[768]             -- NULL if no embedding model available
+);
+
+CREATE INDEX ON chunks (corpus, doc_path);
+-- vss index created post-load when embeddings present:
+-- CALL vss.create_index('chunks', 'embedding');
+```
+
+Pack manifest table:
+
+```sql
+CREATE TABLE installed_packs (
+    pack_id      TEXT PRIMARY KEY,
+    domain_tag   TEXT NOT NULL,
+    version      TEXT NOT NULL,
+    installed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    fact_count   INT,
+    sha256       TEXT NOT NULL
+);
+```
+
+The DuckDB local store is the default for all personal content and pack cache. It
+requires no PostgreSQL instance and works fully offline. The server-side PostgreSQL
+store (§4) is additive — used for community corpus, restricted/EC content, and
+(eventually) IAM-gated server-side sync.
+
+---
+
+## 3b. Query Fan-out
+
+At query time the RAG retriever fans out across available stores:
+
+```
+User query
+    │
+    ├── Local DuckDB (always) ──────────────────→ local_results
+    │   [rag-internal + installed rag-org packs]
+    │
+    ├── Remote PostgreSQL (if reachable) ────────→ remote_results
+    │   [full rag-org + rag-community]
+    │
+    └── TACC endpoint (if routing_tier=export_controlled) → ec_results
+        [rag-export-controlled, identity-gated]
+
+    Merge by relevance score → top-k chunks → inject into prompt
+```
+
+If remote is unreachable: local results only. Graceful degradation, never a hard
+failure.
+
+The merge step applies corpus priority as defined in §2a: `rag-internal` results
+score highest when content is near-duplicate across corpora, then `rag-org`, then
+`rag-community`. Score merging is done at result time — no cross-store joins required.
+
+---
+
+## 3c. Pack Format (.neutpack)
+
+A `.neutpack` file is a gzip-compressed tar containing:
+
+- `manifest.json` — pack metadata (matches community spec §7.4)
+- `chunks.parquet` — pre-chunked, pre-embedded content
+- `SHA256SUMS` — integrity verification
+
+Install: `neut rag pack install <file.neutpack>` loads chunks into local DuckDB and
+records in `installed_packs`.
+
+```bash
+neut rag pack install ./nuclear-regs-v2.neutpack   # load pack into local DuckDB
+neut rag pack list                                  # list installed packs with chunk counts
+neut rag pack remove <pack_id>                      # unload pack and delete from local store
+```
+
+The pack format enables offline distribution of org corpus snapshots without requiring
+a running server or admin credentials. A facility admin exports a pack; users install it
+locally. Packs are read-only at query time — user ingestion never writes to the pack
+cache rows; it only writes to `rag-internal`.
+
+---
+
+## 3d. IAM Dependency
+
+The following capabilities require IAM and are deferred:
+
+| Capability | IAM requirement |
+|---|---|
+| Automatic `rag-internal` sync to server-side user account | Per-user identity + namespace |
+| Pack entitlement checks | Authorization service: which packs a user may download |
+| Per-user namespacing in server-side PostgreSQL | User account provisioning |
+| TACC access gating | Network + identity (both required) |
+
+Until IAM ships:
+
+- `rag-internal` is **local-only** (no automatic sync)
+- Manual portability: `neut rag export --personal` / `neut rag import --personal <file>`
+- Packs are downloaded without entitlement enforcement (honor system)
+- TACC access is controlled by network reachability + API key only
+
+This means Phase 0 (see §12) can ship and deliver value independently of IAM
+infrastructure. No IAM plumbing is needed to use local DuckDB, install packs, or
+run the query fan-out against a reachable remote.
 
 ---
 
@@ -195,21 +346,29 @@ def embed_texts(
     """
 ```
 
-**EC embedding provider (Ollama on rascal):**
-- Runs on rascal — the authorized computing environment, not the user's workstation
+**Restricted-tier embedding provider (Ollama on private server, e.g. Rascal):**
+- Runs on the private server — never on the user's workstation or a cloud API
 - Model: `nomic-embed-text` (768 dims) or `mxbai-embed-large` (1024 dims)
-- The same Ollama instance used by `OllamaClassifier` for EC query classification
-- Ingest pipeline for EC content runs as a server-side job on rascal (not a client CLI command)
+- The same Ollama instance used by `OllamaClassifier` for restricted/EC query classification
+- Ingest pipeline for restricted content runs as a server-side job on the private server (not a client CLI command)
 
-**Compliance boundary:**
+> **Note:** Rascal is the current implementation of the restricted tier (private UT Austin
+> server, running Qwen). The classified/export-controlled tier would use TACC as the
+> authorized computing environment — TACC integration is a future design item. When TACC
+> is available, a separate embedding provider entry pointing to the TACC Ollama instance
+> handles the `export_controlled` tier.
+
+**Compliance boundary (current: Rascal for restricted tier):**
 ```
-client workstation          UT VPN / rascal (authorized env)
-──────────────────          ─────────────────────────────────────────────────
-neut chat                   EC document files
+client workstation          UT VPN / private server (Rascal)
+──────────────────          ────────────────────────────────────────────────
+neut chat                   restricted document files
 query → router              Ollama (nomic-embed-text)
-                            pgvector EC store
-                  ←VPN←    qwen-rascal
+                            pgvector restricted store
+                  ←VPN←    Qwen on Rascal
 synthesized response        (LLM runs here; response crosses VPN boundary)
+
+                            [Future: TACC for export_controlled tier]
 ```
 
 **Dimension note:** EC store uses 768-dim vectors (Ollama); public store uses 1536-dim (OpenAI)
@@ -316,7 +475,7 @@ Admin configures the org sync source in `runtime/config/secrets.toml`:
 sync_source = "rascal:/neut/org-rag/"   # or s3://bucket/path/
 ```
 
-The org corpus is indexed into `rag_org` schema in the local PostgreSQL instance for public-access_tier content, and into the rascal PostgreSQL instance for export-controlled facility documents.
+The org corpus is indexed into `rag_org` schema in the local PostgreSQL instance for public-access_tier content, and into the private server PostgreSQL instance (Rascal today) for restricted-tier facility documents.
 
 ---
 
@@ -331,13 +490,13 @@ Neut will index public documents you specify — your notes, papers, non-sensiti
   Public documents (notes, papers, non-sensitive files):
     Indexed locally on this machine. Never sent to cloud APIs.
 
-  Export-controlled documents (MCNP inputs, sim configs, licensed materials):
-    Must remain on authorized systems (rascal/VPN environment).
+  Restricted documents (MCNP inputs, sim configs, licensed materials):
+    Must remain on the private server (Rascal/VPN environment).
     Indexing runs server-side via `neut rag index --remote`.
     You access them only while connected to UT VPN.
 
   [Y] Yes, index my public documents now
-  [e] Set up EC indexing on rascal (requires VPN)
+  [e] Set up restricted-tier indexing on private server (requires VPN)
   [n] Skip for now
 ```
 
@@ -350,8 +509,9 @@ offer to index files on the local machine as export-controlled. Instead:
 
 ```
 User: "I have MCNP inputs I want to index"
-Neut: "EC files must be indexed from an authorized environment.
-       Copy them to rascal first, then run: neut rag index --remote <path>"
+Neut: "Restricted files must be indexed from the private server.
+       Copy them to the private server (e.g. Rascal) first,
+       then run: neut rag index --remote <path>"
 ```
 
 ### 7.2 Ingest Commands
@@ -361,9 +521,9 @@ Neut: "EC files must be indexed from an authorized environment.
 neut rag index ./my-notes/                          # auto-classify; public only
 neut rag index ./facility-procedures/ --scope facility  # facility-wide visibility
 
-# EC documents (indexed on rascal via VPN)
-neut rag index --remote rascal:/home/user/mcnp-inputs/  # runs server-side on rascal
-neut rag index --remote rascal:/home/user/sim-configs/ --tier export_controlled
+# Restricted documents (indexed on private server via VPN — e.g. Rascal)
+neut rag index --remote rascal:/home/user/mcnp-inputs/  # runs server-side on private server
+neut rag index --remote rascal:/home/user/sim-configs/ --tier restricted
 
 neut rag status                                     # show index stats (both stores)
 neut rag list                                       # list indexed documents
@@ -525,23 +685,30 @@ The following operations MUST be prevented by the architecture — not just poli
 
 | Operation | Why prohibited | Design control |
 |-----------|----------------|----------------|
-| `neut rag index ./mcnp-inputs/` (local) | Copies EC file content to local postgres | Router classifies → `--remote` flag required for EC |
-| Sending EC chunk text to cloud LLM | Transmits EC content to unauthorized service | EC queries only reach qwen-rascal on VPN |
-| Downloading EC chunks to display in terminal | Retrieved EC text on client workstation | Facility policy decision; Neut default: display only LLM-synthesized response |
-| EC embedding via OpenAI API | Transmits EC content to cloud | EC embedding runs on rascal Ollama only |
+| `neut rag index ./mcnp-inputs/` (local) | Copies restricted/EC file content to local postgres | Router classifies → `--remote` flag required for restricted/EC |
+| Sending restricted/EC chunk text to cloud LLM | Transmits restricted/EC content to unauthorized service | Restricted/EC queries only reach private server LLM on VPN |
+| Downloading restricted/EC chunks to display in terminal | Retrieved restricted/EC text on client workstation | Facility policy decision; Neut default: display only LLM-synthesized response |
+| Restricted/EC embedding via OpenAI API | Transmits restricted/EC content to cloud | Restricted/EC embedding runs on private server Ollama only |
 
-### 8.3 Authorized EC Data Flow
+### 8.3 Authorized Restricted/EC Data Flow
 
 ```
-1. EC document exists on rascal (authorized env)
-2. Ingest job runs on rascal: classify → embed (Ollama on rascal) → store (rascal postgres)
+1. Restricted/EC document exists on private server (Rascal for restricted;
+   TACC for export_controlled — future)
+2. Ingest job runs on private server:
+   classify → embed (Ollama on private server) → store (private server postgres)
 3. User connects via UT VPN
-4. User query classified as EC by router.py
-5. Query embedding computed on rascal (via retrieval API)
-6. Similarity search on rascal postgres
-7. Top chunks fed to qwen-rascal (on rascal)
-8. qwen-rascal generates response — only response crosses VPN
+4. User query classified as restricted/EC by router.py
+5. Query embedding computed on private server (via retrieval API)
+6. Similarity search on private server postgres
+7. Top chunks fed to LLM on private server (Qwen on Rascal today)
+8. LLM generates response — only the response crosses VPN boundary
 9. Response displayed to user
+
+Note: Steps 1–8 all execute on the private server. The only data that
+crosses the VPN is the synthesized text response in step 9.
+Classified (export_controlled) content would follow the same flow on TACC
+once that environment is built.
 ```
 
 ### 8.4 Open Policy Questions (facility must decide)
@@ -557,21 +724,23 @@ These require facility radiation protection / export control officer input:
    that response inherit an EC classification? Current approach: mark responses from
    the EC retrieval path with `[Export-Controlled Environment]` prefix.
 
-3. **Can researchers index their EC work files from rascal home directories?**
-   Yes — they're already in the authorized environment. `neut rag index --remote` triggers
-   a server-side job. Authentication is via existing SSH key / rascal credentials.
+3. **Can researchers index their restricted work files from the private server home directories?**
+   Yes — they're already on the private server (Rascal). `neut rag index --remote` triggers
+   a server-side job. Authentication is via existing SSH key / private server credentials.
+   For genuinely classified/EC content, the same principle applies on TACC when that
+   environment is available.
 
 ### 8.5 Prompt Injection Defense
 
 RAG-augmented systems are vulnerable to prompt injection via malicious content in indexed
-documents. For EC RAG, this is also an exfiltration vector — a poisoned document on rascal
-could instruct the LLM to reproduce controlled content in its response.
+documents. For restricted/EC RAG, this is also an exfiltration vector — a poisoned document
+on the private server could instruct the LLM to reproduce controlled content in its response.
 
 Defense layers:
-1. **Chunk sanitization** — strip known injection patterns before LLM injection (server-side on rascal)
-2. **System prompt hardening** — explicit instructions in qwen-rascal system prompt prohibiting instruction-following from retrieved content
-3. **Response scanning** — scan qwen-rascal output for EC keyword matches before returning to client
-4. **Audit log** — every EC session logs query hash, response hash, chunk source paths (no plaintext)
+1. **Chunk sanitization** — strip known injection patterns before LLM injection (server-side on private server)
+2. **System prompt hardening** — explicit instructions in the private server LLM (Qwen) system prompt prohibiting instruction-following from retrieved content
+3. **Response scanning** — scan private server LLM output for restricted/EC keyword matches before returning to client
+4. **Audit log** — every restricted/EC session logs query hash, response hash, chunk source paths (no plaintext)
 
 Full threat model, attack vectors, and implementation detail:
 *Cross-reference: `spec-model-routing.md` §8 (Prompt Injection & EC Exfiltration Defense)*
@@ -586,8 +755,8 @@ The client queries two separate stores depending on routing tier:
 # Public store — local postgres, direct connection
 public_store = RAGStore(settings.get("rag.database_url"))
 
-# EC store — rascal postgres, VPN required
-ec_store = RAGStore(settings.get("rag.ec_database_url"))  # e.g., postgresql://rascal:5432/neutron_os_ec
+# Restricted/EC store — private server postgres (Rascal today), VPN required
+ec_store = RAGStore(settings.get("rag.ec_database_url"))  # e.g., postgresql://rascal.utexas.edu:5432/neutron_os_restricted
 ```
 
 ```python
@@ -707,24 +876,55 @@ Only the `embedding` column changes; chunk text and metadata are preserved.
 ## 11. Intersection with Auth & Export Control Routing
 
 The RAG access tier, LLM routing tier, and physical store location must all be consistent.
-An EC query must use the rascal LLM *and* the rascal RAG store — neither can be substituted
-without breaking the compliance boundary.
+A restricted/EC query must use the private server LLM *and* the private server RAG store —
+neither can be substituted without breaking the compliance boundary.
 
 | User auth state | LLM routing | RAG retrieval | Physical store |
 |-----------------|------------|---------------|----------------|
-| No `export_controlled` role | `public` providers only | `access_tier = public` only | Local postgres |
-| Has role, VPN connected | Both tiers | Both tiers | Local (public) + rascal (EC) |
+| No `restricted` / `export_controlled` role | `public` providers only | `access_tier = public` only | Local postgres |
+| Has role, VPN connected | Both tiers | Both tiers | Local (public) + private server (restricted/EC) |
 | Has role, VPN down | Public only + warning | Public only + warning | Local postgres only |
 
-When a query routes to qwen-rascal (EC tier), the RAG retrieval searches `rag.ec_database_url`
-(rascal postgres), not the local store. The query embedding is also computed on rascal.
-The entire EC retrieval + generation loop stays server-side.
+When a query routes to the restricted/EC tier (Qwen on Rascal today), the RAG retrieval
+searches `rag.ec_database_url` (private server postgres), not the local store. The query
+embedding is also computed on the private server. The entire restricted/EC retrieval +
+generation loop stays server-side.
 
 *Cross-reference: `spec-model-routing.md` §7 (Auth intersection).*
 
 ---
 
 ## 12. Implementation Phases
+
+### Phase Overview
+
+| Phase | What | IAM required? |
+|---|---|---|
+| **0** | Local DuckDB store, pack install/list/remove, query fan-out (local + remote + TACC), TACC deployment | No |
+| **1** | PostgreSQL schema migration (`access_tier` + `scope` columns), embedding fork, ingest auto-classification | No |
+| **2** | Community corpus (`rag-community`), onboarding wizard integration, EC community content | Partial (pack entitlements deferred) |
+| **3** | Personal RAG compounding: session history, signal pipeline, git logs, daily notes, watch daemon, M-O stewardship | No (sync deferred to IAM) |
+| **4** | Agentic RAG v1 (heuristic planner + evaluator) | No |
+| **5** | Prompt caching | No |
+| **6** | Agentic RAG v2 (LLM planner + evaluator) | No |
+
+---
+
+### Phase 0 — Local DuckDB Store + Pack Format (pre-IAM)
+
+| Item | File | Status |
+|------|------|--------|
+| DuckDB local store at `~/.neut/rag/local.duckdb` | `rag/local_store.py` | 🔲 |
+| `vss` extension install + `chunks` table schema | `rag/local_store.py` | 🔲 |
+| `installed_packs` manifest table | `rag/local_store.py` | 🔲 |
+| `neut rag pack install <file.neutpack>` | `rag/cli.py` | 🔲 |
+| `neut rag pack list` / `neut rag pack remove` | `rag/cli.py` | 🔲 |
+| Query fan-out: local DuckDB + remote PostgreSQL + TACC | `rag/retriever.py` | 🔲 |
+| Graceful degradation when remote unreachable | `rag/retriever.py` | 🔲 |
+| Result merge by relevance score (corpus priority) | `rag/retriever.py` | 🔲 |
+| `neut rag export --personal` / `neut rag import --personal` | `rag/cli.py` | 🔲 |
+
+---
 
 ### Phase 1 — Schema + Embedding Fork (next)
 
@@ -761,6 +961,34 @@ The entire EC retrieval + generation loop stays server-side.
 | Session TTL pruning | `store.delete_corpus_older_than()` + `rag.session_ttl_days` setting | 🔲 |
 | Community RAG promotion pipeline | Personal → community with PII scrubbing + EC gating | 🔲 |
 | Cross-scope relevance tuning | Weight community vs facility vs personal results | 🔲 |
+
+### Phase 4 — Agentic RAG
+
+| Item | Notes |
+|------|-------|
+| Query planner (heuristic) | Rule-based `RetrievalPlan`: skip retrieval, tier/scope selection, query reformulation |
+| Context evaluator (heuristic) | `sufficient = best_score > 0.4 AND len(chunks) >= 3`; max 2 retrieval passes |
+| Agentic loop integration | `QueryPlanner` + `ContextEvaluator` wired into `RAGStore.search()` call path |
+| `interaction_log` integration | One record per agentic loop; `retrieval_plan` JSONB column; all-pass chunks captured |
+
+*Full interaction_log schema: `spec-rag-knowledge-maturity.md`.*
+
+### Phase 5 — Prompt Caching
+
+| Item | Notes |
+|------|-------|
+| Gateway `_build_messages()` cache_control | Wrap `cache_hint = true` template blocks with `cache_control: {type: "ephemeral"}` |
+| Prompt Template Registry integration | Templates declare `cache_hint`; gateway applies caching transparently |
+| Cache hit metric | `axiom_llm_cache_hit_ratio` added to observability dashboard |
+
+*Depends on prompt registry: `spec-prompt-registry.md`. Metrics: `spec-observability.md` §3.1.*
+
+### Phase 6 — Agentic RAG v2
+
+| Item | Notes |
+|------|-------|
+| LLM-based query planner | Cheapest available provider returns `RetrievalPlan` as structured JSON |
+| LLM-based context evaluator | LLM evaluator call: "Is this context sufficient? If not, what is missing?" |
 
 ---
 
@@ -820,3 +1048,189 @@ npx promptfoo eval -c tests/promptfoo/promptfooconfig.yaml --ci
 
 promptfoo returns exit code 1 if any assertions fail — compatible with standard CI gates.
 Use `--cache` to avoid re-running identical prompts in repeated CI runs.
+
+---
+
+## 14. Agentic RAG
+
+The sections above describe single-pass retrieval: receive query → embed → search →
+inject chunks → generate. This section adds agentic (multi-step) retrieval, where the
+system plans the query, evaluates the retrieved context, and decides whether to act or
+fetch more before generating.
+
+*Cross-reference: `spec-rag-knowledge-maturity.md` (interaction log schema and knowledge
+maturity pipeline), `spec-prompt-registry.md` (prompt templates).*
+
+### 14.1 What is Agentic RAG
+
+**Single-pass RAG (current model):** receive query → embed → search → inject chunks →
+generate. The agent has no opportunity to assess whether the retrieved context is
+sufficient before generating.
+
+**Agentic RAG** adds deliberation:
+
+1. **Plan** — before retrieval, determine whether retrieval is needed and how to
+   formulate the query.
+2. **Retrieve** — execute the retrieval as planned.
+3. **Evaluate** — assess whether the retrieved context is sufficient to answer accurately.
+4. **Iterate** — if insufficient and a followup query is available, retrieve again
+   (up to a configured maximum).
+5. **Generate** — produce the response with the best available context.
+
+This reduces hallucination on queries where initial retrieval is poor, and eliminates
+unnecessary retrieval overhead for queries that don't need it (greetings, arithmetic,
+clarification).
+
+### 14.2 Query Planner
+
+Before retrieval, a lightweight planning step determines:
+
+- **Is retrieval necessary?** Greetings, arithmetic, simple clarification questions do
+  not need retrieval.
+- **Which tier(s) to search?** `public` only, or also `restricted`/`classified` if the
+  user is authorized. (NeutronOS configures these as `public`, `restricted`,
+  `export_controlled`.)
+- **Which scope(s)?** `community` baseline always; add `facility` if the query is
+  facility-specific; add `personal` if the query references personal context.
+- **What query reformulation would improve recall?** Expand acronyms, add synonyms,
+  decompose compound queries.
+
+```python
+@dataclass
+class RetrievalPlan:
+    needs_retrieval: bool
+    query_text: str                  # possibly reformulated
+    tiers: list[str]
+    scopes: list[str]
+    max_chunks: int
+    rationale: str                   # logged for observability
+```
+
+**v1 — heuristic rules (configurable):**
+
+- Skip retrieval if: `query_length < 15` chars, or query matches greeting/arithmetic patterns.
+- Search classified tier only if: user has classified access AND query matches classified
+  keyword signals.
+- Include personal scope if: query contains first-person pronouns or references "my",
+  "our", "I".
+
+**v2 — LLM planner:** a small LLM call (cheapest available provider) that returns a
+`RetrievalPlan` as structured JSON. See Phase 6 in §12.
+
+### 14.3 Context Evaluator
+
+After retrieval, before generation, evaluate whether the retrieved context is sufficient:
+
+```python
+@dataclass
+class ContextEvaluation:
+    sufficient: bool
+    confidence: float           # 0.0–1.0
+    missing_aspects: list[str]  # what's not covered
+    suggested_followup_query: str | None
+```
+
+**v1 — heuristic:** `sufficient = best_score > 0.4 AND len(chunks) >= 3`
+
+**v2 — LLM evaluator:** "Given this query and these retrieved chunks, is the context
+sufficient to answer accurately? If not, what is missing?"
+
+If `sufficient = False` and `suggested_followup_query` is not `None`: execute a second
+retrieval with the followup query, merge results, re-evaluate. **Maximum 2 iterations**
+to prevent runaway loops.
+
+### 14.4 Agentic RAG Loop
+
+```mermaid
+flowchart TB
+    Q[User query] --> P[Query Planner]
+    P -->|needs_retrieval = false| G[Generate directly]
+    P -->|needs_retrieval = true| R1[Retrieve — pass 1]
+    R1 --> E1[Context Evaluator]
+    E1 -->|sufficient| G
+    E1 -->|insufficient, iteration < 2| R2[Retrieve — pass 2\nwith followup query]
+    R2 --> E2[Context Evaluator]
+    E2 --> G
+    G --> S[_scan_response] --> IL[Write interaction_log]
+    IL --> Resp[Response to user]
+```
+
+### 14.5 Interaction Log Integration
+
+Each agentic RAG loop writes one `interaction_log` record (see
+`spec-rag-knowledge-maturity.md`). The `chunks_retrieved` field captures all chunks
+from all passes. The `rationale` from the `RetrievalPlan` is stored in a new
+`retrieval_plan` JSONB column added to the `interaction_log` table.
+
+### 14.6 Configuration
+
+```toml
+[rag.agentic]
+enabled              = true
+max_retrieval_passes = 2
+planner_mode         = "heuristic"   # heuristic | llm (v2)
+evaluator_mode       = "heuristic"   # heuristic | llm (v2)
+evaluator_threshold  = 0.4           # min best_score to consider context sufficient
+```
+
+### 14.7 EC Compliance in Agentic RAG
+
+The query planner and context evaluator themselves must not see export-controlled
+content — they run on the client side with public-tier context only. Retrieval steps
+are tier-gated as in the single-pass model.
+
+The followup query (generated by the context evaluator) is derived from the evaluator's
+assessment of the public-tier context, not from EC chunks. If the user has restricted/classified
+access, a separate restricted/EC retrieval pass runs on the private server (Rascal today;
+TACC for classified content when available) as before — the planner and evaluator have no
+visibility into that path.
+
+---
+
+## 15. Prompt Caching
+
+### 15.1 Why Prompt Caching Matters
+
+Static prompt blocks — system preambles, persona definitions, tool descriptions,
+few-shot examples — are re-sent on every completion request but rarely change between
+turns or even between sessions. Anthropic supports `cache_control: {type: "ephemeral"}`
+on message blocks, caching them server-side for up to 5 minutes. For active users and
+agentic RAG loops (which may make multiple LLM calls per user query), this is a
+material cost and latency reduction.
+
+### 15.2 What Gets Cached
+
+| Block | Static? | Cache? |
+|-------|---------|--------|
+| EC hardened preamble | Yes | Yes — template `ec_hardened_preamble`, `cache_hint = true` |
+| Agent persona system prompt | Yes | Yes — each agent's persona template |
+| Tool descriptions | Yes (per session) | Yes |
+| Few-shot examples | Yes (per template version) | Yes |
+| RAG context (retrieved chunks) | No — changes per query | No |
+| User message | No | No |
+
+### 15.3 Message Ordering for Cache Efficiency
+
+Anthropic's cache activates only when cached blocks appear before uncached blocks in
+the message array. The gateway orders message blocks as follows:
+
+```
+[cached system blocks]
+→ [cached few-shot examples]
+→ [dynamic RAG context]
+→ [user message]
+```
+
+This ordering maximises cache hits even as the dynamic RAG context and user message
+change on every turn.
+
+### 15.4 Implementation
+
+Prompt caching is handled via the Prompt Template Registry
+(`spec-prompt-registry.md`). Templates with `cache_hint = true` are wrapped with
+`cache_control` by the gateway's `_build_messages()` method. No changes are required
+at the agent level — agents declare their templates as usual; caching is applied
+transparently by the gateway.
+
+Cache hit metrics are surfaced as `axiom_llm_cache_hit_ratio`
+(see `spec-observability.md` §3.1).

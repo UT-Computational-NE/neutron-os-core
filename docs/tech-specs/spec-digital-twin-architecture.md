@@ -259,6 +259,52 @@ A **Shadow** is a calibrated high-fidelity simulation that runs alongside the ph
 | **On-demand** | User request | Variable | Ad-hoc analysis |
 | **Batch** | Parameter study | Days | Sensitivity analysis |
 
+### 4.4 Calibration Targets (per Dr. Clarno)
+
+When calibrating a Shadow to match measured reactor data, adjust these parameters:
+
+| Target | Priority | Description | Notes |
+|--------|----------|-------------|-------|
+| **Nuclear data cross sections** | Critical | Distributed with estimated uncertainties/covariances | Key: recoverable energy per fission, U-238 capture at 6.7 eV resonance |
+| **Initial fuel isotopes** | Critical | Isotopic composition at a reference date (e.g., 5 cycles ago) | Establishes baseline for depletion tracking |
+| **Geometry** | Important | Material dimensions may not be precisely known | Accounts for manufacturing tolerances |
+
+> "If you get [recoverable energy per fission and U-238 capture at 6.7 eV resonance] right, most everything else works out." — Dr. Clarno
+
+### 4.5 Data Quality Prerequisites
+
+ROMs can only predict **physics-based changes** — they cannot predict or filter noise. Before ROMs can provide operational value:
+
+| Requirement | Validation Method |
+|-------------|-------------------|
+| **Time synchronization** | Rod position, neutron detector, and Cherenkov signals must be time-aligned |
+| **Correlation validation** | Rod movements should induce predictable power responses |
+| **Noise characterization** | Only correlated Cherenkov/neutron spikes indicate physics (vs. noise) |
+
+If data has excessive noise, the ROM may appear "accurate" by falling within large measurement error bars, but cannot provide actionable real-time guidance.
+
+### 4.6 VERA Operational Status
+
+| Capability | Status |
+|------------|--------|
+| VERA license | ✅ Active |
+| Shadow nightly runs | ✅ Operational (sends daily initial critical rod height prediction to operators) |
+| Veracity contract | ✅ Open for NETL/MSR multi-physics DT needs |
+
+### 4.7 Failure Mode Handling
+
+Failure handling depends on ROM tier and use case:
+
+| Use Case | ROM Tier | Failure Consequence | Handling |
+|----------|----------|---------------------|----------|
+| **Semi-autonomous operation** | ROM-1 | Bad prediction could command wrong action | True control rods remain in place and can scram. Take ROM offline and investigate. |
+| **Transient data display** | ROM-1/2 | No operational consequence | ROM goes dark or shows invalid data; operators ignore. Flag for later analysis. |
+| **Planning/analysis** | ROM-3/4 | Decisions based on wrong predictions | More robust with time-averaged data. Flag outliers for investigation. |
+
+**Investigation checklist when ROM/measurement disagree:**
+- Model side: input data, ROM execution, output interpretation
+- Measurement side: instrumentation, control system data path, data cleaning
+
 ---
 
 ## 5. Run Tracking

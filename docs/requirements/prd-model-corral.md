@@ -4,7 +4,7 @@
 
 **Product:** NeutronOS Model Corral  
 **Status:** Draft  
-**Last Updated:** 2026-03-17  
+**Last Updated:** 2026-03-20  
 **Parent:** [Executive PRD](prd-executive.md)  
 **Related:** [Digital Twin Hosting PRD](prd-digital-twin-hosting.md), [Data Platform PRD](prd-data-platform.md)
 
@@ -448,6 +448,57 @@ performance:
     rod_position_cm: [0, 38]
     coolant_temp_c: [20, 80]
 ```
+
+### Federated Model Artifacts
+
+The INL federated learning LDRD produces models trained across multiple
+facilities using Flower AI. Model Corral is the **registered home for these
+LDRD deliverables** — the open-source federated LSTM, GPR, and Isolation
+Forest models targeting TRIGA reactor operations. These federated artifacts
+must be registered and versioned alongside single-facility ROMs, with
+versioning tracking both model version and federation round.
+
+#### Federation Fields (`model.yaml`)
+
+```yaml
+federation:
+  enabled: true
+  framework: "flower-ai"            # federated learning framework
+  federation_round: 12              # which FL aggregation round produced this model
+  participating_facilities:
+    - "ut-austin-netl"
+    - "osu-triga"
+    - "inl-nrad"
+  aggregation_method: "fedavg"      # federated averaging
+  differential_privacy: true
+  privacy_budget: 1.0               # epsilon value for DP guarantee
+```
+
+These fields are optional (null for single-facility models) and extend the
+base `model.yaml` schema without breaking existing entries.
+
+#### What Federated Model Registration Enables
+
+| Capability | Description |
+|------------|-------------|
+| **Catalog differentiation** | Federated models appear as a distinct model type in search and browse, separate from single-facility ROMs |
+| **Round-level versioning** | Each federation round that produces a new aggregate model gets its own Model Corral entry; `federation_round` tracks which round each version came from |
+| **Facility audit trail** | `participating_facilities` records which facilities contributed to a given aggregate model, satisfying LDRD reporting requirements |
+| **Performance comparison** | Federated vs. single-facility model performance can be compared using the same validation datasets — this is the LDRD's key research question |
+
+#### LDRD Model Inventory
+
+The following federated models are the primary LDRD deliverables; all will
+be registered in Model Corral:
+
+| Model | Architecture | Target application |
+|-------|--------------|--------------------|
+| Federated LSTM | Long Short-Term Memory | Reactor transient time-series prediction |
+| Federated GPR | Gaussian Process Regression | Steady-state parameter estimation with uncertainty |
+| Federated Isolation Forest | Ensemble anomaly detector | Operational anomaly detection across TRIGA facilities |
+
+All three models target TRIGA reactor operations and will be validated against
+the UT-Austin NETL, OSU TRIGA, and INL NRAD datasets produced by the LDRD.
 
 ---
 
@@ -981,7 +1032,7 @@ These aren't rigid schemas — they're documented patterns that make models easi
 
 1. **Canonical model locking** — How do we prevent accidental modification of production-canonical models?
 2. ~~**CoreForge bidirectional sync**~~ — **Resolved:** One-way flow (CoreForge → Model Corral). No dependency on CoreForge; integration by design. See [CoreForge Integration](#coreforge-integration).
-3. **Cross-institution sharing** — How do we handle models from ORNL, INL, ANL with different institutional access policies?
+3. **Cross-institution sharing** — How do we handle models from ORNL, INL, ANL with different institutional access policies? *Partially resolved for INL: federated model artifacts from the LDRD partnership use the `federation` schema block and Flower AI transport; access tier follows the least-restrictive participating facility's policy for public aggregated models.*
 4. **Model retirement** — What's the deprecation/archival workflow for outdated models?
 
 ---

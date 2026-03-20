@@ -4,6 +4,7 @@ Tests CLI argument parsing and command dispatch without hitting real storage.
 """
 
 import argparse
+from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -311,8 +312,14 @@ class TestCmdPublish:
 
         mock_engine.publish.assert_called_once()
 
-    def test_publish_requires_file_or_all(self, capsys):
-        """Publish without file or --all prints usage."""
+    @patch("neutron_os.extensions.builtins.prt_agent.engine.PublisherEngine")
+    def test_publish_no_args_publishes_changed(self, mock_engine_cls, capsys):
+        """Publish with no file/--all runs incremental diff and reports changed docs."""
+        mock_engine = MagicMock()
+        mock_engine_cls.return_value = mock_engine
+        mock_engine.config.repo_root = Path("/tmp")
+        mock_engine.diff.return_value = []  # Nothing changed
+
         args = argparse.Namespace(
             command="publish",
             file=None,
@@ -320,10 +327,17 @@ class TestCmdPublish:
             changed_only=False,
             draft=False,
             endpoint=None,
+            force=False,
         )
 
-        with pytest.raises(SystemExit):
-            cli.cmd_publish(args)
+        cli.cmd_publish(args)
+
+        # diff() called to determine what changed
+        mock_engine.diff.assert_called_once()
+        # No publish calls since nothing changed
+        mock_engine.publish.assert_not_called()
+        out = capsys.readouterr().out
+        assert "No documents changed" in out
 
 
 class TestCmdStatus:

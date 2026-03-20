@@ -400,120 +400,14 @@ if [[ -f "$PROJECT_ROOT/requirements-dev.txt" ]]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5. Infrastructure (Docker, K3D, PostgreSQL)
+# 5. Environment Setup (deferred to neut install)
 # ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "Step 5: Infrastructure"
-echo "----------------------"
-
-# Check if Docker is available
-if command -v docker &>/dev/null; then
-    # Check if Docker daemon is running
-    if docker info &>/dev/null 2>&1; then
-        echo "✓ Docker running"
-        
-        # Check K3D
-        if command -v k3d &>/dev/null; then
-            echo "✓ K3D installed"
-            
-            # Check if neut-local cluster exists and is running
-            if k3d cluster list -o json 2>/dev/null | grep -q '"neut-local"'; then
-                if k3d cluster list -o json 2>/dev/null | grep -A5 '"neut-local"' | grep -q '"serversRunning":1'; then
-                    echo "✓ neut-local cluster running"
-                else
-                    echo "○ neut-local cluster stopped, starting..."
-                    k3d cluster start neut-local 2>/dev/null || true
-                fi
-            else
-                echo "○ Creating neut-local cluster with PostgreSQL..."
-                # Run neut infra to set up the cluster
-                neut infra --no-cluster 2>/dev/null || {
-                    echo "  (Run 'neut infra' to complete setup)"
-                }
-            fi
-        else
-            echo "○ K3D not installed, installing..."
-            if command -v brew &>/dev/null; then
-                brew install k3d 2>/dev/null && echo "✓ K3D installed" || echo "  (Run 'neut infra' to install)"
-            else
-                curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash 2>/dev/null && echo "✓ K3D installed" || echo "  (Run 'neut infra' to install)"
-            fi
-        fi
-    else
-        echo "○ Docker not running"
-        echo "  Starting Docker Desktop..."
-        if [[ "$(uname)" == "Darwin" ]]; then
-            open -a Docker 2>/dev/null || true
-            echo "  (Waiting for Docker to start, then run bootstrap again)"
-        else
-            echo "  (Start Docker, then run bootstrap again)"
-        fi
-    fi
-else
-    echo "○ Docker not installed"
-    echo "  Docker Desktop is required for local PostgreSQL."
-    echo "  Download: https://www.docker.com/products/docker-desktop/"
-    if [[ "$(uname)" == "Darwin" ]]; then
-        read -r -p "  Open download page? [Y/n] " response
-        if [[ "$response" =~ ^[Yy]?$ ]]; then
-            open "https://www.docker.com/products/docker-desktop/" 2>/dev/null || true
-        fi
-    fi
-fi
-
+# Infrastructure (Docker/k3d/PostgreSQL), LLM credentials, and RAG indexing
+# are handled by `neut install`, which reads runtime/config/install.toml and
+# runs the right steps for the detected environment (local, rascal, tacc, ...).
+#
+# bootstrap.sh's job ends here: Python toolchain + shell integration only.
 # ═══════════════════════════════════════════════════════════════════════════
-# 5.5. Ollama (optional — local export-control classifier)
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "Step 5.5: Ollama (Local AI)"
-echo "----------------------------"
-
-if command -v ollama &>/dev/null; then
-    echo "✓ Ollama installed"
-
-    # Check if ollama serve is running
-    if curl -s --max-time 1 http://localhost:11434/api/tags &>/dev/null; then
-        echo "✓ Ollama serving"
-
-        # Check if the routing model is pulled
-        _ROUTING_MODEL="llama3.2:1b"
-        if curl -s --max-time 2 http://localhost:11434/api/tags | grep -q "llama3.2"; then
-            echo "✓ Routing model (${_ROUTING_MODEL}) available"
-        else
-            echo "○ Routing model not pulled — pulling ${_ROUTING_MODEL}..."
-            ollama pull "${_ROUTING_MODEL}" 2>/dev/null && \
-                echo "✓ ${_ROUTING_MODEL} pulled" || \
-                echo "  (Run 'ollama pull ${_ROUTING_MODEL}' to complete)"
-        fi
-    else
-        echo "○ Ollama not serving"
-        echo "  Start with: ollama serve &"
-    fi
-else
-    echo "○ Ollama not installed (optional)"
-    echo "  Ollama enables smart export-control classification for chat routing."
-    echo "  Without it, routing uses keyword matching only (still safe, less nuanced)."
-    if command -v brew &>/dev/null; then
-        echo ""
-        if [[ "$_BOOTSTRAP_SOURCED" != true ]] && [[ -t 0 ]]; then
-            read -r -p "  Install Ollama via Homebrew? [y/N] " _ollama_response || true
-            if [[ "$_ollama_response" =~ ^[Yy]$ ]]; then
-                brew install ollama
-                echo "  Starting Ollama..."
-                ollama serve &>/dev/null &
-                sleep 2
-                echo "  Pulling routing model..."
-                ollama pull llama3.2:1b 2>/dev/null && \
-                    echo "✓ Ollama installed and ready" || \
-                    echo "  (Run 'ollama pull llama3.2:1b' when ready)"
-            fi
-        else
-            echo "  Install with: brew install ollama"
-        fi
-    else
-        echo "  Install: https://ollama.com/download"
-    fi
-fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 6. Git hooks
@@ -537,14 +431,31 @@ echo "════════════════════════�
 echo "✅ Bootstrap Complete!"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
-echo "Next steps:"
-echo "  neut config                 # Set up API keys and facility config"
-echo "  neut status                 # Check what's ready"
+
+# ── Auto-run neut install if environment is detected ──────────────────────
+# neut install is idempotent — safe to call every time. It detects the
+# environment by hostname (or NEUT_ENV), runs only pending steps, and
+# skips completed ones. First run is interactive; reruns are silent.
+if command -v neut &>/dev/null; then
+    echo "Running environment setup..."
+    echo ""
+    neut install 2>/dev/null || {
+        echo ""
+        echo "  ○ No environment auto-detected."
+        echo "  Run one of:"
+        echo "    neut install --env local    # developer laptop"
+        echo "    neut install --env rascal   # UT Rascal server"
+        echo "    neut install --list         # see all environments"
+    }
+else
+    echo "Next steps:"
+    echo "  neut install               # set up credentials, infra, and RAG"
+fi
+
 echo ""
 echo "Then:"
 echo "  neut chat                   # Interactive agent"
-echo "  neut demo run               # Guided walkthrough (Jay's story)"
-echo "  neut signal brief            # Catch up on what happened"
+echo "  neut status                 # Check what's ready"
 echo ""
 
 # Clear shell command cache so 'neut' resolves to the new script

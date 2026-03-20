@@ -5,11 +5,37 @@
 # The gateway tries providers in priority order with automatic fallback.
 # All providers must speak the OpenAI chat completions format.
 #
+# ── Provider identity ─────────────────────────────────────────────────────────
+#
+# name  (REQUIRED, must be unique within this file)
+#   The stable identifier for this provider. Used as the primary key in all
+#   log records, audit trails, signal payloads, and cost attribution.
+#
+#   Rules:
+#     • Must be unique — two providers cannot share a name (second is skipped)
+#     • Should be stable — renaming a provider breaks historical log correlation
+#     • Use descriptive, lowercase, hyphenated names that survive config changes
+#
+#   Good examples:  "anthropic-sonnet-primary", "qwen-tacc-ec", "llama-internal"
+#   Bad examples:   "provider1", "test", "qwen" (not specific enough)
+#
+#   The gateway also computes two additional identity fields automatically —
+#   you do not need to set these:
+#     config_hash    8-char SHA-256 of (endpoint + model + routing_tier).
+#                    Stable while config is unchanged. Changes on config drift.
+#                    Appears in routing audit records so you can detect silent
+#                    endpoint or model changes even if 'name' stays the same.
+#     instance_id    UUID4 assigned at each Gateway startup. NOT stable across
+#                    restarts — intentionally — so forensic traces can tell
+#                    "provider loaded in the 2pm session" from "reloaded at 4pm
+#                    after a config edit."
+#
 # ── Routing fields ────────────────────────────────────────────────────────────
 #
-# routing_tier  (legacy binary — still honoured)
+# routing_tier  — three tiers
 #   "public"            → safe for cloud LLMs, no VPN needed
-#   "export_controlled" → VPN-gated, nuclear export-controlled queries only
+#   "restricted"        → private-network LLM; non-EC nuclear content; falls back to cloud
+#   "export_controlled" → TACC or equivalent EC-authorized environment only (future)
 #   "any"               → no restriction (default)
 #
 # routing_tags  (facility policy — additive, multiple providers can share tags)
@@ -63,14 +89,14 @@ format = "openai"
 
 # [[gateway.providers]]
 # name = "qwen-rascal"
-# endpoint = "https://10.159.142.118:41883/v1"   # UT rascal server (UT VPN required)
-# model = "qwen2.5-coder:32b"
-# api_key_env = "QWEN_API_KEY"
+# endpoint = "https://rascal.austin.utexas.edu:41883/v1"  # UT VPN required
+# model = "unsloth/Qwen3.5-122B-A10B-GGUF:Q4_K_M"        # 122B MoE / ~10B active, 256K ctx
+# api_key_env = "RASCAL_API_KEY"                          # set to: rascal-llm700
 # priority = 1
-# routing_tier = "export_controlled"
-# routing_tags = ["export_controlled", "private_network", "mcnp"]
-# requires_vpn = true
-# max_tokens_default = 8192   # reasoning models need headroom; 0 = use caller's value
+# routing_tier = "restricted"
+# routing_tags = ["restricted", "private_network"]
+# requires_vpn = true          # gateway does TCP check; skips if unreachable
+# verify_ssl = false           # self-signed cert on rascal
 # use_for = ["extraction", "synthesis", "fallback"]
 
 # Second private-network provider example — different capability tag:

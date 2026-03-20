@@ -33,6 +33,8 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from neutron_os.infra.state import LockedJsonFile
+
 # Add parent to path for imports
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
@@ -141,23 +143,16 @@ def update_markdown_version(markdown_path: Path, status: str, version: str, time
 
 
 def update_registry(state_path: Path, doc_id: str, metadata: dict) -> None:
-    """Update or create registry entry for document."""
-    if not state_path.exists():
-        state = {"documents": {}}
-    else:
-        with open(state_path) as f:
-            state = json.load(f)
-
-    if doc_id not in state["documents"]:
-        state["documents"][doc_id] = {}
-
-    # Update with new metadata
-    state["documents"][doc_id].update(metadata)
-
-    # Ensure proper formatting
+    """Update or create registry entry for document (multi-process safe)."""
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(state_path, "w") as f:
-        json.dump(state, f, indent=2)
+    with LockedJsonFile(state_path, exclusive=True) as f:
+        state = f.read()
+        if not isinstance(state, dict) or "documents" not in state:
+            state = {"documents": {}}
+        if doc_id not in state["documents"]:
+            state["documents"][doc_id] = {}
+        state["documents"][doc_id].update(metadata)
+        f.write(state)
 
 
 def main():

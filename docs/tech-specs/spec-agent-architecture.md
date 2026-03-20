@@ -1,5 +1,23 @@
 # NeutronOS Agent Architecture
 
+> **Implementation Status:** This spec covers both built-in agents (Signal, Chat, M-O, Doctor) and domain agents. Digital Twin Automation (GOAL_DT_001–005) is the flagship domain capability — see [Digital Twin Agent Architecture](#digital-twin-agent-architecture) below.
+
+---
+
+## Architecture Overview
+
+NeutronOS agents are modular, autonomous processes that perceive signals from the environment, reason using LLMs, and take bounded actions subject to safety guardrails. **Digital Twin Automation is the flagship capability** — agents that coordinate Shadow runs, ROM training, bias corrections, and model validation.
+
+| Agent Category | Primary Focus | Status |
+|---------------|--------------|--------|
+| **Digital Twin Agents** | Shadow orchestration, ROM lifecycle, bias monitoring | 🔲 Planned (flagship) |
+| **Signal Agent** | Program awareness, voice/document ingest | ✅ Shipped |
+| **Chat Agent** | Interactive LLM assistant | ✅ Shipped |
+| **M-O Agent** | Resource stewardship, system hygiene | ✅ Shipped |
+| **Doctor Agent** | System diagnostics, security health | ✅ Shipped |
+
+All agents follow the design principles and safety guardrails defined in [prd-agents.md](../requirements/prd-agents.md).
+
 ---
 
 ## Context: What Already Exists
@@ -39,7 +57,104 @@ Key design decisions already made:
 
 ---
 
-## What We're Adding: Neut Signal
+## Digital Twin Agent Architecture
+
+**This is the flagship capability.** Digital Twin agents automate the lifecycle of reactor digital twins — from data acquisition through ROM deployment. These agents coordinate with the infrastructure defined in [spec-digital-twin-architecture.md](spec-digital-twin-architecture.md).
+
+### Agent Overview
+
+```mermaid
+flowchart TB
+    subgraph DAQ["DAQ → Shadow"]
+        daq_in[Reactor DAQ] --> quality[Quality Check]
+        quality --> snapshot[State Snapshots]
+        snapshot --> shadow_submit[Submit Shadow]
+        shadow_submit --> notify[Notify Operator]
+    end
+
+    DAQ --> ROM
+
+    subgraph ROM["ROM Training"]
+        drift[Drift Detection] --> trigger[Training Trigger]
+        trigger --> train[Submit Training]
+        train --> validate[Validate ROM]
+        validate --> propose[Propose Deploy]
+    end
+
+    ROM --> Bias
+
+    subgraph Bias["Bias Update"]
+        deviations[Analyze Deviations] --> patterns[Detect Patterns]
+        patterns --> correction[Calc Correction]
+        correction --> review[Route to Operator]
+    end
+
+    style DAQ fill:#e3f2fd,color:#000000
+    style ROM fill:#fff3e0,color:#000000
+    style Bias fill:#e8f5e9,color:#000000
+```
+
+### CLI Design (`neut twin`)
+
+```bash
+# ─── SHADOW: Nightly physics code runs ───
+neut twin shadow status                 # Show last Shadow run status
+neut twin shadow trigger --facility=netl  # Manually trigger Shadow
+neut twin shadow history --days=30      # Show Shadow run history
+
+# ─── ROM: Reduced-order model lifecycle ───
+neut twin rom list                      # List deployed ROMs
+neut twin rom drift --model=triga-rom2  # Check ROM drift metrics
+neut twin rom train --model=triga-rom2  # Trigger retraining
+neut twin rom deploy --version=v2.1     # Deploy new ROM (requires approval)
+
+# ─── BIAS: Systematic correction monitoring ───
+neut twin bias analyze --facility=netl  # Analyze systematic deviations
+neut twin bias propose --correction=... # Submit bias correction proposal
+neut twin bias history                  # View correction history
+
+# ─── PREDICT: Real-time ROM inference ───
+neut twin predict --facility=netl       # Get current ROM prediction
+neut twin compare --run=run-2026-03-17  # Compare prediction vs measured
+```
+
+### Agent Code Structure
+
+```
+src/neutron_os/extensions/builtins/twin_agent/
+  __init__.py
+  daq_shadow_agent.py       # GOAL_DT_001: DAQ → Shadow workflow
+  rom_training_agent.py     # GOAL_DT_002: ROM retraining automation
+  bias_update_agent.py      # GOAL_DT_003: Bias correction proposals
+  operator_learning_agent.py # GOAL_DT_004: Operator feedback integration
+  rom_failure_handler.py    # GOAL_DT_005: ROM failure detection & recovery
+  cli.py                    # neut twin commands
+```
+
+### RACI Integration
+
+| Agent | Autonomous (Informed) | Requires Approval |
+|-------|----------------------|-------------------|
+| **DAQ → Shadow** | Routine data quality checks, Shadow submissions | Data quality below threshold, Shadow failures |
+| **ROM Training** | Drift monitoring, training job submission | New ROM deployment to production |
+| **Bias Update** | Deviation analysis, pattern detection | Application of bias corrections |
+| **Failure Handler** | Error detection, fallback activation | ROM disabling, operator alerts |
+
+### Data Quality Prerequisites
+
+Per Dr. Clarno's guidance, Digital Twin agents enforce data quality before Shadow runs:
+
+| Check | Validation | Action on Failure |
+|-------|------------|-------------------|
+| Time synchronization | Rod position, neutron power, Cherenkov aligned | Alert data team, delay Shadow |
+| Correlation | Rod movements → predictable power response | Flag for manual review |
+| Noise characterization | Distinguish correlated physics from noise | Filter or flag spikes |
+
+---
+
+## Signal Agent Architecture
+
+### What We're Adding: Neut Signal
 
 A new CLI noun (`neut signal`) that extends the existing `neut` command structure. Neut Signal is the
 agentic module for continuous program awareness — ingesting signals from multiple
@@ -100,8 +215,8 @@ neut infra  — Infrastructure management          (platform-facing)
 
 Neut Signal is unique: it's the only noun that runs proactively (heartbeat) and
 synthesizes across sources rather than querying a single system. But it follows
-the same patterns: offline-first, human-in-the-loop for writes, JSON/table
-output formats.
+the same patterns: offline-first, RACI-governed autonomy (per-user per-agent
+trust levels), JSON/table output formats.
 
 ---
 
@@ -428,25 +543,38 @@ Every agent action checks the user's RACI preference before executing.
 See [Agents PRD — RACI Framework](../requirements/prd-agents.md) for
 the full design.
 
+**Three-dimensional trust model:** RACI settings are scoped to the
+combination of **user** (identified) + **agent** (specific) + **action**
+(category). Trust doesn't transfer between agents — each agent builds
+its own track record with each user.
+
 ```python
 # In any agent before taking action:
-from neutron_os.infra.raci import check_raci
+from neutron_os.infra.raci import check_raci, RACILevel, EmergencyMode
 
-level = check_raci("issue.update")  # Reads from neut settings
+# Check RACI for this specific agent + action combination
+level = check_raci(agent="eve", action="issue.update")
 
-if level == "execute":
+# Emergency mode check (takes precedence)
+if level.emergency_mode == EmergencyMode.FREEZE:
+    return  # Do nothing — agent is frozen
+if level.emergency_mode == EmergencyMode.LOG_INTENT_ONLY:
+    log_intent(action="issue.update", target=issue_url, body=body)
+    return  # Log but don't execute or propose
+
+if level == RACILevel.EXECUTE:
     # R or I — just do it (notify if I)
     provider.add_comment(issue_url, body)
-    if level_is_informed:
+    if level.notify:
         notify(f"Updated issue #{iid}")
 
-elif level == "approve":
-    # A — pause for human
+elif level == RACILevel.APPROVE:
+    # A — pause for human (also used in PROPOSE_ONLY emergency mode)
     print(f"  Update issue #{iid}? [Y/n]")
     if confirmed():
         provider.add_comment(issue_url, body)
 
-elif level == "consult":
+elif level == RACILevel.CONSULT:
     # C — show context, ask for input
     print(f"  Proposed comment on #{iid}:")
     print(f"  {body[:200]}...")
@@ -454,16 +582,25 @@ elif level == "consult":
     ...
 ```
 
-**Settings storage:**
+**Settings storage (per-agent):**
 ```bash
-neut settings set raci.issue.update informed    # Trust EVE to update issues
-neut settings set raci.publish.document approve  # Still approve publishes
+neut settings set raci.eve.issue.update informed     # Trust EVE to update issues
+neut settings set raci.prt.publish.document approve  # PR-T still needs approval
+neut settings set raci.*.issue.create approve        # All agents need approval to create issues
+```
+
+**Emergency controls:**
+```bash
+neut raci all-propose-only          # All agents pause for approval
+neut raci all-log-intent-only       # All agents log intent, no proposals
+neut raci all-freeze                # All agents stop processing
+neut raci resume                    # Restore pre-emergency settings
 ```
 
 **Default RACI per ActionCategory:**
 - `ActionCategory.READ` → Informed (auto-execute, notify)
 - `ActionCategory.WRITE` → Approve (pause for confirmation)
-- Safety-adjacent actions → always Approve (NSG-005 override)
+- Safety-adjacent actions → always Approve (NSG-005 override, cannot be loosened)
 
 For RAG: the gateway doesn't own RAG. RAG is a capability of the extractors
 and the `neut chat` module. The extractors use the gateway to call an LLM,
@@ -594,7 +731,48 @@ WantedBy=default.target
 
 ## Implementation Plan
 
-### Week 1: Audio Pipeline (Voice Memos + Teams)
+### Phase 1: Digital Twin Agent Foundation (Priority)
+
+**Goal:** Formalize the existing VERA Shadow workflow into NeutronOS agent framework.
+
+> **Building on existing work:** Shadowcaster already runs nightly VERA simulations and emails daily predictions. Phase 1 extracts this workflow into the NeutronOS agent framework, generalizing for multi-reactor support.
+
+**Build order:**
+1. `src/neutron_os/extensions/builtins/twin_agent/daq_shadow_agent.py` — Generalize Shadowcaster's TRIGA workflow
+2. `src/neutron_os/extensions/builtins/twin_agent/cli.py` — `neut twin` commands
+3. Data quality validation hooks (time sync, correlation checks per Dr. Clarno)
+4. Integration with existing PostgreSQL schema (`shadowcaster_data`, `triga_derived_data`)
+5. Operator notification pipeline (email + optional Teams webhook)
+
+**Deliverable:** `neut twin shadow status` and `neut twin shadow trigger` operational for NETL TRIGA, with data quality prereqs enforced.
+
+### Phase 2: ROM Lifecycle Agents
+
+**Goal:** Automate ROM retraining and drift monitoring.
+
+**Build order:**
+1. `src/neutron_os/extensions/builtins/twin_agent/rom_training_agent.py` — Training trigger logic
+2. Drift detection metrics and thresholds
+3. Training job submission to HPC scheduler
+4. ROM validation against holdout data
+5. Deployment proposal workflow (requires human approval)
+
+**Deliverable:** `neut twin rom drift` detects degradation; `neut twin rom train` submits jobs with reproducible configs.
+
+### Phase 3: Bias & Failure Handling
+
+**Goal:** Autonomous bias correction proposals and ROM failure recovery.
+
+**Build order:**
+1. `src/neutron_os/extensions/builtins/twin_agent/bias_update_agent.py` — Systematic deviation analysis
+2. `src/neutron_os/extensions/builtins/twin_agent/rom_failure_handler.py` — Fallback chains
+3. Calibration target tracking (per Dr. Clarno: cross sections, initial isotopes, geometry)
+
+**Deliverable:** `neut twin bias analyze` detects systematic patterns; ROM failures trigger automatic fallback to Shadow.
+
+---
+
+### Signal Agent: Week 1 — Audio Pipeline (Voice Memos + Teams)
 
 **Goal:** Record a meeting → get a structured, correlated summary within minutes.
 
@@ -629,7 +807,7 @@ Subsequent recordings:
 both produce structured JSON in `inbox/processed/` with named speakers,
 decisions, action items, and initiative correlations.
 
-### Week 2: GitLab + Linear Diff Summaries
+### Signal Agent: Week 2 — GitLab + Linear Diff Summaries
 
 **Goal:** Weekly human-readable summary of what changed across all repos.
 
@@ -654,7 +832,7 @@ decisions, action items, and initiative correlations.
 - MIT Irradiation Loop — 41 open issues, 0 commits in 90 days
 ```
 
-### Week 3: Synthesis + Tracker Update
+### Signal Agent: Week 3 — Synthesis + Tracker Update
 
 **Goal:** Merge all signals → generate tracker diff → apply on approval.
 
@@ -663,7 +841,7 @@ decisions, action items, and initiative correlations.
 2. Publisher module — Apply approved diff to xlsx + push to OneDrive
 3. `neut signal draft` and `neut signal publish` commands
 
-### Week 4: Heartbeat + Notifications
+### Signal Agent: Week 4 — Heartbeat + Notifications
 
 **Goal:** Agent proactively checks for new inputs and alerts when needed.
 
@@ -700,7 +878,7 @@ is .gitignored.
 
 ### Design Principles
 - **Extend, don't replace:** `meeting-intake` is an extractor that Neut Signal orchestrates
-- **Human-in-the-loop:** All writes require explicit approval
+- **RACI-governed autonomy:** Write actions follow user's per-agent RACI settings; safety-critical actions always require approval (NSG-005)
 - **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
 - **IDE-agnostic:** CLI-first, no IDE plugins, MCP server for tool integration
 - **Offline-first:** Follows neut CLI spec — queue locally, sync on restore

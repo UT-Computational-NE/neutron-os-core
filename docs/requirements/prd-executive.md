@@ -5,7 +5,7 @@
 | Property | Value |
 |----------|-------|
 | Version | 2.0 |
-| Last Updated | 2026-03-17 |
+| Last Updated | 2026-03-20 |
 | Status | Active Development (v0.4.0) |
 | Product Owner | Ben Booth |
 
@@ -62,7 +62,8 @@ NeutronOS is a **modular digital platform for nuclear facilities**. It replaces 
 | [Resource Stewardship](prd-agent-state-management.md) | **M-O** (Micro-Obliterator) | Data retention, system hygiene, scratch management |
 | [Diagnostics](../tech-specs/spec-executive.md) | **D-FIB** (Defib) | System health, security scans, configuration audit |
 | [Export Control Routing](../tech-specs/spec-model-routing.md) | **Neut** (Orchestrator) | Two-tier LLM routing, sensitivity classification |
-| [Knowledge Retrieval](../tech-specs/spec-rag-architecture.md) | RAG | Three-tier corpus (community / facility / personal) |
+| [Knowledge Infrastructure](prd-rag.md) | RAG | Domain packs · three-store (public/restricted/EC) · knowledge maturity pipeline |
+| [Prompt Registry](../tech-specs/spec-prompt-registry.md) | Platform | Versioned prompt templates, caching hints, audit trail |
 | [External Connections](../tech-specs/spec-connections.md) | Connections | Unified auth for OneDrive, Box, GitHub, GitLab, Teams |
 
 ### Security & Access Control
@@ -126,6 +127,9 @@ gantt
     Reactor Ops Log                          :n1, 2026-04, 2026-06
     Experiment Manager                       :n2, 2026-04, 2026-06
     Security (OpenFGA)                       :n3, 2026-05, 2026-07
+    Agentic RAG + Interaction Log            :n4, 2026-04, 2026-06
+    Prompt Registry                          :n5, 2026-04, 2026-06
+    Knowledge Maturity Pipeline              :n6, 2026-05, 2026-07
     section Future
     Digital Twin Hosting                     :ft1, 2026-07, 2026-10
     Multi-Facility Support                   :ft2, 2026-08, 2027-01
@@ -172,6 +176,10 @@ This executive PRD is the entry point. Each capability has its own detailed PRD 
 | [Publisher](../tech-specs/spec-publisher.md) | Document lifecycle, format-endpoint compatibility |
 | [Data Architecture](../tech-specs/spec-data-architecture.md) | Medallion pattern, Iceberg, schemas |
 | [Digital Twin](../tech-specs/spec-digital-twin-architecture.md) | Surrogate models, WASM runtime |
+| [Glossary System](../tech-specs/spec-glossary-system.md) | glossary.toml format, roll-up, `neut glossary` CLI |
+| [Prompt Registry](../tech-specs/spec-prompt-registry.md) | Versioned templates, composition model, caching |
+| [RAG Knowledge Maturity](../tech-specs/spec-rag-knowledge-maturity.md) | Layers 0-5, interaction log, crystallization, M-O sweep |
+| [Observability](../tech-specs/spec-observability.md) | Metrics taxonomy, alerting, distributed traces |
 
 ### Architecture Decisions
 
@@ -207,4 +215,4 @@ NeutronOS is developed at UT Austin's Department of Mechanical Engineering, Nucl
 
 ---
 
-*For technical architecture, see the [Executive Tech Spec](../tech-specs/spec-executive.md). For terminology, see the [Glossary](../glossary.md). For the CLI, run `neut --help`.*
+*For technical architecture, see the [Executive Tech Spec](../tech-specs/spec-executive.md). For terminology, see the [Glossary](../glossary.md) (human-readable) or run `neut glossary <term>` (machine-queryable, sourced from `docs/glossary-axiom.toml` + `docs/glossary-neutronos.toml`). For the CLI, run `neut --help`.*

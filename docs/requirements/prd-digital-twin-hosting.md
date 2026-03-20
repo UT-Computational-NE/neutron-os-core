@@ -4,9 +4,11 @@
 
 **Product:** NeutronOS Digital Twin Hosting Platform  
 **Status:** Draft  
-**Last Updated:** 2026-03-17  
+**Last Updated:** 2026-03-18  
+**Owner:** Ben Booth  
+**Technical Lead:** Dr. Kevin Clarno  
 **Parent:** [Executive PRD](prd-executive.md)  
-**Related:** [Model Corral PRD](prd-model-corral.md), [Data Platform PRD](prd-data-platform.md), [Streaming Architecture ADR](adr-007-streaming-first-architecture.md)
+**Related:** [Model Corral PRD](prd-model-corral.md), [Data Platform PRD](prd-data-platform.md), [Streaming Architecture ADR](adr-007-streaming-first-architecture.md), [Agent Architecture Spec](../tech-specs/spec-agent-architecture.md)
 
 ---
 
@@ -36,10 +38,10 @@ This PRD covers **hosting** — the runtime infrastructure that:
 ### Current State
 
 1. **Local Execution Only** — Physics codes run on individual workstations; no central orchestration
-2. **Run Tracking Gaps** — TRIGA's Shadowcaster pioneered the concept but uses naming conventions that don't follow standard database schema conventions
+2. **TRIGA-Specific Run Tracking** — Shadowcaster pioneered the workflow (VERA simulations → PostgreSQL → prediction emails), but its schema is TRIGA-specific and doesn't generalize to other reactor types without significant refactoring
 3. **ROM Accuracy Gap** — Existing ROMs (e.g., John Ross demo) show limited predictive capability
 4. **No Real-Time Path** — No infrastructure for ROM predictions at control-room latencies
-5. **Manual Validation** — Comparison to measured data is ad-hoc, not systematic
+5. **Limited Validation Self-Service** — Jay's TRIGA Digital charts compare predictions to measurements effectively, but adding new comparisons requires developer involvement rather than user configuration
 6. **Single-Reactor Focus** — Current tools built for TRIGA only; no path to multi-reactor
 
 ### Consequences
@@ -47,10 +49,25 @@ This PRD covers **hosting** — the runtime infrastructure that:
 | Problem | Impact |
 |---------|--------|
 | No orchestration | Engineers wait for HPC access; jobs run in isolation |
-| Poor tracking | Cannot answer "what ran, when, with what inputs?" |
+| TRIGA-specific tracking | Shadowcaster tracks runs for TRIGA, but adding new reactor types requires significant refactoring |
 | ROM accuracy | Cannot trust predictions for operational decisions |
 | No real-time | Control room gets sensor data only, no predictions |
-| Manual validation | Model drift undetected until major discrepancy |
+| Custom validation tooling | Adding new comparisons requires developer time; no self-service |
+
+### Data Quality Prerequisites
+
+Before ROMs can add operational value, the input data must be validated. Per Dr. Clarno, ROMs can only predict **physics-based changes** — they cannot predict or filter noise. If DAQ data has excessive noise, the ROM may appear "accurate" by falling within large measurement error bars, but it cannot provide actionable real-time guidance.
+
+**Validation requirements before ROM deployment:**
+
+| Requirement | Description | Owner |
+|-------------|-------------|-------|
+| Time synchronization | Rod position, neutron detector power, and Cherenkov power signals must be time-aligned | Max (DAQ) |
+| Correlation analysis | Verify that rod movements induce predictable power responses | Sam (Data Cleaning) |
+| Noise characterization | Quantify signal-to-noise ratio; determine physics vs. noise contributions | Sam/Jay |
+| Measurement uncertainty | Document uncertainty bounds for each sensor type | Ben C. (SQA) |
+
+**Correlation test:** When rods move, there should be a predictable power response. Only when Cherenkov and neutron spikes/dips are correlated can we attribute fluctuations to physics rather than noise.
 
 ---
 
@@ -72,44 +89,46 @@ The term originated in the TRIGA digital twin work (Shadowcaster) and NeutronOS 
 
 Per Dr. Kevin Clarno's architectural vision, Digital Twin Hosting supports a tiered model hierarchy:
 
+```mermaid
+flowchart TB
+    subgraph Physics["Physics Codes"]
+        codes["MCNP • VERA • SAM<br/>Griffin • RELAP • OpenMC<br/>BISON • MPACT"]
+    end
+    
+    Physics --> Shadow
+    
+    subgraph Shadow["Shadow"]
+        shadow_desc["Calibrated baseline<br/>(VERA/MCNP)"]
+    end
+    
+    Shadow --> ROM1
+    Shadow --> ROM2
+    Shadow --> ROM3
+    
+    subgraph ROMs["ROMs"]
+        ROM1["ROM-1: Transient Low-Res<br/>Latency <0.1s • Controls"]
+        ROM2["ROM-2: Quasi-Static<br/>Latency 5-20s • Monitoring"]
+        ROM3["ROM-3: Transient High-Res<br/>Latency <5min • Viz"]
+        ROM4["ROM-4: Planning (Optional)"]
+        ROM1 --> ROM4
+        ROM2 --> ROM4
+        ROM3 --> ROM4
+    end
+    
+    style Physics fill:#ffccbc,color:#000000
+    style Shadow fill:#fff3e0,color:#000000
+    style ROMs fill:#e3f2fd,color:#000000
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      Digital Twin Model Hierarchy                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    HIGH-FIDELITY PHYSICS CODES                       │   │
-│   │  MCNP • VERA • SAM • Griffin • RELAP • OpenMC • BISON • MPACT       │   │
-│   │                                                                      │   │
-│   │  Resolution: Maximum    Latency: Hours-Days    Use: Analysis/Shadow │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                    │                                         │
-│                                    ▼                                         │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                         SHADOW (VERA/MCNP)                           │   │
-│   │           Calibrated high-fidelity baseline for analysis             │   │
-│   │                                                                      │   │
-│   │  Resolution: High       Latency: Nightly       Use: Ground Truth    │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                    │                                         │
-│                    ┌───────────────┼───────────────┐                        │
-│                    ▼               ▼               ▼                        │
-│   ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐              │
-│   │     ROM-1       │ │     ROM-2       │ │     ROM-3       │              │
-│   │   Transient     │ │  Quasi-Static   │ │   Transient     │              │
-│   │    Low-Res      │ │   Low-Space/    │ │    High-Res     │              │
-│   │                 │ │   High-Energy   │ │                 │              │
-│   │ Latency: <0.1s  │ │ Latency: 5-20s  │ │ Latency: <5min  │              │
-│   │ Rate: 10 Hz     │ │ Rate: On-demand │ │ Rate: On-demand │              │
-│   │ Use: Controls   │ │ Use: Monitoring │ │ Use: Comms/Viz  │              │
-│   └─────────────────┘ └─────────────────┘ └─────────────────┘              │
-│                                                                              │
-│   ┌─────────────────┐                                                       │
-│   │     ROM-4       │  (Optional: Quasi-static high-res for planning)      │
-│   └─────────────────┘                                                       │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+
+**Resolution Summary:**
+| Tier | Resolution | Latency | Primary Use |
+|------|------------|---------|-------------|
+| Physics Codes | Maximum | Hours-Days | Analysis/Shadow |
+| Shadow | High | Nightly | Ground Truth |
+| ROM-1 | Low | <0.1s | Real-time Controls |
+| ROM-2 | Medium | 5-20s | Monitoring |
+| ROM-3 | High | <5min | Communication/Viz |
+| ROM-4 | High | Minutes | Planning (Optional) |
 
 ---
 
@@ -325,7 +344,7 @@ flowchart TB
 
 ### Run Tracking Schema
 
-Generalizing Shadowcaster's TRIGA-specific approach into a facility-agnostic RDBMS schema:
+Building on Shadowcaster's proven TRIGA workflow, we define a facility-agnostic RDBMS schema that can track runs across multiple reactor types:
 
 ```sql
 -- Core run table
@@ -642,35 +661,41 @@ class MSRProvider(ReactorProvider):
 
 ### Export Control Architecture
 
+```mermaid
+flowchart TB
+    subgraph Public["PUBLIC"]
+        pub_data["Generic benchmarks<br/>Educational"]
+        pub_compute["Cloud Burst"]
+        pub_data --> pub_compute
+    end
+    
+    Public --> Facility
+    
+    subgraph Facility["FACILITY"]
+        fac_data["TRIGA/MIT configs"]
+        fac_compute["Secure HPC"]
+        fac_data --> fac_compute
+    end
+    
+    Facility --> EC
+    
+    subgraph EC["EC"]
+        ec_data["Commercial/ITAR"]
+        ec_compute["Isolated HPC"]
+        ec_data --> ec_compute
+    end
+    
+    style Public fill:#c8e6c9,color:#000000
+    style Facility fill:#fff3e0,color:#000000
+    style EC fill:#ffcdd2,color:#000000
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          Export Control Boundaries                           │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   PUBLIC TIER                    FACILITY TIER              EC TIER         │
-│   ────────────                   ─────────────              ───────         │
-│                                                                              │
-│   ┌─────────────┐               ┌─────────────┐           ┌─────────────┐  │
-│   │ Generic PWR │               │ TRIGA NETL  │           │ Commercial  │  │
-│   │ benchmarks  │               │ specific    │           │ reactor     │  │
-│   │             │               │ configs     │           │ designs     │  │
-│   │ Educational │               │             │           │             │  │
-│   │ examples    │               │ MIT Loop    │           │ ITAR        │  │
-│   │             │               │ specific    │           │ controlled  │  │
-│   └─────────────┘               └─────────────┘           └─────────────┘  │
-│         │                             │                         │          │
-│         ▼                             ▼                         ▼          │
-│   ┌─────────────┐               ┌─────────────┐           ┌─────────────┐  │
-│   │ Cloud Burst │               │ Secure HPC  │           │ Secure HPC  │  │
-│   │ (Public)    │               │ (Facility)  │           │ (Isolated)  │  │
-│   │             │               │             │           │             │  │
-│   └─────────────┘               └─────────────┘           └─────────────┘  │
-│                                                                              │
-│   Network: Internet              Network: VPN               Network: VPN    │
-│   Auth: None                     Auth: Institution          Auth: Cleared   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+
+**Access Control Summary:**
+| Tier | Network | Authentication | Data Types |
+|------|---------|----------------|------------|
+| Public | Internet | None | Generic benchmarks, educational |
+| Facility | VPN | Institution credentials | Facility-specific configs |
+| EC | VPN | Security clearance | Commercial designs, ITAR |
 
 **Compute Target Routing:**
 ```python
@@ -750,6 +775,8 @@ neut twin report --facility=netl --month=2026-03
 ```
 
 ### Web Interface
+
+> **Building on TRIGA Digital Web:** Jay's Flask-based TRIGA Digital website demonstrates effective patterns for reactor visualization—Plotly charts comparing predicted vs measured rod heights, bias-corrected overlays, and rod worth shadowing comparisons. The NeutronOS web interface generalizes these proven patterns to support multiple reactor types while preserving the interactive comparison workflows that operators find valuable.
 
 The Digital Twin web interface is a React application integrated into the NeutronOS portal:
 
@@ -1140,19 +1167,120 @@ Just as automotive autonomy progressed through demonstrated safety at each level
 
 ---
 
-## Open Questions
+## Resolved Questions (Dr. Clarno, 2026-03)
 
-1. **Autonomy progression** — What specific metrics and durations constitute sufficient proof at each NAL level? Who validates the progression proofs?
+These questions were posed to Dr. Kevin Clarno and his responses inform the architecture:
 
-2. **John Ross replacement** — Who takes ownership of transient ROM development? What's the transition plan from legacy code?
+### 1. Autonomy Progression Metrics
 
-3. **VERA capability** — What's Veracity's involvement scope? License availability for continuous Shadow runs?
+**Question:** What specific metrics constitute sufficient proof at each NAL level?
 
-4. **Cross-facility Shadow** — Can one canonical Shadow model serve multiple TRIGA facilities, or does each need calibration?
+**Resolution:** Before defining progression metrics, we must first validate data quality. The prerequisite is demonstrating that DAQ data is useful:
 
-5. **Commercial reactor support** — What's the pathway for onboarding a commercial reactor customer? Export control workflow?
+- **Time synchronization** — Rod position, neutron detector power, and Cherenkov power must be time-synchronized
+- **Correlation validation** — When rods move, we should see a predictable power response; only correlated spikes/dips in Cherenkov and neutron signals indicate real physics (vs. noise)
+- **Noise characterization** — If data has massive noise, we can display measurement uncertainty and the DT will appear "accurate" by being within error bars — but it can't add real-time operational value
 
-6. **Failure modes** — How do we handle ROM prediction failures gracefully? Fallback to last-known-good?
+> "Our ROM can only predict physics-based changes — not noise. If they have too much noise in the data we give them, it's hard for us to do much with it."
+
+Progression metrics should be defined *after* data quality validation demonstrates the ROM can distinguish signal from noise.
+
+### 2. John Ross Replacement
+
+**Question:** Who takes ownership of transient ROM development? What's the transition plan?
+
+**Resolution:** No immediate replacement required. If the current ROM is within measured uncertainty most of the time (likely), we may not need to "improve" it for a while. This becomes a **maintenance and SQA management issue** rather than a development priority.
+
+The John Ross ROM disposition (marked "Replace" in this PRD) should be updated to "Maintain/SQA" pending validation results. New development deferred until validation shows the current approach is insufficient.
+
+### 3. VERA Capability & Veracity Scope
+
+**Question:** What's Veracity's involvement scope? License availability for continuous Shadow runs?
+
+**Resolution:** **We have a VERA license and are actively using it:**
+
+| Capability | Status |
+|------------|--------|
+| VERA license | ✅ Active |
+| Shadow nightly runs | ✅ Operational — sends daily email to operators with predicted initial critical rod height |
+| Veracity contract | ✅ Open contract for NETL and MSR multi-physics DT needs |
+| Feedback loop | ✅ Regular meetings, issue reporting, pulling modified builds on TACC |
+
+No license or availability blockers for continuous Shadow operation.
+
+### 4. Cross-Facility Shadow
+
+**Question:** Can one canonical Shadow serve multiple TRIGA facilities?
+
+**Resolution:** **VERA can serve as the high-fidelity code for multiple reactors**, but each requires its own calibration because:
+
+- Reactor design inputs vary significantly between TRIGAs
+- Operational history is unique to each facility
+- Calibration parameters are facility-specific
+
+**Calibration targets** (what we adjust to match measurements):
+
+| Target | Description | Notes |
+|--------|-------------|-------|
+| Nuclear data cross sections | Distributed with estimated uncertainties/covariances | Key: recoverable energy per fission, U-238 capture at 6.7 eV resonance |
+| Initial fuel isotopes | At some arbitrary reference date (e.g., 5 cycles ago) | Establishes baseline for depletion tracking |
+| Geometry | Material dimensions may not be precisely known | Accounts for manufacturing tolerances |
+
+> "If you get [recoverable energy per fission and U-238 capture at 6.7 eV resonance] right, most everything else works out."
+
+### 5. Commercial Reactor Pathway
+
+**Question:** What's the pathway to onboarding a commercial reactor customer?
+
+**Resolution:** The pathway depends dramatically on reactor type:
+
+| Market | Viability | Rationale |
+|--------|-----------|----------|
+| **Existing commercial reactors** | ❌ Not realistic | Don't collect right data; instrumentation is old and won't change; processes written in stone. "They are a cash cow making $1-2M/day, which means you don't mess with anything — just keep milking it." |
+| **Advanced reactors** | ⚠️ Early engagement required | Must work with us from design beginning to understand instrumentation needs. Must translate capability to revenue, savings, or innovation speed — or they won't buy. |
+| **Research and test reactors** | ✅ Obvious fit | Natural candidates, but R&D budgets are first to be cut when projects go over budget. |
+
+**Strategic guidance:**
+
+> "Find the people that are certain they're going to build a suite of reactors and understand they want to really understand the importance of the first few, and you'll find your industry partner."
+
+### 6. Failure Mode Handling
+
+**Question:** How should we handle ROM prediction failures gracefully?
+
+**Resolution:** Failure handling depends on **what failed** and **which use case**:
+
+#### Failure Type Clarification
+
+| Failure Type | Description |
+|--------------|-------------|
+| ROM failure | The ROM code itself crashes or returns invalid output |
+| Application failure | The system using ROM output (dashboard, control loop) fails |
+| Accuracy failure | ROM runs but predictions don't match measurements |
+
+#### Failure Mode Matrix by Use Case
+
+| Use Case | ROM Tier | Failure Consequence | Handling |
+|----------|----------|---------------------|----------|
+| **Semi-autonomous operation** | ROM-1 | Bad answer could tell central thimble rod to do wrong thing | **True control rods are still in place and can scram** to keep reactor safe. Take ROM offline and investigate. |
+| **Transient data display** | ROM-1/2 | No operational consequence | Catastrophic: ROM goes dark or shows ugly projections, operators ignore. Minor: Flag disagreement for later analysis. |
+| **Planning/analysis** | ROM-3/4 | Decisions based on wrong predictions | More robust — time-averaged data offsets bad data impact. Flag outliers for investigation. |
+
+#### Failure Investigation Checklist
+
+When ROM and measurement disagree, investigate both sides:
+
+**Model side:**
+- Input data to ROM
+- ROM code execution
+- Output interpretation
+
+**Measurement side:**
+- Instrumentation
+- Control system data path
+- Data cleaning/preprocessing
+
+> "It may not have an easy answer."
 
 ---
 
@@ -1178,8 +1306,8 @@ Just as automotive autonomy progressed through demonstrated safety at each level
 |----------------|-------------|
 | `spec-digital-twin-architecture.md` | **Major revision** — Good foundation but pre-requirements; needs ROM tiers, Shadow detail |
 | Model Corral (this PRD's companion) | **Integrate** — Provides model registry; DT Hosting consumes |
-| Shadowcaster | **Replace** — New run tracking schema in this PRD |
+| Shadowcaster | **Generalize** — Keep working TRIGA workflow, extract reactor-agnostic abstractions for new reactor types |
 | DeepLynx | **Complement** — Ontology/relationships; NeutronOS handles operational execution |
-| John Ross ROM code | **Replace** — Per Clarno, needs new owner, new architecture |
+| John Ross ROM code | **Maintain/SQA** — Per Clarno, if within measured uncertainty, becomes maintenance/SQA issue rather than replacement |
 | WASM Surrogate Spike | **Complete** — Finish spike, deploy for ROM-1/ROM-2 inference |
 | Streaming ADR-007 | **Leverage** — Use Redpanda for real-time data flow |

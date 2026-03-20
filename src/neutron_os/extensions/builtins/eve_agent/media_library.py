@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Optional, Literal
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 MEDIA_INDEX_PATH = _RUNTIME_DIR / "inbox" / "cache" / "media_index.json"
 MEDIA_EMBEDDINGS_PATH = _RUNTIME_DIR / "inbox" / "cache" / "media_embeddings.json"
@@ -261,8 +262,8 @@ class MediaLibrary:
             "item_count": len(self._items),
             "items": [item.to_dict() for item in self._items.values()],
         }
-        self.index_path.write_text(json.dumps(data, indent=2))
-        self.embeddings_path.write_text(json.dumps(self._embeddings))
+        atomic_write(self.index_path, data)
+        atomic_write(self.embeddings_path, self._embeddings)
 
     def _get_embedder(self):
         """Get embedding provider (lazy load)."""

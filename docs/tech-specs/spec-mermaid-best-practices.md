@@ -137,6 +137,70 @@ graph LR
 
 **Fix:** ALWAYS specify `color:#333` or `color:#fff` in every `style` statement.
 
+### ❌ Anti-Pattern 4: Invisible Edges (Missing `linkStyle`)
+
+**Problem:** Mermaid renders edges as thin light-grey lines by default. Inside or between
+light-background subgraphs these lines are nearly invisible, especially in rendered markdown
+viewers and exported Word docs.
+
+**Fix:** Always declare `linkStyle` for every edge in diagrams that use subgraphs or light
+backgrounds. Edges are indexed in the order they are declared in the diagram source (0-based).
+
+```
+    A --> B        ← linkStyle 0
+    B --> C        ← linkStyle 1
+    A -- "label" --> D   ← linkStyle 2
+```
+
+```
+    linkStyle 0 stroke:#1565c0,stroke-width:2px
+    linkStyle 1 stroke:#2e7d32,stroke-width:2px
+    linkStyle 2 stroke:#e65100,stroke-width:2.5px,stroke-dasharray:5 5
+```
+
+**Color convention:** match the edge color to the source node's fill color for visual clarity.
+Use `stroke-dasharray:5 5` for "restricted / partial / future" connections to signal they differ
+from primary data flows.
+
+**Minimum stroke-width:** `2px` for internal edges, `2.5px` for cross-subgraph edges.
+
+---
+
+### ❌ Anti-Pattern 5: Nodes Inside Light Subgraphs Inherit Default Styling
+
+**Problem:** Nodes inside a `fill:#e3f2fd` subgraph still render with Mermaid's default
+light-grey node fill. The light-on-light combination makes both the node box and its text
+hard to read.
+
+**Fix:** Explicitly style every node — not just subgraphs. Use dark fills with white text
+for nodes inside light subgraphs so they stand out from the background.
+
+```
+    subgraph GroupA["My Group"]
+        N1["Node One"]
+        N2["Node Two"]
+        N1 --> N2
+    end
+
+    style GroupA fill:#e3f2fd,color:#000000
+    style N1 fill:#1565c0,color:#ffffff      ← dark fill, white text — visible on light bg
+    style N2 fill:#1565c0,color:#ffffff
+    linkStyle 0 stroke:#1565c0,stroke-width:2px
+```
+
+**Color palette for nodes inside subgraphs:**
+
+| Subgraph background | Recommended node fill | Node text |
+|---|---|---|
+| `#e3f2fd` (light blue) | `#1565c0` (dark blue) | `#ffffff` |
+| `#c8e6c9` (light green) | `#2e7d32` (dark green) | `#ffffff` |
+| `#fff3e0` (light orange) | `#e65100` (dark orange) | `#ffffff` |
+| `#f3e5f5` (light purple) | `#6a1b9a` (dark purple) | `#ffffff` |
+| `#fce4ec` (light red) | `#b71c1c` (dark red) | `#ffffff` |
+
+Add this reference implementation to the examples section:
+`spec-rag-pack-server.md §2` — multi-subgraph diagram with per-node dark fills + full `linkStyle` declarations.
+
 ---
 
 ## Automated Enforcement
@@ -165,3 +229,4 @@ The script checks for:
 - **Complete Picture Architecture** (`docs/research/deeplynx-assessment.md` §6.1): 4-layer horizontal architecture with invisible spacers in each subgraph
 - **Query Evolution Diagram** (`docs/research/deeplynx-assessment.md` §5.1): Dual-path flow with explicit color assignments
 - **SCENARIO: Active Partnership** (`docs/research/deeplynx-assessment.md` §9.1): Complex flowchart with 17 styled nodes
+- **Pack Server Architecture** (`docs/tech-specs/spec-rag-pack-server.md` §2): Multi-subgraph diagram with per-node dark fills, color-coded `linkStyle` declarations, and dashed edges for restricted flows — canonical example of Anti-Patterns 4 and 5 fixed

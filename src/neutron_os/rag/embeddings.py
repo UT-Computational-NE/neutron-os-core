@@ -1,12 +1,17 @@
 """Embedding generation with automatic provider fallback.
 
 Provider chain:
-1. OpenAI API (text-embedding-3-small) — if OPENAI_API_KEY set and quota available
-2. Ollama local (nomic-embed-text) — free, offline, no API key needed
-3. None — caller handles fallback (e.g., keyword search)
+1. Remote embed endpoint (NEUT_EMBED_URL env var) — any OpenAI-compatible /v1/embeddings server
+   e.g. a nomic-embed-text llama.cpp instance on Rascal or another VPN host
+2. OpenAI API (text-embedding-3-small) — if OPENAI_API_KEY set and quota available
+3. Ollama local (nomic-embed-text) — free, offline, no API key needed
+4. None — caller handles fallback (e.g., keyword search)
 
-The provider is selected automatically. If OpenAI returns a quota error
-(402/429 with "exceeded your current quota"), falls through to Ollama.
+Environment variables:
+  NEUT_EMBED_URL    Base URL of an OpenAI-compatible embedding server
+                    e.g. https://rascal.austin.utexas.edu:42000
+  NEUT_EMBED_MODEL  Model name to request (default: nomic-embed-text)
+  NEUT_EMBED_KEY    API key for the remote endpoint (optional)
 """
 
 from __future__ import annotations
@@ -38,30 +43,93 @@ def embed_texts(
 ) -> Optional[list[list[float]]]:
     """Embed texts using the best available provider.
 
-    Tries OpenAI first, falls back to Ollama if OpenAI is unavailable
-    or quota-blocked. Returns None if no provider is available.
+    Priority: remote NEUT_EMBED_URL → OpenAI → local Ollama → None.
+    Returns None if no provider is available (caller falls back to keyword search).
     """
     if not texts:
         return []
 
-    # Try OpenAI first (unless we already know it's blocked)
+    # 1. Remote embedding server (e.g. nomic-embed-text on Rascal via VPN)
+    result = _embed_remote(texts)
+    if result is not None:
+        return result
+
+    # 2. OpenAI (unless quota-blocked this session)
     result = _embed_openai(texts, model)
     if result is not None:
         return result
 
-    # Fall back to Ollama
+    # 3. Local Ollama
     result = _embed_ollama(texts)
     if result is not None:
         return result
 
     log.warning(
-        "No embedding provider available — OpenAI quota exceeded and Ollama "
-        "embedding models failed to load (known issue with Ollama 0.18.x on "
-        "some macOS versions). Fix your OpenAI billing at "
-        "https://platform.openai.com/settings/organization/billing or wait "
-        "for an Ollama update."
+        "No embedding provider available. Options:\n"
+        "  • Set NEUT_EMBED_URL to an OpenAI-compatible /v1/embeddings server\n"
+        "  • Set OPENAI_API_KEY for OpenAI embeddings\n"
+        "  • Run Ollama locally with nomic-embed-text\n"
+        "RAG retrieval will fall back to keyword search."
     )
     return None
+
+
+def _embed_remote(texts: list[str]) -> Optional[list[list[float]]]:
+    """Embed via a configurable remote OpenAI-compatible endpoint.
+
+    Reads:
+      NEUT_EMBED_URL    Base URL (e.g. https://rascal.austin.utexas.edu:42000)
+      NEUT_EMBED_MODEL  Model name (default: nomic-embed-text)
+      NEUT_EMBED_KEY    API key (optional)
+    """
+    base_url = os.environ.get("NEUT_EMBED_URL", "").rstrip("/")
+    if not base_url:
+        return None
+
+    embed_model = os.environ.get("NEUT_EMBED_MODEL", "nomic-embed-text")
+    api_key = os.environ.get("NEUT_EMBED_KEY", "")
+
+    try:
+        import requests as _requests
+    except ImportError:
+        return None
+
+    url = f"{base_url}/v1/embeddings"
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    all_embeddings: list[list[float]] = []
+
+    for start in range(0, len(texts), _BATCH_SIZE):
+        batch = texts[start: start + _BATCH_SIZE]
+        payload = {"input": batch, "model": embed_model}
+
+        for attempt in range(_MAX_RETRIES):
+            try:
+                resp = _requests.post(url, headers=headers, json=payload, timeout=30, verify=False)
+            except Exception as e:
+                log.debug("Remote embedding unreachable (%s): %s", base_url, e)
+                return None
+
+            if resp.status_code == 429:
+                wait = _BACKOFF_BASE * (2 ** attempt)
+                log.warning("Remote embedding rate limited, retrying in %.1fs", wait)
+                time.sleep(wait)
+                continue
+
+            if resp.status_code >= 400:
+                log.warning("Remote embedding error %d — skipping", resp.status_code)
+                return None
+
+            data = resp.json()
+            sorted_data = sorted(data["data"], key=lambda d: d["index"])
+            all_embeddings.extend(d["embedding"] for d in sorted_data)
+            break
+        else:
+            return None
+
+    return all_embeddings if all_embeddings else None
 
 
 def _embed_openai(texts: list[str], model: str) -> Optional[list[list[float]]]:

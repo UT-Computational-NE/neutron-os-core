@@ -40,8 +40,11 @@ surface:
 ### Problem
 
 NeutronOS has no user identity. Every CLI session is anonymous. Agent actions
-are unattributed. Export control authorization (Part 3) requires knowing WHO
-the user is. Audit trails say "neut" not "ben@utexas.edu".
+are unattributed. Audit trails say "neut" not "ben@utexas.edu". In multi-user
+deployments, identity is required to enforce per-user access policies and
+attribute actions. In EC-configured deployments, it is additionally required
+for authorization gating (Part 3). Single-user deployments do not need
+identity and can skip Phases 3–6.
 
 ### Solution: Ory Kratos + OAuth Providers
 
@@ -389,6 +392,12 @@ neut connect --migrate
 
 ## Part 3: EC Defense & Authorization
 
+> **This section applies only to deployments with export-controlled providers
+> configured** (`routing_tier = "export_controlled"` in `llm-providers.toml`).
+> Facilities with no EC providers — non-nuclear labs, universities, research
+> environments — do not require any of the features in this section.
+> NeutronOS operates fully without them.
+
 ### Problem
 
 NeutronOS handles export-controlled data regulated under 10 CFR 810.
@@ -397,10 +406,13 @@ alone is not a complete security posture. Authorization (who may access),
 defense (sanitization, scanning), and audit (tamper-evident logging) are
 required layers.
 
+These layers are **activated automatically when an EC provider is configured**
+and are **no-ops in all other deployments**.
+
 ### Solution: Layered Defense + OpenFGA
 
-**Defense layers (shipped Phase 1):**
-- Layer 1: Export control classification (keyword + Ollama SLM)
+**Defense layers (EC deployments only):**
+- Layer 1: Export control classification (keyword + Ollama SLM) — always active when EC provider exists
 - Layer 2: VPN network boundary (physical isolation)
 - Layer 3: Chunk sanitization before LLM injection (FR-EC-001)
 - Layer 4: System prompt hardening for EC sessions (FR-EC-002)
@@ -447,8 +459,15 @@ preserve for forensic investigation.
 
 ### FR-EC-006: Security Audit Log (PostgreSQL)
 
-HMAC-protected `security_events` table. SHA-256 hashed queries/responses
-(no plaintext EC data in audit log).
+> **Superseded.** All logging requirements have been moved to
+> [prd-logging.md](prd-logging.md). FR-EC-006 is replaced by FR-LOG-001
+> through FR-LOG-005 in that document. The routing audit log is now scoped to
+> Phase 1 (v0.5.x) rather than Phase 5 (v0.6.x) because it is a prerequisite
+> for confident EC operations.
+
+HMAC-protected `routing_events` table. SHA-256 hashed queries/responses
+(no plaintext EC data in audit log). See [Logging PRD](prd-logging.md) for
+the full schema, HMAC chain design, and `neut log` CLI specification.
 
 ### FR-EC-007: OpenFGA Authorization
 
@@ -499,12 +518,18 @@ classify(query) → tier = "export_controlled"
 - `auth.toml` configuration
 - Role mapping from IdP claims
 
+### Phase 1.5: EC Routing Audit Log (v0.5.x)
+
+- Routing audit log (FR-LOG-001 through FR-LOG-005) — moved forward from Phase 5
+  as a prerequisite for confident EC operations
+- See [prd-logging.md](prd-logging.md) for full scope
+
 ### Phase 5: EC Defense Layers (v0.6.x)
 
 - Chunk sanitization (FR-EC-001)
 - System prompt hardening (FR-EC-002)
 - Response scanning (FR-EC-003)
-- Security audit log (FR-EC-006)
+- Identity-enriched audit log (FR-EC-006 Phase 2 — see prd-logging.md)
 - `neut doctor --security`
 - Red-team test suite (promptfoo)
 

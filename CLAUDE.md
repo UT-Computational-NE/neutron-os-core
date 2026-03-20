@@ -173,6 +173,50 @@ For the full glossary (especially the digital twin model ecosystem), see `docs/g
 
 ---
 
+## Concurrent File Write Safety
+
+**Never use bare `open(..., "a")` or `open(..., "w")` for shared runtime files.**
+Multiple processes (CLI + daemon + web API + agents) write to the same files.
+Unprotected writes produce corrupted JSONL and lost state entries.
+
+Always use the helpers in `neutron_os.infra.state`:
+
+| Pattern | Use for |
+|---|---|
+| `locked_append_jsonl(path, record)` | Append-only JSONL: logs, queues, audit files, event streams |
+| `LockedJsonFile(path, exclusive=True)` as context manager | Read-modify-write JSON state files |
+| `atomic_write(path, data)` | One-shot full-file JSON writes |
+
+See [ADR-011](docs/requirements/adr-011-concurrent-file-writes.md) for rationale and the full inventory of locations.
+
+## Provider Identity
+
+Every configurable provider in NeutronOS (LLM providers, log sinks, storage
+providers, signal sources, etc.) has a **three-layer identity** via
+`ProviderBase` / `ProviderIdentityMixin` in `neutron_os.infra.provider_base`
+(see [ADR-012](docs/requirements/adr-012-provider-identity.md)):
+
+| Field | Set by | Stable? | Use for |
+|---|---|---|---|
+| `provider.name` | User config (required, unique) | Yes | Primary key in all log/audit/signal records |
+| `provider.config_hash` | Computed at load (SHA-256 of fingerprint fields) | While config unchanged | Detect silent config drift in audit records |
+| `provider.instance_id` | UUID4 at load time | No (intentional) | Distinguish reloads within a forensic timeline |
+
+In log records, always use the **type-specific prefix** — never the bare `"provider"` field:
+
+| Provider type | Log field name | Example |
+|---|---|---|
+| LLM providers | `llm_provider` | `{"llm_provider": "qwen-tacc-ec"}` |
+| Log sinks | `log_sink` | `{"log_sink": "system-log-file"}` |
+| Storage providers | `storage_provider` | `{"storage_provider": "s3-primary"}` |
+| Signal sources | `signal_source` | `{"signal_source": "teams-webhook"}` |
+
+Use `extra={"llm_provider": provider.name}` for routine events, or `extra=provider.identity`
+(full dict with hash + instance) for audit and routing records. Never use `"provider1"`,
+`"test"`, or bare technology names — use descriptive stable names like `"qwen-tacc-ec"`.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology | Notes |

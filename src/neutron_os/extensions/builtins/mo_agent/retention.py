@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from neutron_os.infra.state import STATE_LOCATIONS
+from neutron_os.infra.state import STATE_LOCATIONS, locked_append_jsonl
 
 logger = logging.getLogger(__name__)
 
@@ -197,8 +197,7 @@ def execute_retention(
 
         # Append to audit log
         try:
-            with open(audit_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, default=str) + "\n")
+            locked_append_jsonl(audit_path, entry)
         except OSError:
             pass
 

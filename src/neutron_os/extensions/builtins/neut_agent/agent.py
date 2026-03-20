@@ -38,22 +38,7 @@ from neutron_os.infra.gateway import (
 from neutron_os.infra.router import QueryRouter
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
-
-_BASE_SYSTEM_PROMPT = """\
-You are neut, an AI assistant for Neutron OS — a digital platform for nuclear facilities.
-You have access to tools for document management (publisher), signal ingestion (sense),
-and repository exploration (read_file, list_files).
-
-Available capabilities:
-- Query document status, check links, show diffs
-- Generate and publish documents (.md → .docx)
-- Check sense inbox status
-- Write notes to the sense inbox
-- Read files and list directories in the repository
-
-When you want to perform an action, use the appropriate tool. Write operations
-require human approval. Be concise and helpful.
-"""
+from neutron_os.infra.prompt_registry import get_registry as _get_prompt_registry
 
 MAX_TOOL_ROUNDS = 10
 CONTEXT_TOKEN_BUDGET = 25000
@@ -558,7 +543,8 @@ class ChatAgent:
 
     def _build_system_prompt(self) -> str:
         """Build dynamic system prompt with project context."""
-        parts = [_BASE_SYSTEM_PROMPT]
+        base = _get_prompt_registry().resolve("neut_agent_base")
+        parts = [base.content]
 
         # Load CLAUDE.md from repo root
         claude_md = _REPO_ROOT / "CLAUDE.md"

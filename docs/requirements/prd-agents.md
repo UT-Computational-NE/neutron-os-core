@@ -92,21 +92,20 @@ Web apps, agents, tools, utilities — all are extensions. Builtin extensions sh
 NeutronOS agents operate within a three-tier autonomy model. No agent acts without appropriate human involvement for safety-adjacent operations.
 
 ```mermaid
-flowchart LR
-    subgraph Autonomy["Agent Autonomy Levels"]
+flowchart TB
+    subgraph Autonomy["Autonomy Levels"]
         Ask[Ask Mode<br/>Read-Only]
+        Ask -->|User escalates| Plan
         Plan[Plan Mode<br/>Propose Changes]
+        Plan -->|User approves| Agent
         Agent[Agent Mode<br/>Execute with Bounds]
     end
 
     subgraph Gates["Safety Gates"]
-        G1{Safety<br/>Query?}
-        G2{Tech Spec<br/>Impact?}
-        G3{Human<br/>Approved?}
+        G1{Safety Query?}
+        G2{Tech Spec Impact?}
+        G3{Human Approved?}
     end
-
-    Ask -->|User escalates| Plan
-    Plan -->|User approves| Agent
 
     G1 -->|Yes| Ask
     G2 -->|Yes| Plan
@@ -165,6 +164,18 @@ NeutronOS uses a **RACI model** to balance safety (where human approval is manda
 
 **Key insight:** NSG-005 (Human-in-the-Loop Mandate) applies to *safety-related* actions — these always require approval. But posting a status update to GitLab shouldn't require the same approval gate as publishing a safety analysis to SharePoint. RACI lets users configure autonomy per action category.
 
+### Trust is Three-Dimensional
+
+RACI settings are scoped to the combination of:
+
+| Dimension | Description |
+|-----------|-------------|
+| **User** | The identified human (voice ID, badge, SSO) |
+| **Agent** | The specific agent performing the action (PR-T, EVE, M-O, etc.) |
+| **Action** | The action category (`publish.document`, `issue.update`, etc.) |
+
+This means trust is earned **per-agent**. You might trust PR-T to publish documents autonomously after months of reliable operation, while keeping a newly installed facility-specific agent at "Approve" for everything. Trust doesn't transfer between agents — each agent builds its own track record with each user.
+
 ### RACI Model for Agent Actions
 
 Every agent action is categorized using the RACI model. Neut manages these
@@ -179,8 +190,13 @@ preferences conversationally, adjusting autonomy as users build trust:
 
 ### Action Categories
 
-| Category | Default RACI | Applies To |
-|----------|-------------|------------|
+The table below shows default RACI levels for each action category. These
+defaults apply to each agent independently — when you first use PR-T, it
+starts at these defaults; when you first use EVE, it also starts at these
+defaults. Trust is built (and settings adjusted) per-agent over time.
+
+| Category | Default RACI | Typical Agents |
+|----------|-------------|----------------|
 | `publish.document` | **A** (Approve) | PR-T: push to OneDrive/SharePoint |
 | `publish.draft` | **C** (Consulted) | PR-T: generate .docx from .md |
 | `issue.update` | **A** (Approve) | EVE/PR-T: comment on GitLab/GitHub issues |
@@ -200,26 +216,29 @@ RACI levels are typically adjusted **conversationally** — Neut proposes change
 
 ```
 User: "Stop asking me to approve every issue comment."
-Neut: "I'll update your settings so I comment on issues autonomously
-       and notify you afterward. You can always say 'show my RACI settings'
-       to review, or 'require approval for issue comments' to revert."
-       [Setting raci.issue.update → informed]
+Neut: "I'll update your settings so EVE can comment on issues autonomously
+       and notify you afterward. This only applies to EVE — other agents
+       still need approval for issue comments. Say 'show my RACI settings'
+       to review."
+       [Setting raci.eve.issue.update → informed]
 ```
 
-Neut tracks trust signals (approval rate, reversions, explicit feedback) and may suggest loosening or tightening autonomy over time. Users can also query or adjust settings directly:
+Neut tracks trust signals (approval rate, reversions, explicit feedback) per agent and may suggest loosening or tightening autonomy over time. Users can also query or adjust settings directly:
 
 ```bash
-neut settings get raci                     # show all RACI levels
-neut settings set raci.issue.update approve   # manual override if needed
+neut settings get raci                          # show all RACI levels by agent
+neut settings get raci.prt                      # show PR-T's RACI levels
+neut settings set raci.prt.publish.document informed   # trust PR-T to publish
+neut settings set raci.*.issue.update approve  # require approval from ALL agents
 ```
 
 The conversational interface is primary; CLI is available for scripting and bulk configuration.
 
 ### Trust Slider (Coarse-Grained Control)
 
-Instead of adjusting 12 individual RACI settings, users move a single
-**trust slider** with 5 positions. Each position sets all action
-categories to appropriate RACI levels:
+Instead of adjusting settings per-agent per-action, users can set a
+**trust slider** for each agent (or globally). The slider has 5 positions
+that set all action categories to appropriate RACI levels:
 
 | Position | Label | Behavior |
 |----------|-------|----------|
@@ -230,37 +249,93 @@ categories to appropriate RACI levels:
 | 5 | **Full Trust** | Everything = Informed except safety-critical (which remains Approve per NSG-005). Maximum autonomy. |
 
 ```bash
-neut settings set raci.trust 2            # Cautious (default)
-neut settings set raci.trust 4            # Autonomous — been using it a while, trust is earned
+neut settings set raci.prt.trust 4        # Trust PR-T at Autonomous level
+neut settings set raci.eve.trust 2        # Keep EVE at Cautious (default)
+neut settings set raci.*.trust 3          # Set ALL agents to Balanced
 ```
 
 Conversational:
 ```
-User: "I trust you more now. Loosen up."
-Neut: "Moving trust from Cautious → Balanced. I'll handle routine
-       updates autonomously and check in on publishing and code changes."
+User: "I trust PR-T more now. Loosen up."
+Neut: "Moving PR-T's trust from Cautious → Balanced. PR-T will handle
+       routine updates autonomously and check in on publishing decisions.
+       Other agents keep their current trust levels."
 ```
 
-The trust slider sets the baseline. Individual action overrides still
-work — `neut settings set raci.issue.update approve` overrides the
-slider for that one category.
+The trust slider sets the baseline per agent. Individual action overrides
+still work — `neut settings set raci.prt.issue.update approve` overrides
+the slider for that one category on that one agent.
 
 ### Emergency Controls
 
-**Approve All (Emergency Brake):**
+Three escalating emergency modes. Each snapshots current RACI settings
+before activating, allowing you to resume previous behavior when the
+emergency ends.
 
-If an agent is doing something unexpected, pull the brake:
+**`all-propose-only`** — Agent proposes, human approves everything:
 
 ```bash
-neut raci halt                # Immediately set ALL actions to Approve
+neut raci all-propose-only              # All agents → propose only
+neut raci all-propose-only prt          # Only PR-T → propose only
 ```
 
-Conversational: `"Stop. Approve everything from now on."`
+Agent continues analyzing, planning, and preparing work. It presents
+proposals with full context but waits for explicit `[approve/reject]`
+before executing anything. Use when you want continued assistance with
+full oversight.
 
-This sets `raci.trust = 1` and clears all individual overrides.
-Every subsequent agent action pauses for confirmation until the user
-explicitly loosens trust again. The halt event is logged for the
-After Action Report.
+**`all-log-intent-only`** — Agent logs intent, no proposals:
+
+```bash
+neut raci all-log-intent-only           # All agents → silent logging
+neut raci all-log-intent-only eve       # Only EVE → silent logging
+```
+
+Agent processes signals and events normally but does not surface
+proposals or prepare work. Instead, it logs what it *would* have done
+to `runtime/logs/intent.jsonl`. Use for quiet observation — agent
+works in background, you review the intent log later.
+
+**`all-freeze`** — Complete stop:
+
+```bash
+neut raci all-freeze                    # All agents → frozen
+neut raci all-freeze mo                 # Only M-O → frozen
+```
+
+Agent stops all processing. No analysis, no logging, no background work.
+Use for "rogue agent" scenarios where you want complete passivity while
+you investigate. The freeze event itself is logged for audit.
+
+**Resuming Normal Operation:**
+
+```bash
+neut raci resume                        # Restore pre-emergency settings
+neut raci resume prt                    # Resume only PR-T
+```
+
+Conversational: `"Resume normal operation."` or `"You can act normally again."`
+
+Resume restores the RACI settings that were active before the emergency
+mode was triggered, with smart handling of changes made during emergency:
+
+| Change Made During Emergency | On Resume |
+|------------------------------|-----------|
+| **Tightened** (e.g., Informed → Approve) | Kept automatically |
+| **Loosened** (e.g., Approve → Informed) | Prompted to keep or discard |
+
+```
+Neut: "Resuming normal operation. During the emergency you loosened
+       2 settings:
+         • raci.eve.issue.update: Approve → Consulted
+         • raci.prt.publish.draft: Consulted → Informed
+       Keep these changes? [keep/discard/review each]"
+```
+
+This prevents accidental trust escalation while preserving intentional
+restrictions you added during investigation.
+
+All emergency mode transitions are logged for the After Action Report.
 
 **Factory Reset:**
 
@@ -272,13 +347,14 @@ neut raci reset               # Clear all overrides, trust → 2 (Cautious)
 
 Conversational: `"Reset all my approval settings to defaults."`
 
-This removes all per-category overrides from settings.toml and resets
-the trust slider to position 2.
+This removes all per-category overrides, resets trust sliders to
+position 2, exits any emergency mode, and clears the pre-emergency
+snapshot. Use when you want a clean slate.
 
 ### Safety Override
 
 NSG-005 (Human-in-the-Loop Mandate) takes precedence for safety-adjacent
-actions. Even if a user sets `raci.code.patch = informed`, safety-related
+actions. Even if a user sets `raci.dfib.code.patch = informed`, safety-related
 patches remain at **A** (Approve). The RACI system respects the guardrail
 hierarchy — it cannot weaken safety controls, only loosen productivity
 controls.
@@ -295,16 +371,37 @@ providers configured:
 | **C** | Agent pauses at decision points with context |
 | **I** | Post-fact notification via configured channel (terminal, Slack, email, Teams) |
 
-Notification routing is a separate concern — see the future Notifications
-PRD. For now, terminal output is the default for all levels.
+**Current state:** Terminal output is the only implemented notification
+channel. This works for interactive sessions but fails for:
+
+- Long-running background processing (agent needs approval but user closed terminal)
+- Offline/async workflows (agent completes work while user is away)
+- Mobile/remote users (not at workstation)
+
+**Future Notifications PRD must address:**
+
+| Concern | Description |
+|---------|-------------|
+| **Channel coordination** | Don't spam all channels simultaneously. Escalation ladder: try terminal → Slack → email → SMS. Respect quiet hours. |
+| **Long-running jobs** | Agent queues approval requests when user is offline. Notification includes enough context to approve via mobile. |
+| **Agent presence in human spaces** | When agents participate in Teams/Slack channels: identity conventions, when to speak vs. stay silent, thread etiquette. |
+| **Multi-party conversations** | Second human joins existing agent+human chat. Agent must: identify all participants, apply most restrictive RACI, maintain context. |
+| **Agent-to-agent coordination** | Agents delegating work to each other. Approval chains, audit trails, human escalation when agents disagree. |
+| **Notification preferences** | Per-user, per-agent, per-action-category channel preferences. "PR-T can email me about publishes; EVE should only use Slack." |
+
+Until the Notifications PRD ships, agents that need approval for
+background work will queue requests to `runtime/pending-approvals/`
+and surface them on the next interactive session.
 
 ### Implementation Notes
 
 - RACI preferences stored in `neut settings` (per-user, per-project)
-- Defaults defined per action category (see table above)
+- Settings key format: `raci.<agent>.<action>` (e.g., `raci.prt.publish.document`)
+- Wildcard `raci.*.<action>` sets default for all agents on that action
+- Defaults defined per agent per action category (see table above)
 - `ActionCategory.READ` (from the tool system) maps to **I** (Informed)
 - `ActionCategory.WRITE` maps to **A** (Approve) by default
-- Agents check RACI before executing: `check_raci("publish.document")`
+- Agents check RACI before executing: `check_raci(agent="prt", action="publish.document")`
 - Returns: `"execute"` (R/I), `"approve"` (A), `"consult"` (C)
 
 ---
@@ -580,6 +677,26 @@ neut signal review               # human review of pending extractions
 neut signal publish              # publish approved items
 ```
 
+**Knowledge Crystallization**
+
+EVE owns the conversation crystallization pipeline — the Evaluator-Optimizer pattern that extracts candidate knowledge facts from clusters of related interaction log records.
+
+**Input:** Clusters of `interaction_log` records identified and grouped by the M-O knowledge maturity sweep (see M-O Agent below).
+
+**EVE runs three steps per cluster:**
+
+1. **LLM evaluator** — Extracts a candidate `knowledge_fact` proposition from the interaction records: what question(s) does this cluster answer, and what is the synthesized answer across sessions?
+2. **Optimizer** — Embeds the candidate fact and searches existing `knowledge_fact` records for duplication (merge/discard if similarity > threshold) or contradiction (flag both for human review).
+3. **Write** — Produces a `knowledge_fact` record with `validation_state = pending_review`.
+
+**Compliance boundary:** EVE does NOT see raw classified-tier chunk text. For EC-tier interaction log records, EVE operates only on the synthesized LLM response that crossed the network boundary — never on raw retrieved EC chunks.
+
+**CLI:**
+```bash
+neut eve crystallize --session <id>      # manually trigger crystallization for a specific session
+neut eve crystallize --cluster <id>      # crystallize a specific interaction cluster
+```
+
 ---
 
 ### Chat Agent ✅
@@ -619,6 +736,36 @@ The M-O (maintenance and operations) agent monitors system health, manages the a
 neut mo vitals              # system health dashboard
 neut mo archive [target]    # move completed work to archive/
 neut mo status              # current M-O resource steward status
+```
+
+**Knowledge Maturity Sweep**
+
+M-O runs the knowledge maturity sweep on a configurable schedule (default: weekly, off-hours). This is the stewardship task that feeds interaction log records into the EVE crystallization pipeline and materialises regression test cases from production failures.
+
+**Sweep steps:**
+
+1. Query `interaction_log` for un-crystallized rows meeting promotion policy thresholds (`crystallized = false`, age ≥ `min_age_days`, feedback signals present).
+2. Cluster un-crystallized rows by semantic similarity of their queries.
+3. Invoke EVE crystallization pipeline on each cluster — EVE produces `pending_review` knowledge facts (see EVE Knowledge Crystallization above).
+4. Materialise thumbs-down (`feedback_signal = -1`) interactions as promptfoo regression test cases, saved to `tests/promptfoo/regression/`.
+5. Retire regression test cases whose corresponding knowledge facts have reached `validated` status (move to `tests/promptfoo/regression/retired/`).
+6. Report results: facts created, contradictions flagged, test cases materialised, test cases retired.
+
+**Configuration** (`runtime/config/rag.toml`):
+
+```toml
+[promotion.sweep]
+schedule = "weekly"          # daily | weekly | manual
+off_hours_only = true        # only run during off-hours (respects facility timezone)
+min_batch_size = 3           # minimum cluster size to trigger crystallization
+max_batch_size = 50          # maximum cluster size per EVE call
+```
+
+**CLI:**
+```bash
+neut mo sweep --knowledge                # run knowledge maturity sweep now
+neut mo sweep --knowledge --dry-run      # report what would be processed, no writes
+neut mo sweep --knowledge --cluster <id> # sweep a specific cluster only
 ```
 
 ---
@@ -697,6 +844,172 @@ neut settings set --secret <key> <value>   # writes to secrets.toml, not setting
 ## Domain Agent Capabilities
 
 These capabilities are planned for nuclear facility deployments. They are implemented as facility-specific extensions (not builtin). The requirements below define what each extension must deliver.
+
+**Digital Twin Automation is the flagship capability.** NeutronOS's primary differentiator is its integration with reactor digital twins — computational models that shadow physical reactor operations, enabling predictive monitoring, intelligent automation, and physics-informed decision support. The agents below automate the digital twin lifecycle from data acquisition through ROM deployment.
+
+---
+
+### Digital Twin Automation
+
+These agents automate digital twin operations per the [Digital Twin Hosting PRD](prd-digital-twin-hosting.md). They coordinate Shadow runs, ROM training, bias corrections, and model validation — reducing manual intervention while maintaining human oversight for critical decisions.
+
+**Operational Status:** The VERA Shadow is operational, running nightly and sending daily predictions (initial critical rod height) to operators. These agents formalize and automate the workflow.
+
+#### GOAL_DT_001: DAQ → Shadow Agent 🔲
+
+**Purpose:** Automate data flow from reactor data acquisition to nightly Shadow runs.
+
+**Workflow:**
+1. Monitor DAQ data quality for previous day
+2. Alert data team if quality score < 95%
+3. Prepare reactor state snapshots for Shadow input
+4. Submit Shadow run to HPC scheduler
+5. Monitor completion and notify stakeholders
+6. Email operators with next-day predictions (e.g., initial critical rod height)
+
+**RACI Integration:** This agent runs autonomously (Informed level) for routine operations but escalates to Approve for:
+- Data quality below threshold
+- Shadow run failures
+- Unusual deviations from predictions
+
+**Data Quality Prerequisites (per Dr. Clarno):**
+- Time synchronization: Rod position, neutron detector power, and Cherenkov power must be time-aligned
+- Correlation validation: Rod movements should induce predictable power responses
+- Noise characterization: Only correlated Cherenkov/neutron spikes indicate physics (vs. noise)
+
+**Requirements:**
+
+| Req ID | Requirement | Priority |
+|--------|-------------|----------|
+| REQ_DT_001_1 | Assess DAQ data quality with configurable thresholds | P0 |
+| REQ_DT_001_2 | Prepare state snapshots from cleaned reactor data | P0 |
+| REQ_DT_001_3 | Submit Shadow runs via HPC job scheduler | P0 |
+| REQ_DT_001_4 | Generate operator notification with predictions | P0 |
+| REQ_DT_001_5 | Handle time synchronization validation (rod position, neutron power, Cherenkov) | P0 |
+
+*Cross-reference: [Digital Twin Hosting PRD](prd-digital-twin-hosting.md)*
+
+---
+
+#### GOAL_DT_002: ROM Training Agent 🔲
+
+**Purpose:** Automate ROM retraining when sufficient new Shadow data accumulates or drift is detected.
+
+**Workflow:**
+1. Monitor new Shadow runs since last ROM training
+2. Measure prediction drift against recent measurements
+3. Trigger retraining when threshold exceeded
+4. Assemble training dataset from validated Shadow runs
+5. Submit training job to compute cluster
+6. Validate new ROM against holdout data
+7. If improved, propose deployment for human approval
+
+**RACI Integration:** Training triggers autonomously (Informed), but deployment of new ROM versions requires Approve.
+
+**ROM Maintenance Note (per Dr. Clarno):** If the ROM is within measured uncertainty most of the time, major improvements may not be needed — this becomes a maintenance and SQA issue rather than active development.
+
+**Requirements:**
+
+| Req ID | Requirement | Priority |
+|--------|-------------|----------|
+| REQ_DT_002_1 | Track new training data accumulation per ROM | P0 |
+| REQ_DT_002_2 | Measure ROM prediction drift over time | P0 |
+| REQ_DT_002_3 | Submit training jobs with reproducible configurations | P0 |
+| REQ_DT_002_4 | Validate new ROM against holdout dataset | P0 |
+| REQ_DT_002_5 | Generate deployment proposal with improvement metrics | P0 |
+| REQ_DT_002_6 | Require human approval for production ROM updates | P0 |
+
+---
+
+#### GOAL_DT_003: Bias Update Agent 🔲
+
+**Purpose:** Monitor prediction accuracy and propose bias corrections when systematic deviations are detected.
+
+**Workflow:**
+1. Analyze Shadow vs. measured deviations over rolling window (30 days)
+2. Detect systematic bias patterns (not random noise)
+3. Calculate proposed correction factors
+4. Create bias correction proposal with justification
+5. Route to Shadow operator for review and approval
+
+**RACI Integration:** Analysis runs autonomously (Informed), but bias corrections require Approve before application.
+
+**Calibration Targets (per Dr. Clarno):**
+
+| Target | Priority | Notes |
+|--------|----------|-------|
+| Nuclear data cross sections | Critical | Key: recoverable energy per fission, U-238 capture at 6.7 eV resonance. "If you get those right, most everything else works out." |
+| Initial fuel isotopes | Critical | At reference date (e.g., 5 cycles ago) for depletion baseline |
+| Geometry | Important | Material dimensions may not be precisely known |
+
+**Requirements:**
+
+| Req ID | Requirement | Priority |
+|--------|-------------|----------|
+| REQ_DT_003_1 | Analyze systematic bias patterns over configurable window | P0 |
+| REQ_DT_003_2 | Distinguish systematic bias from measurement noise | P0 |
+| REQ_DT_003_3 | Calculate correction factors with uncertainty estimates | P0 |
+| REQ_DT_003_4 | Generate human-readable justification report | P0 |
+| REQ_DT_003_5 | Route proposals to designated reviewer | P0 |
+
+---
+
+#### GOAL_DT_004: Operator Learning Agent 🔲
+
+**Purpose:** Learn from operator decisions to improve advisory suggestions at NAL-2 (Advisory level).
+
+**Workflow:**
+1. Observe operator responses to DT advisory suggestions
+2. Track acceptance/rejection/modification patterns
+3. Identify systematic differences between DT suggestions and operator choices
+4. Propose model adjustments that better match expert behavior
+5. Feed learnings back to ROM Training Agent
+
+**NAL Integration:** This agent supports progression from NAL-1 (Information) to NAL-2 (Advisory) by ensuring suggestions align with expert operator judgment before advancing autonomy.
+
+**Requirements:**
+
+| Req ID | Requirement | Priority |
+|--------|-------------|----------|
+| REQ_DT_004_1 | Log all DT suggestions and operator responses | P0 |
+| REQ_DT_004_2 | Analyze acceptance/rejection patterns by scenario type | P1 |
+| REQ_DT_004_3 | Identify scenarios where DT consistently differs from experts | P1 |
+| REQ_DT_004_4 | Generate model improvement proposals | P1 |
+| REQ_DT_004_5 | Support NAL progression proof by tracking suggestion accuracy | P0 |
+
+*Cross-reference: [Digital Twin Hosting PRD — Nuclear Autonomy Levels](prd-digital-twin-hosting.md#nuclear-autonomy-levels-nal)*
+
+---
+
+#### GOAL_DT_005: ROM Failure Handler 🔲
+
+**Purpose:** Gracefully handle ROM prediction failures based on use case severity.
+
+**Failure Mode Matrix (per Dr. Clarno):**
+
+| Use Case | Failure Consequence | Response |
+|----------|---------------------|----------|
+| ROM-1 for Semi-Autonomous Control (NAL-3+) | Bad prediction could command wrong action | **True control rods remain in place and can scram** to keep reactor safe. Take ROM offline; alert operators; investigate. |
+| ROM-1/2 for Real-Time Display | No operational consequence | ROM goes dark or shows invalid data; operators ignore. Flag for later analysis. |
+| ROM-3/4 for Planning/Analysis | Decisions based on wrong predictions | More robust with time-averaged data. Flag outliers for investigation. |
+
+**Investigation Checklist:** When ROM and measurement disagree, investigate both sides:
+- **Model side:** input data, ROM execution, output interpretation
+- **Measurement side:** instrumentation, control system data path, data cleaning/preprocessing
+
+> "It may not have an easy answer." — Dr. Clarno
+
+**Requirements:**
+
+| Req ID | Requirement | Priority |
+|--------|-------------|----------|
+| REQ_DT_005_1 | Detect ROM inference failures and timeouts | P0 |
+| REQ_DT_005_2 | Apply failure response based on ROM tier and use case | P0 |
+| REQ_DT_005_3 | Log failure events with full context for diagnosis | P0 |
+| REQ_DT_005_4 | Queue discrepancies for human investigation | P0 |
+| REQ_DT_005_5 | Support fallback to last-known-good predictions where appropriate | P1 |
+
+---
 
 ### Regulatory Intelligence
 
@@ -1412,6 +1725,7 @@ tool_dependencies:
 |-------|------|---------------------|
 | **neut_core_agent** | Core orchestration & routing | Multi-channel presence, intent routing, agent coordination |
 | **neut_ops_agent** | Reactor operations support | Shift turnover, procedure walkthrough, ops log, console checks, LER |
+| **neut_dt_agent** | Digital Twin automation | DAQ→Shadow orchestration, ROM training, bias correction, drift detection, failure handling |
 | **neut_comply_agent** | Compliance & regulatory | 50.59 screening, Tech Spec RAG, licensing search, surveillance |
 | **neut_research_agent** | Research support | Experiment design, literature search, data analysis |
 | **neut_train_agent** | Training & qualification | Curriculum guidance, qualification tracking, reactor tutoring |
@@ -1473,6 +1787,15 @@ tool_dependencies:
 - [Reactor Ops Log PRD](prd-reactor-ops-log.md) — Integrates with Voice-First Ops, Shift Turnover
 - [Compliance Tracking PRD](prd-compliance-tracking.md) — Integrates with Regulatory Intelligence, Surveillance
 - [Experiment Manager PRD](prd-experiment-manager.md) — Integrates with Experiment Design Agent
+
+### Future PRDs Needed
+
+| PRD | Scope | Blocking |
+|-----|-------|----------|
+| **Notifications** | Channel routing (terminal → Slack → email → SMS), escalation ladders, quiet hours, long-running job approval queuing, per-user channel preferences | RACI "Informed" level for background agents |
+| **Agent Presence** | Agent identity in human spaces (Teams, Slack), when to speak vs. listen, thread etiquette, @mention conventions, channel membership | GOAL_PLT_003 Multi-Channel Presence |
+| **Multi-Party Conversations** | Multiple humans joining agent+human chats, RACI aggregation across participants, context handoff, conversation ownership | GOAL_PLT_003 Multi-Channel Presence |
+| **Agent-to-Agent Coordination** | Agents delegating to agents, approval chains, audit trails, conflict resolution, human escalation triggers | Domain agent orchestration |
 
 ### Specifications
 - [RAG Architecture Spec](../tech-specs/spec-rag-architecture.md) — Full RAG design including EC compliance

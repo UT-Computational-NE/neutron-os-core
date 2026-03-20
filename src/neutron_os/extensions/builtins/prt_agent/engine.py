@@ -163,7 +163,16 @@ class PublisherEngine:
         if not existing or not existing.published:
             return True  # First publish, always changes
 
-        # Cooldown: skip if published recently (prevents churn during active editing)
+        # If we have a previous source hash stored, compare it first.
+        # Content changes always win — cooldown only suppresses identical-content republishes.
+        if not existing.published.artifact_hash:
+            return True  # No hash recorded, assume changed
+
+        current_hash = self._compute_source_hash(source_path)
+        if current_hash != existing.published.artifact_hash:
+            return True  # Content changed — always publish
+
+        # Content is identical. Apply cooldown: skip if published recently.
         if existing.published.published_at:
             try:
                 from datetime import datetime, timezone
@@ -181,16 +190,11 @@ class PublisherEngine:
                     pass
 
                 if age_seconds < cooldown:
-                    return False  # Published recently — wait for edits to settle
+                    return False  # Identical content published recently — skip
             except Exception:
                 pass
 
-        # If we have a previous source hash stored, compare it
-        if not existing.published.artifact_hash:
-            return True  # No hash recorded, assume changed
-
-        current_hash = self._compute_source_hash(source_path)
-        return current_hash != existing.published.artifact_hash
+        return False  # Content unchanged
 
     def publish(
         self,

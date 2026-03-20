@@ -245,6 +245,45 @@ secrets:
   llm: ""       # Contains 'api_key' for OpenAI/Anthropic
 
 # =============================================================================
+# Ollama — self-hosted LLM (disabled by default; enabled in values-rascal.yaml)
+# =============================================================================
+
+ollama:
+  enabled: false
+
+  image:
+    repository: ollama/ollama
+    tag: "latest"
+
+  # Models to pull on first deploy (init container). Confirm tags via `ollama list`.
+  models: []
+
+  # How long to keep models loaded in VRAM. "-1" = forever. "0" = unload immediately.
+  keepAlive: "5m"
+
+  gpu:
+    enabled: false
+
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: 500m
+    limits:
+      memory: 8Gi
+      cpu: 4000m
+
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+
+  # Expose Ollama outside the cluster via NodePort (for neut CLI access from host).
+  # Disabled by default; enable in environment-specific values files.
+  externalAccess:
+    enabled: false
+    nodePort: 31434
+
+# =============================================================================
 # LLM Configuration
 # =============================================================================
 

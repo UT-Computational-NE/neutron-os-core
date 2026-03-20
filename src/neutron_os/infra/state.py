@@ -5,6 +5,14 @@ Provides:
 Low-level:
 - LockedJsonFile: Advisory-locked JSON file I/O (read, write, read-modify-write)
 - atomic_write / locked_read: Convenience one-shot helpers
+- locked_append_jsonl: Multi-process-safe append to .jsonl files (the canonical
+  pattern for all append-only logs, queues, and audit files in this codebase)
+
+Tamper-evident:
+- TamperEvidentChain: HMAC-SHA256 chain over sequential records.  Shared by
+  the System Audit Log (routing decisions, EC events) and the Reactor Ops Log
+  (10 CFR 50.9 tamper-evident logbook).  Both use the same chain algorithm;
+  only the HMAC key source and PostgreSQL table differ.
 
 Hybrid backend (the primary API for consumers):
 - StateHandle / StateBackend: Protocols for backend-agnostic state access
@@ -34,6 +42,8 @@ Usage::
 
 from __future__ import annotations
 
+import hashlib
+import hmac as _hmac
 import json
 import logging
 import os
@@ -167,6 +177,140 @@ def locked_read(path: str | Path) -> Any:
     """Read JSON data from a file with shared locking."""
     with LockedJsonFile(path) as f:
         return f.read()
+
+
+def locked_append_jsonl(path: str | Path, record: Any) -> None:
+    """Append one JSON record as a line to a .jsonl file with exclusive locking.
+
+    Multi-process safe on Unix (fcntl.flock) and Windows (portalocker when
+    available, otherwise best-effort).  The lock is held only for the duration
+    of the append — no read-modify-write, so contention is minimal even under
+    heavy concurrent load.
+
+    Usage::
+
+        locked_append_jsonl("runtime/logs/audit/routing.jsonl", {"ts": ..., "tier": ...})
+
+    This is the canonical way to write to any append-only JSONL file in the
+    codebase.  Plain ``open(..., "a")`` without locking is NOT safe when
+    multiple processes (CLI + daemon + web API) can write concurrently.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record, default=str, separators=(",", ":"), sort_keys=True) + "\n"
+
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    lock_fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        # Acquire exclusive lock
+        if sys.platform != "win32":
+            try:
+                import fcntl
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            except (ImportError, OSError):
+                pass
+        else:
+            try:
+                import portalocker  # type: ignore[import-untyped]
+                portalocker.lock(lock_fd, portalocker.LOCK_EX)
+            except ImportError:
+                pass  # best-effort on Windows without portalocker
+
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(line)
+            f.flush()
+            os.fsync(f.fileno())
+    finally:
+        # Release lock and close
+        if sys.platform != "win32":
+            try:
+                import fcntl
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            except (ImportError, OSError):
+                pass
+        os.close(lock_fd)
+
+
+# ===========================================================================
+# Tamper-evident chain (shared by Audit Log and Reactor Ops Log)
+# ===========================================================================
+
+_CHAIN_GENESIS = "GENESIS"
+
+
+def _canonical_json(record: dict) -> str:
+    """Deterministic JSON serialisation (sorted keys, no whitespace)."""
+    return json.dumps(record, sort_keys=True, separators=(",", ":"), default=str)
+
+
+class TamperEvidentChain:
+    """HMAC-SHA256 chain over sequential records.
+
+    Each record is stamped with an ``hmac`` field that covers all other fields
+    in the record plus the HMAC of the preceding record.  Any gap, deletion,
+    or field modification breaks the chain and is detectable by
+    :meth:`verify`.
+
+    This class is **shared infrastructure** for:
+
+    * **System Audit Log** — routing decisions, EC events, VPN checks.
+      Key source: ``NEUT_AUDIT_HMAC_KEY`` env var (required in EC mode).
+    * **Reactor Ops Log** — 10 CFR 50.9 tamper-evident logbook.
+      Key source: ``NEUT_OPS_LOG_HMAC_KEY`` env var (required for NRC facilities).
+
+    Both use the identical chain algorithm.  The key source and PostgreSQL
+    table are the only things that differ between the two consumers.
+
+    Usage::
+
+        chain = TamperEvidentChain(key=os.environ["NEUT_AUDIT_HMAC_KEY"])
+
+        # Stamp a record before writing it
+        record = {"ts": "...", "tier": "export_controlled", "provider": "ec-llm"}
+        stamped = chain.stamp(record, prev_hmac=last_written_hmac)
+        # stamped now has an "hmac" field — persist this to the DB/file
+
+        # Verify a sequence of records retrieved from storage
+        ok, broken_at = chain.verify(records)  # records is list[dict] ordered by ts
+    """
+
+    def __init__(self, key: str | bytes):
+        if isinstance(key, str):
+            key = key.encode("utf-8")
+        self._key = key
+
+    def stamp(self, record: dict, *, prev_hmac: str = _CHAIN_GENESIS) -> dict:
+        """Return a copy of *record* with an ``hmac`` field added.
+
+        The original record must NOT already have an ``hmac`` key.
+        """
+        if "hmac" in record:
+            raise ValueError("record already has an 'hmac' field; remove it before stamping")
+        message = _canonical_json(record) + prev_hmac
+        digest = _hmac.new(self._key, message.encode("utf-8"), hashlib.sha256).hexdigest()
+        return {**record, "hmac": digest}
+
+    def verify(self, records: list[dict]) -> tuple[bool, str | None]:
+        """Verify the HMAC chain over an ordered sequence of records.
+
+        Returns ``(True, None)`` if the chain is intact.
+        Returns ``(False, broken_at_hmac)`` where *broken_at_hmac* is the
+        ``hmac`` value of the first broken link.
+        """
+        prev_hmac = _CHAIN_GENESIS
+        for record in records:
+            stored_hmac = record.get("hmac", "")
+            body = {k: v for k, v in record.items() if k != "hmac"}
+            expected = self.stamp(body, prev_hmac=prev_hmac)["hmac"]
+            if not _hmac.compare_digest(stored_hmac, expected):
+                return False, stored_hmac
+            prev_hmac = stored_hmac
+        return True, None
+
+    @staticmethod
+    def genesis() -> str:
+        """The sentinel value used as prev_hmac for the first record."""
+        return _CHAIN_GENESIS
 
 
 # ===========================================================================

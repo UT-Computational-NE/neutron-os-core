@@ -42,6 +42,7 @@ from typing import Optional
 
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import locked_append_jsonl
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CORRECTIONS_DIR = _RUNTIME_DIR / "inbox" / "corrections"
 
@@ -253,8 +254,7 @@ class CorrectionReviewSystem:
                 feedback_note="Auto-inherited from reviewed sibling pattern",
                 correct_value=reviewed.correct_value,
             )
-            with open(self.applied_file, "a") as f:
-                f.write(correction.to_jsonl() + "\n")
+            locked_append_jsonl(self.applied_file, json.loads(correction.to_jsonl()))
             return correction
 
         correction = AppliedCorrection(
@@ -270,9 +270,7 @@ class CorrectionReviewSystem:
             published_endpoints=published_endpoints or [],
         )
 
-        with open(self.applied_file, "a") as f:
-            f.write(correction.to_jsonl() + "\n")
-
+        locked_append_jsonl(self.applied_file, json.loads(correction.to_jsonl()))
         return correction
 
     def get_applied(self, correction_id: str) -> Optional[AppliedCorrection]:
@@ -585,8 +583,7 @@ class CorrectionReviewSystem:
             was_edited=False,  # It was auto-applied correctly
         )
 
-        with open(self.training_file, "a") as f:
-            f.write(example.to_jsonl() + "\n")
+        locked_append_jsonl(self.training_file, json.loads(example.to_jsonl()))
 
     def _add_to_errors(
         self,
@@ -608,8 +605,7 @@ class CorrectionReviewSystem:
             "confidence": correction.confidence,  # Track confidence of bad corrections
         }
 
-        with open(self.errors_file, "a") as f:
-            f.write(json.dumps(data) + "\n")
+        locked_append_jsonl(self.errors_file, data)
 
     def _queue_resynthesis_for_error(self, correction: AppliedCorrection) -> Optional[ResynthesisJob]:
         """Queue re-synthesis to fix published content after error flagged."""

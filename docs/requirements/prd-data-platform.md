@@ -185,8 +185,8 @@ The Data Platform implements the system-wide data architecture and operational r
 - [Master Tech Spec § 9.2: Backup & Archive Strategy](../tech-specs/spec-executive.md#92-backup--archive-strategy)
 
 **Key Operational Policies:**
-- **2-year live retention**: Data actively queried and in use via lakehouse
-- **7-year archive retention**: Data retained in Glacier-tier storage for regulatory compliance
+- **2-year live retention**: Data actively queried and in use via lakehouse (default for all deployments)
+- **7-year archive retention**: Data retained in Glacier-tier storage for NRC-regulated facilities (opt-in; configured via `[retention] policy = "regulatory"` in `data-platform.toml`). Non-regulated deployments default to 2-year retention.
 - **Multi-tier backup strategy**: Cloud replication (continuous), local daily, monthly Glacier archive, encrypted portable backup
 - **Disaster recovery**: RPO <1 minute (regional), <24 hours (data corruption)
 - **Immutability enforcement**: Iceberg table snapshots are immutable; all modifications tracked in transaction log
@@ -201,7 +201,7 @@ The Data Platform implements the system-wide data architecture and operational r
 |----|-------------|----------|
 | DL-001 | Ingest reactor time-series to Bronze tier | P0 |
 | DL-002 | S3-compatible object storage | P0 |
-| DL-003 | 7-year retention policy | P1 |
+| DL-003 | Configurable retention policy (default 2-year; 7-year for NRC-regulated deployments) | P1 |
 | DL-004 | Automated daily ingestion from Box | P0 |
 | DL-005 | Manual upload capability for legacy data | P1 |
 

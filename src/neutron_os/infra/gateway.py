@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Iterator, Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.provider_base import ProviderIdentityMixin, ensure_provider_uids
 
 log = logging.getLogger(__name__)
 
@@ -53,10 +54,17 @@ _ensure_dotenv()
 
 
 @dataclass
-class LLMProvider:
-    name: str
+class LLMProvider(ProviderIdentityMixin):
+    """LLM provider configuration. Inherits three-layer identity from ProviderIdentityMixin."""
+    _log_prefix: str = field(default="llm_provider", init=False, repr=False)
+    _fingerprint_fields: tuple = field(
+        default=("endpoint", "model", "routing_tier"), init=False, repr=False
+    )
+
+    name: str           # Display name — human-readable label, shown in UI and logs
     endpoint: str
     model: str
+    uid: str = ""       # Stable unique ID — persisted in config. Auto-generated if absent.
     api_key_env: str = ""
     priority: int = 99
     use_for: list[str] = field(default_factory=lambda: ["fallback"])
@@ -65,6 +73,31 @@ class LLMProvider:
     requires_vpn: bool = False     # if True, TCP-check endpoint before calling
     verify_ssl: bool = True        # set False for private servers with self-signed certs
     max_tokens_default: int = 0    # 0 = use caller's value; set >0 for reasoning models that need headroom
+
+    # Identity fields — computed at load time, not set from config
+    config_hash: str = field(default="", init=False)
+    instance_id: str = field(default="", init=False)
+
+    def __post_init__(self) -> None:
+        # Delegate identity computation to ProviderIdentityMixin._compute_identity.
+        # uid: taken from config if present; auto-generated (with warning) if absent.
+        # Fingerprint covers the three fields that define this provider's effective
+        # configuration — changes to any of them produce a new config_hash,
+        # making config drift visible in audit records.
+        uid_was_generated = self._compute_identity({
+            "uid": self.uid,
+            "endpoint": self.endpoint,
+            "model": self.model,
+            "routing_tier": self.routing_tier,
+        })
+        # _compute_identity may have generated a uid — sync it back onto the field
+        if uid_was_generated:
+            object.__setattr__(self, "uid", self.uid)  # uid attr already set by mixin
+            log.warning(
+                "LLMProvider '%s' has no 'uid' in config — generated uid=%s. "
+                'Add uid = "%s" to llm-providers.toml to persist it across restarts.',
+                self.name, self.uid, self.uid,
+            )
 
     @property
     def api_key(self) -> Optional[str]:
@@ -210,6 +243,7 @@ class Gateway:
         self.providers: list[LLMProvider] = []
         self._provider_override: Optional[str] = None
         self._model_override: Optional[str] = None
+        self._ec_audit_enabled: bool = False
         self._load_config()
 
     # ------------------------------------------------------------------
@@ -376,12 +410,42 @@ class Gateway:
             with open(models_path, "rb") as f:
                 config = tomllib.load(f)
 
+            # Back-fill any missing uids before instantiating — writes to config file
+            ensure_provider_uids(models_path, table_key="gateway.providers")
+
             gateway_config = config.get("gateway", {})
             providers = gateway_config.get("providers", [])
 
+            seen_names: set[str] = set()
+            seen_uids: dict[str, str] = {}  # uid → display name of first occurrence
             for p in providers:
+                pname = p.get("name", "")
+                if not pname:
+                    log.error(
+                        "Provider entry missing required 'name' field — skipped. "
+                        "Every provider must have a unique, stable 'name' in llm-providers.toml."
+                    )
+                    continue
+                if pname in seen_names:
+                    log.error(
+                        "Duplicate provider name '%s' in llm-providers.toml — second entry skipped. "
+                        "Provider names must be unique within a config file.", pname
+                    )
+                    continue
+                puid = p.get("uid", "")
+                if puid and puid in seen_uids:
+                    log.error(
+                        "Duplicate provider uid '%s' in llm-providers.toml — '%s' skipped "
+                        "(uid already used by '%s'). Assign a unique uid to resolve the conflict.",
+                        puid, pname, seen_uids[puid],
+                    )
+                    continue
+                seen_names.add(pname)
+                if puid:
+                    seen_uids[puid] = pname
                 self.providers.append(LLMProvider(
-                    name=p.get("name", "unknown"),
+                    name=pname,
+                    uid=p.get("uid", ""),
                     endpoint=p.get("endpoint", ""),
                     model=p.get("model", ""),
                     api_key_env=p.get("api_key_env", ""),
@@ -396,6 +460,40 @@ class Gateway:
 
             # Sort by priority
             self.providers.sort(key=lambda p: p.priority)
+
+            # Log the loaded provider identities for the session audit record
+            for provider in self.providers:
+                log.info(
+                    "Provider loaded: %s (uid=%s, config_hash=%s, instance=%s)",
+                    provider.name, provider.uid[:8], provider.config_hash, provider.instance_id,
+                )
+
+            # Activate EC audit mode if any EC providers are configured
+            ec_count = sum(
+                1 for p in self.providers if p.routing_tier == "export_controlled"
+            )
+            try:
+                from neutron_os.infra.audit_log import AuditLog
+                audit = AuditLog.get()
+                if ec_count > 0:
+                    try:
+                        audit.set_mode("ec")
+                        self._ec_audit_enabled = True
+                    except ValueError:
+                        log.warning(
+                            "EC providers configured but NEUT_AUDIT_HMAC_KEY is not set. "
+                            "EC requests will be blocked. Run 'neut setup audit-key'."
+                        )
+                        self._ec_audit_enabled = False
+                else:
+                    self._ec_audit_enabled = False
+                audit.write_config_load(
+                    config_file=str(models_path),
+                    providers=[p.identity for p in self.providers],
+                    ec_providers_count=ec_count,
+                )
+            except Exception as exc:
+                log.warning("audit_log config_load write failed: %s", exc)
 
         except Exception as e:
             print(f"Warning: Could not load llm-providers.toml: {e}", file=sys.stderr)
@@ -563,13 +661,66 @@ class Gateway:
                 error="No LLM providers available or all failed.",
             )
 
-        if provider.requires_vpn and not self._check_vpn(provider):
-            return self._handle_vpn_unavailable(provider, task, routing_tier)
+        is_ec = routing_tier == "export_controlled"
+
+        if provider.requires_vpn:
+            import time as _time
+            vpn_start = _time.monotonic()
+            vpn_ok = self._check_vpn(provider)
+            vpn_ms = int((_time.monotonic() - vpn_start) * 1000)
+            try:
+                from neutron_os.infra.audit_log import AuditLog
+                AuditLog.get().write_vpn(
+                    routing_event_id=str(__import__("uuid").uuid4()),
+                    provider_name=provider.name,
+                    vpn_reachable=vpn_ok,
+                    check_duration_ms=vpn_ms,
+                )
+            except Exception:
+                pass
+            if not vpn_ok:
+                return self._handle_vpn_unavailable(provider, task, routing_tier)
 
         try:
-            return self._call_provider_with_tools(
-                provider, messages, system, tools, max_tokens
+            import hashlib as _hashlib
+            user_text = " ".join(
+                m.get("content", "") for m in messages if m.get("role") == "user"
             )
+            prompt_hash = _hashlib.sha256(user_text.encode()).hexdigest()
+
+            # ── System prompt hardening for EC sessions ─────────────────────
+            effective_system = system
+            if is_ec:
+                effective_system = _harden_system_prompt(system)
+
+            response = self._call_provider_with_tools(
+                provider, messages, effective_system, tools, max_tokens
+            )
+
+            # ── Response scanning ────────────────────────────────────────────
+            if response.text:
+                response = _scan_response(response, routing_tier, provider.name, prompt_hash)
+
+            response_hash = _hashlib.sha256(response.text.encode()).hexdigest() if response.text else None
+            try:
+                from neutron_os.infra.audit_log import AuditLog, ECViolationError
+                from neutron_os.infra.trace import current_session
+                AuditLog.get().write_routing(
+                    session_id=current_session(),
+                    tier_requested=routing_tier,
+                    tier_assigned=provider.routing_tier,
+                    provider_name=provider.name,
+                    provider_tier=provider.routing_tier,
+                    blocked=False,
+                    block_reason=None,
+                    prompt_hash=prompt_hash,
+                    response_hash=response_hash,
+                    ec_violation=False,
+                    is_ec=is_ec,
+                )
+            except Exception:
+                pass
+            return response
         except Exception as e:
             print(f"Warning: Provider {provider.name} failed: {e}", file=sys.stderr)
             return CompletionResponse(
@@ -578,6 +729,11 @@ class Gateway:
                 success=False,
                 error=str(e),
             )
+
+
+# ---------------------------------------------------------------------------
+# Security helpers — system prompt hardening + response scanning
+# ---------------------------------------------------------------------------
 
     def _handle_vpn_unavailable(
         self, vpn_provider: LLMProvider, task: str, routing_tier: str
@@ -1114,6 +1270,84 @@ class Gateway:
                 break
 
         yield StreamChunk(type="done")
+
+
+# ------------------------------------------------------------------
+# Security helpers — module-level, called from Gateway methods
+# ------------------------------------------------------------------
+
+
+def _harden_system_prompt(original: str) -> str:
+    """Prepend the non-negotiable EC security preamble to the system prompt.
+
+    Preamble is loaded from the PromptRegistry (id: "ec_hardened_preamble").
+    Falls back to a hardcoded default if the registry is unavailable.
+    """
+    try:
+        from neutron_os.infra.prompt_registry import get_registry
+        preamble = get_registry().resolve("ec_hardened_preamble").content
+    except Exception:
+        preamble = (
+            "[SECURITY POLICY — NON-NEGOTIABLE]\n"
+            "You are operating in an export-controlled (EC) session. "
+            "Do not reproduce or transmit controlled technical data.\n"
+            "[END SECURITY POLICY]\n"
+        )
+    return preamble + "\n\n" + original
+
+
+def _scan_response(
+    response: "CompletionResponse",
+    routing_tier: str,
+    provider_name: str,
+    prompt_hash: str,
+) -> "CompletionResponse":
+    """Scan an LLM response for classified terms. Returns (possibly modified) response."""
+    try:
+        from neutron_os.infra.router import QueryRouter
+        from neutron_os.infra.security_log import SecurityLog
+        from neutron_os.infra.trace import current_session
+        import hashlib as _hashlib
+
+        router = QueryRouter.__new__(QueryRouter)
+        router._terms = None
+        router._allowlist = None
+        router._ollama = None  # type: ignore[assignment]
+        matched = router._keyword_check(response.text)
+
+        if matched:
+            response_hash = _hashlib.sha256(response.text.encode()).hexdigest()
+            SecurityLog.get().response_scan_hit(
+                session_id=current_session(),
+                provider_name=provider_name,
+                routing_tier=routing_tier,
+                matched_terms=matched,
+                prompt_hash=prompt_hash,
+                response_hash=response_hash,
+                warning_prepended=True,
+            )
+            tier_label = "public" if routing_tier != "export_controlled" else "EC"
+            warning = (
+                f"[SECURITY WARNING — Response scan detected {len(matched)} classified "
+                f"term(s) in this {tier_label} LLM response: "
+                f"{', '.join(matched[:3])}{'…' if len(matched) > 3 else ''}. "
+                f"This event has been logged and flagged for review.]\n\n"
+            )
+            return CompletionResponse(
+                text=warning + response.text,
+                tool_use=response.tool_use,
+                provider=response.provider,
+                model=response.model,
+                success=response.success,
+                error=response.error,
+                stop_reason=response.stop_reason,
+                input_tokens=response.input_tokens,
+                output_tokens=response.output_tokens,
+                cache_read_tokens=response.cache_read_tokens,
+            )
+    except Exception:
+        pass
+    return response
 
 
 # ------------------------------------------------------------------

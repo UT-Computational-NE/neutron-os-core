@@ -34,6 +34,7 @@ from .models import Signal
 
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CONFIG_DIR = _RUNTIME_DIR / "config"
 TRANSIT_LOG = _RUNTIME_DIR / "inbox" / "processed" / "transit_log.json"
@@ -189,7 +190,7 @@ class Router:
             "last_updated": datetime.now(timezone.utc).isoformat(),
             "records": [r.to_dict() for r in self.transit[-1000:]],  # Keep last 1000
         }
-        TRANSIT_LOG.write_text(json.dumps(data, indent=2))
+        atomic_write(TRANSIT_LOG, data)
 
     def _register_deliverers(self) -> None:
         """Register delivery backends."""

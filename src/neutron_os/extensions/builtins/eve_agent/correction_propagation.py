@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Callable
 
 
-from neutron_os.infra.state import LockedJsonFile
+from neutron_os.infra.state import LockedJsonFile, locked_append_jsonl
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
@@ -539,8 +539,7 @@ class CorrectionPropagator:
             "correction_id": job.correction_id,
         }
 
-        with open(notification_log, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+        locked_append_jsonl(notification_log, entry)
 
         return True
 
@@ -615,8 +614,7 @@ class CorrectionPropagator:
             **result.to_dict(),
         }
 
-        with open(PROPAGATION_LOG, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+        locked_append_jsonl(PROPAGATION_LOG, entry)
 
     # ---------------------------------------------------------------------------
     # Utility methods

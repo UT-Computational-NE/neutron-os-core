@@ -145,6 +145,76 @@ def ensure_ollama_running() -> bool:
     return False
 
 
+def setup_llm_provider() -> int:
+    """Interactive LLM provider selection — called by `neut connect llm-provider`.
+
+    Presents a menu of all configured cloud LLM providers (Anthropic, OpenAI,
+    any others in llm-providers.toml). User picks one, enters their key.
+    Also surfaces private-network providers (qwen-rascal, etc.) as options.
+    """
+    from neutron_os.infra.connections import get_registry, store_credential
+
+    registry = get_registry()
+    providers = [c for c in registry.all() if c.category == "llm" and c.kind == "api"]
+
+    if not providers:
+        print("  No LLM providers configured in extension manifests.")
+        return 1
+
+    print("\n  Choose your LLM provider(s):")
+    print("  (You can set up more than one — neut routes automatically)\n")
+
+    for i, conn in enumerate(providers, 1):
+        import os
+        key = os.environ.get(conn.credential_env_var, "") if conn.credential_env_var else ""
+        status = " ✓ (key set)" if key else ""
+        print(f"    {i}. {conn.display_name}{status}")
+
+    print(f"    {len(providers) + 1}. Skip — I'll set keys manually later")
+    print()
+
+    configured_any = False
+    for conn in providers:
+        import os
+        if os.environ.get(conn.credential_env_var or "", ""):
+            configured_any = True
+            continue  # already set
+
+        try:
+            answer = input(f"  Set up {conn.display_name}? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Skipped")
+            break
+
+        if answer not in ("y", "yes"):
+            continue
+
+        if conn.docs_url:
+            print(f"  Get your key: {conn.docs_url}\n")
+
+        try:
+            value = input(f"  Paste {conn.display_name} API key: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Skipped")
+            continue
+
+        if value:
+            store_credential(conn.name, value)
+            os.environ[conn.credential_env_var] = value
+            print(f"  ✓ {conn.display_name} key saved")
+            configured_any = True
+
+    if not configured_any:
+        print("\n  No providers configured. neut will use Ollama locally if available.")
+        print("  Set keys later:")
+        for conn in providers:
+            if conn.credential_env_var:
+                print(f"    neut connect {conn.name}")
+
+    print()
+    return 0
+
+
 def setup_qwen_rascal() -> int:
     """Post-setup hook for a private-network LLM provider (export-controlled routing).
 
@@ -212,38 +282,52 @@ def _setup_private_network_llm(connection_name: str) -> int:
 
     content = providers_path.read_text(encoding="utf-8")
 
+    # Pull LLM-specific fields from connection (added to Connection dataclass)
+    model = getattr(conn, "model", "") or connection_name
+    routing_tier = getattr(conn, "routing_tier", "") or "restricted"
+    verify_ssl = getattr(conn, "verify_ssl", True)
+
     # -- Check if already configured -----------------------------------------
-    if f'name = "{connection_name}"' in content and 'routing_tier = "export_controlled"' in content:
-        print(f"  \u2713 {display} already configured for EC routing")
+    if f'name = "{connection_name}"' in content:
+        print(f"  \u2713 {display} already in llm-providers.toml")
     else:
-        # Remove any stale block with this name
-        content = re.sub(
-            r'\[\[gateway\.providers\]\]\s*\n'
-            rf'name\s*=\s*"{re.escape(connection_name)}".*?'
-            r'(?=\[\[gateway\.providers\]\]|\Z)',
-            '',
-            content,
-            flags=re.DOTALL,
-        )
-
-        # Derive model name from connection name (best-effort; user can edit the file)
-        model_guess = connection_name.split("-")[0] if "-" in connection_name else connection_name
-
         new_block = (
             f'\n[[gateway.providers]]\n'
             f'name = "{connection_name}"\n'
             f'endpoint = "{endpoint}"\n'
-            f'model = "{model_guess}"\n'
+            f'model = "{model}"\n'
             f'api_key_env = "{cred_env}"\n'
             f'priority = 1\n'
-            f'routing_tier = "export_controlled"\n'
+            f'routing_tier = "{routing_tier}"\n'
+            f'routing_tags = ["{routing_tier}", "private_network"]\n'
             f'requires_vpn = true\n'
+            f'verify_ssl = {"true" if verify_ssl else "false"}\n'
             f'use_for = ["extraction", "synthesis", "fallback"]\n'
         )
         providers_path.write_text(content.rstrip() + "\n" + new_block, encoding="utf-8")
-        print(f"  \u2713 Configured {display} for export-controlled routing")
-        print(f"    Anthropic/OpenAI → public queries")
-        print(f"    {display} → export-controlled queries ({vpn_name} required)")
+        print(f"  \u2713 Added {display} to llm-providers.toml")
+        if routing_tier == "restricted":
+            print(f"    routing_tier = restricted (private LLM, falls back to cloud when VPN down)")
+        else:
+            print(f"    routing_tier = {routing_tier}")
+
+    # -- Set routing preference in settings ----------------------------------
+    try:
+        from neutron_os.extensions.builtins.settings.store import SettingsStore
+        settings = SettingsStore()
+        current_prefer = settings.get("routing.prefer_provider", [])
+        if isinstance(current_prefer, str):
+            current_prefer = [p.strip() for p in current_prefer.split(",") if p.strip()]
+        if connection_name not in current_prefer:
+            settings.set("routing.prefer_provider", [connection_name] + list(current_prefer))
+            settings.set("routing.prefer_when", "reachable")
+            print(f"  \u2713 Set routing.prefer_provider = [{connection_name}]")
+            print(f"    When {vpn_name} is up → {display}")
+            print(f"    When {vpn_name} is down → cloud fallback")
+        else:
+            print(f"  \u2713 routing.prefer_provider already includes {connection_name}")
+    except Exception as e:
+        print(f"  \u26a0 Could not update routing settings: {e}")
 
     # -- Check VPN / network reachability ------------------------------------
     if health_host and health_port:

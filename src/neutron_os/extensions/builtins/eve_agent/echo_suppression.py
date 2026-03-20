@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import locked_append_jsonl, LockedJsonFile
 
 from .models import Signal
 
@@ -428,12 +429,27 @@ class EchoSuppressor:
                     self._phrase_index[phrase].add(content.id)
 
     def _save_index(self) -> None:
-        """Save index to disk."""
+        """Save index to disk (atomic full-file rewrite, multi-process safe)."""
+        import os, tempfile
         index_file = self.index_dir / "published_content.jsonl"
-
-        with open(index_file, "w") as f:
-            for content in self._published_index.values():
-                f.write(json.dumps(content.to_dict()) + "\n")
+        index_file.parent.mkdir(parents=True, exist_ok=True)
+        lines = "\n".join(
+            json.dumps(c.to_dict(), default=str, sort_keys=True)
+            for c in self._published_index.values()
+        ) + ("\n" if self._published_index else "")
+        fd, tmp = tempfile.mkstemp(dir=str(index_file.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(lines)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, str(index_file))
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
     def cleanup_expired(self) -> int:
         """Remove expired content from index."""

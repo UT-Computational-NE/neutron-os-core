@@ -32,6 +32,8 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+from neutron_os.infra.state import locked_append_jsonl
+
 logger = logging.getLogger(__name__)
 
 # Lazy-loaded to avoid import overhead at module level
@@ -53,8 +55,7 @@ def _log_chat(user: str, message: str, response: str, elapsed_ms: int):
         "elapsed_ms": elapsed_ms,
     }
     with _chat_log_lock:
-        with open(_chat_log_path, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+        locked_append_jsonl(_chat_log_path, entry)
 
 
 def _get_agent():

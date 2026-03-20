@@ -1,12 +1,13 @@
 [project]
 name = "neutron-os"
-version = "0.4.6"
+version = "0.5.0"
 description = "Modular digital platform for nuclear facilities"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "pyyaml>=6.0",
     "argcomplete>=3.0",
+    "tomlkit>=0.13",
 ]
 
 [project.optional-dependencies]
@@ -64,6 +65,11 @@ markers = [
     "voice: Voice memo / sense serve integration",
     "inbox: Inbox note integration",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "benchmark: marks benchmark tests — skipped by default, run with '-m benchmark'",
+    "pg: marks tests that require a live PostgreSQL instance",
+]
+filterwarnings = [
+    "ignore::pytest.PytestUnknownMarkWarning",
 ]
 
 [tool.ruff]

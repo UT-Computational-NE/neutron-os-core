@@ -37,6 +37,7 @@ import json
 import re
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -96,6 +97,8 @@ class RoutingDecision:
     matched_terms: list[str] = field(default_factory=list)
     classifier: str = "keyword"  # "session" | "keyword" | "ollama" | "fallback"
     tags: set[str] = field(default_factory=set)
+    routing_event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    keyword_term: Optional[str] = None  # first matched term (for audit)
     """Facility-policy tags carried forward to gateway._select_provider.
 
     The router sets tier for legal/compliance (export-control law).
@@ -339,66 +342,93 @@ class QueryRouter:
 
         # ── 1. Session mode override (fastest) ──────────────────────────────
         if session_mode == "export_controlled":
-            return RoutingDecision(
+            decision = RoutingDecision(
                 tier=RoutingTier.EXPORT_CONTROLLED,
                 reason="session mode override",
                 classifier="session",
             )
-        if session_mode == "public":
-            return RoutingDecision(
+        elif session_mode == "public":
+            decision = RoutingDecision(
                 tier=RoutingTier.PUBLIC,
                 reason="session mode override",
                 classifier="session",
             )
+        else:
+            # ── 2. Build classification window ─────────────────────────────
+            window = self._build_window(text, context)
 
-        # ── 2. Build classification window ───────────────────────────────────
-        window = self._build_window(text, context)
-
-        # ── 3. Keyword match (zero-latency, definitive) ──────────────────────
-        matched = self._keyword_check(window)
-        if matched:
-            return RoutingDecision(
-                tier=RoutingTier.EXPORT_CONTROLLED,
-                reason="export-control keyword match",
-                matched_terms=matched,
-                classifier="keyword",
-            )
-
-        # ── 4. Ollama SLM (semantic, local, no new deps) ─────────────────────
-        if sens != SENSITIVITY_PERMISSIVE:
-            ollama_result = self._ollama.classify(window)
-            if ollama_result == RoutingTier.EXPORT_CONTROLLED:
-                return RoutingDecision(
+            # ── 3. Keyword match (zero-latency, definitive) ────────────────
+            matched = self._keyword_check(window)
+            if matched:
+                decision = RoutingDecision(
                     tier=RoutingTier.EXPORT_CONTROLLED,
-                    reason="SLM: export-controlled content detected",
-                    classifier="ollama",
+                    reason="export-control keyword match",
+                    matched_terms=matched,
+                    classifier="keyword",
+                    keyword_term=matched[0],
                 )
-            if ollama_result == RoutingTier.PUBLIC:
-                return RoutingDecision(
-                    tier=RoutingTier.PUBLIC,
-                    reason="SLM: no export-controlled content detected",
-                    classifier="ollama",
-                )
-            if ollama_result == "uncertain" and sens == SENSITIVITY_STRICT:
-                return RoutingDecision(
-                    tier=RoutingTier.EXPORT_CONTROLLED,
-                    reason="SLM: uncertain — routing conservatively (strict mode)",
-                    classifier="ollama",
-                )
-            # ollama_result is None (unavailable) or "uncertain" in balanced mode → fallback
+            else:
+                ollama_result = None
+                # ── 4. Ollama SLM (semantic, local, no new deps) ───────────
+                if sens != SENSITIVITY_PERMISSIVE:
+                    ollama_result = self._ollama.classify(window)
+                    if ollama_result == RoutingTier.EXPORT_CONTROLLED:
+                        decision = RoutingDecision(
+                            tier=RoutingTier.EXPORT_CONTROLLED,
+                            reason="SLM: export-controlled content detected",
+                            classifier="ollama",
+                        )
+                    elif ollama_result == RoutingTier.PUBLIC:
+                        decision = RoutingDecision(
+                            tier=RoutingTier.PUBLIC,
+                            reason="SLM: no export-controlled content detected",
+                            classifier="ollama",
+                        )
+                    elif ollama_result == "uncertain" and sens == SENSITIVITY_STRICT:
+                        decision = RoutingDecision(
+                            tier=RoutingTier.EXPORT_CONTROLLED,
+                            reason="SLM: uncertain — routing conservatively (strict mode)",
+                            classifier="ollama",
+                        )
+                    else:
+                        ollama_result = None  # treat unavailable/uncertain-balanced as fallback
 
-        # ── 5. Fallback ───────────────────────────────────────────────────────
-        if sens == SENSITIVITY_STRICT:
-            return RoutingDecision(
-                tier=RoutingTier.EXPORT_CONTROLLED,
-                reason="no keyword match; routing conservatively (strict mode)",
-                classifier="fallback",
+                if ollama_result is None:
+                    # ── 5. Fallback ────────────────────────────────────────
+                    if sens == SENSITIVITY_STRICT:
+                        decision = RoutingDecision(
+                            tier=RoutingTier.EXPORT_CONTROLLED,
+                            reason="no keyword match; routing conservatively (strict mode)",
+                            classifier="fallback",
+                        )
+                    else:
+                        decision = RoutingDecision(
+                            tier=RoutingTier.PUBLIC,
+                            reason="no export-control terms detected",
+                            classifier="fallback",
+                        )
+
+        # ── Audit: write_classification for every decision ──────────────────
+        is_ec = decision.tier == RoutingTier.EXPORT_CONTROLLED
+        try:
+            from neutron_os.infra.audit_log import AuditLog
+            import hashlib as _hashlib
+            prompt_hash = _hashlib.sha256(text.encode()).hexdigest()
+            AuditLog.get().write_classification(
+                routing_event_id=decision.routing_event_id,
+                prompt_hash=prompt_hash,
+                classifier=decision.classifier,
+                keyword_matched=bool(decision.matched_terms),
+                keyword_term=decision.keyword_term,
+                ollama_result=None,  # SLM result not stored separately yet
+                sensitivity=sens,
+                final_tier=decision.tier.value,
+                is_ec=is_ec,
             )
-        return RoutingDecision(
-            tier=RoutingTier.PUBLIC,
-            reason="no export-control terms detected",
-            classifier="fallback",
-        )
+        except Exception:
+            pass  # audit write never blocks routing
+
+        return decision
 
     def reload_terms(self) -> None:
         """Force reload of the term and allowlist caches (e.g., after user edits config)."""
