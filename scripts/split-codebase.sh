@@ -15,7 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 AXIOM_TEMP="${PROJECT_ROOT}/../axiom-temp"
-AXIOM_REPO="git@github.com:benboooth/axiom.git"
+AXIOM_REPO="git@github.com:benjaminbooth/axiom.git"
 
 # Files that should be in axiom (generic platform)
 AXIOM_PATHS=(
@@ -194,13 +194,13 @@ phase2_create_axiom() {
     
     # Check if axiom repo exists on GitHub
     echo "Checking if axiom repo exists..."
-    if ! gh repo view benboooth/axiom &>/dev/null; then
-        echo "Creating benboooth/axiom on GitHub..."
-        gh repo create benboooth/axiom --public \
+    if ! gh repo view benjaminbooth/axiom &>/dev/null; then
+        echo "Creating benjaminbooth/axiom on GitHub..."
+        gh repo create benjaminbooth/axiom --public \
             --description "Generic LLM/RAG platform framework" \
             --license MIT
     else
-        echo "benboooth/axiom already exists"
+        echo "benjaminbooth/axiom already exists"
     fi
     
     # Create temp directory for extraction
@@ -371,7 +371,7 @@ A generic LLM/RAG platform framework for building AI-powered applications.
 ```bash
 pip install axiom
 # or
-pip install git+https://github.com/benboooth/axiom.git
+pip install git+https://github.com/benjaminbooth/axiom.git
 ```
 
 ## Usage
@@ -438,7 +438,7 @@ phase3_update_neutronos() {
         # Add axiom dependency
         if grep -q "dependencies" pyproject.toml; then
             sed -i '' '/dependencies = \[/a\
-    "axiom @ git+https://github.com/benboooth/axiom.git",
+    "axiom @ git+https://github.com/benjaminbooth/axiom.git",
 ' pyproject.toml
         fi
         
@@ -457,7 +457,7 @@ phase4_mirroring() {
     echo "   a. Go to rsicc-gitlab.tacc.utexas.edu"
     echo "   b. Create new project: axiom"
     echo "   c. Settings → Repository → Mirroring repositories"
-    echo "   d. Add: https://github.com/benboooth/axiom.git"
+    echo "   d. Add: https://github.com/benjaminbooth/axiom.git"
     echo "   e. Direction: Pull"
     echo "   f. Authentication: None (public repo)"
     echo ""

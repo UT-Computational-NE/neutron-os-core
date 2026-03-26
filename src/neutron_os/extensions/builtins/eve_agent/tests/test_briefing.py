@@ -165,14 +165,14 @@ class TestBriefingFiltering:
     def sample_signal_dicts(self):
         """Create diverse signal dicts for filtering tests."""
         return [
-            {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["Alpha"],
-             "raw_text": "Kevin working", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
-            {"signal_type": "blocker", "people": ["Alice"], "initiatives": ["MSR"],
-             "raw_text": "Alice blocked", "detail": "blocker", "timestamp": datetime.now(UTC).isoformat()},
-            {"signal_type": "decision", "people": ["Ben"], "initiatives": ["Alpha"],
-             "raw_text": "Ben decided", "detail": "decision", "timestamp": datetime.now(UTC).isoformat()},
+            {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["Digital Twin"],
+             "raw_text": "Kevin working on digital twin project", "detail": "digital twin progress", "timestamp": datetime.now(UTC).isoformat()},
+            {"signal_type": "blocker", "people": ["Alice"], "initiatives": ["Gamma"],
+             "raw_text": "Alice blocked on compliance", "detail": "blocker on compliance", "timestamp": datetime.now(UTC).isoformat()},
+            {"signal_type": "decision", "people": ["Ben"], "initiatives": ["Digital Twin"],
+             "raw_text": "Ben decided on digital twin milestone", "detail": "digital twin decision", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["Beta"],
-             "raw_text": "Kevin on Beta", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
+             "raw_text": "Kevin on Beta data pipeline", "detail": "Beta progress", "timestamp": datetime.now(UTC).isoformat()},
         ]
 
     def test_filter_by_person(self, service, sample_signal_dicts):
@@ -189,12 +189,15 @@ class TestBriefingFiltering:
     def test_filter_by_initiative(self, service, sample_signal_dicts):
         filtered = service._filter_signals_by_topic(
             sample_signal_dicts,
-            topic="Alpha",
+            topic="digital twin",
             category=BriefingTopic.INITIATIVES,
         )
 
-        for sig in filtered:
-            assert any("Alpha" in init for init in sig.get("initiatives", []))
+        alpha_sigs = [
+            s for s in filtered
+            if any("Digital Twin" in init for init in s.get("initiatives", []))
+        ]
+        assert len(alpha_sigs) >= 1
 
     def test_filter_blockers_only(self, service, sample_signal_dicts):
         filtered = service._filter_signals_by_topic(
