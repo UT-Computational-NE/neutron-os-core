@@ -49,24 +49,16 @@ def load_retention_config(
     Returns:
         (policies, legal_hold_enabled, audit_log_path)
     """
+    from neutron_os.infra.config_loader import load_yaml
+
     config_path = config_dir / "retention.yaml"
     if not config_path.exists() and example_dir is not None:
         config_path = example_dir / "retention.yaml"
-    if not config_path.exists():
-        return [], False, config_dir.parent / "logs" / "retention_audit.jsonl"
 
-    try:
-        import yaml
-    except ImportError:
-        logger.warning("PyYAML not installed — retention policies unavailable")
-        return [], False, config_dir.parent / "logs" / "retention_audit.jsonl"
-
-    try:
-        with open(config_path) as f:
-            cfg = yaml.safe_load(f) or {}
-    except (OSError, Exception) as exc:
-        logger.warning("Failed to load retention config: %s", exc)
-        return [], False, config_dir.parent / "logs" / "retention_audit.jsonl"
+    default_audit = config_dir.parent / "logs" / "retention_audit.jsonl"
+    cfg = load_yaml(config_path)
+    if not cfg:
+        return [], False, default_audit
 
     policies: list[RetentionPolicy] = []
     for key, val in cfg.get("retention", {}).items():

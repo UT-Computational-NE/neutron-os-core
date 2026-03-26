@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.config_loader import load_json
 
 log = logging.getLogger(__name__)
 
@@ -215,12 +216,7 @@ def detect_environment(envs: list[Environment], override: str = "") -> Environme
 # ---------------------------------------------------------------------------
 
 def _load_state() -> dict[str, bool]:
-    if _STATE_PATH.exists():
-        try:
-            return json.loads(_STATE_PATH.read_text())
-        except Exception:
-            pass
-    return {}
+    return load_json(_STATE_PATH)
 
 
 def _save_state(state: dict[str, bool]) -> None:

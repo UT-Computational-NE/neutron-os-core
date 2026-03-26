@@ -50,19 +50,14 @@ class PublishWatcher:
     def _load_source_dirs() -> list[dict[str, str]]:
         """Load source_dirs from workflow.yaml or use defaults."""
         from neutron_os import REPO_ROOT
+        from neutron_os.infra.config_loader import load_yaml
 
         for config_name in [".neut/publisher/workflow.yaml", ".publisher.yaml"]:
             config_path = REPO_ROOT / config_name
-            if config_path.exists():
-                try:
-                    import yaml
-                    with open(config_path) as f:
-                        cfg = yaml.safe_load(f) or {}
-                    dirs = cfg.get("source_dirs", cfg.get("folders", []))
-                    if dirs:
-                        return dirs
-                except Exception:
-                    pass
+            cfg = load_yaml(config_path)
+            dirs = cfg.get("source_dirs", cfg.get("folders", []))
+            if dirs:
+                return dirs
 
         return [
             {"path": "docs/requirements", "pattern": "*.md"},

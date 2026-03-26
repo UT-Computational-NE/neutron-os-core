@@ -45,7 +45,7 @@ def _routing_events_path() -> Path | None:
         al = AuditLog.get()
         if hasattr(al, "routing_events_path"):
             return Path(al.routing_events_path)  # type: ignore[attr-defined]
-    except Exception:
+    except (ImportError, AttributeError):
         pass
     # Fallback: look in standard runtime location
     try:
@@ -53,7 +53,7 @@ def _routing_events_path() -> Path | None:
         candidate = Path(REPO_ROOT) / "runtime" / "logs" / "routing_events.jsonl"
         if candidate.exists():
             return candidate
-    except Exception:
+    except (ImportError, OSError):
         pass
     return None
 
@@ -179,7 +179,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         from neutron_os.infra.audit_log import AuditLog
         al = AuditLog.get()
         result = al.verify_chain(table=args.table)
-    except Exception as e:
+    except (ImportError, AttributeError, TypeError) as e:
         print(f"neut log verify: error calling AuditLog.verify_chain: {e}", file=sys.stderr)
         return 1
 
@@ -218,7 +218,7 @@ def _cmd_stats(_args: argparse.Namespace) -> int:
         al = AuditLog.get()
         backend_info = al.backend_info() if hasattr(al, "backend_info") else {}
         backend_name = getattr(backend_info, "backend", None) or str(type(al).__name__)
-    except Exception as e:
+    except (ImportError, AttributeError, TypeError) as e:
         backend_name = f"(unavailable: {e})"
         backend_info = {}
 
@@ -273,7 +273,7 @@ def _cmd_backend(_args: argparse.Namespace) -> int:
         info = al.backend_info() if hasattr(al, "backend_info") else {}
         name = getattr(info, "backend", None) or str(type(al).__name__)
         print(name)
-    except Exception as e:
+    except (ImportError, AttributeError, TypeError) as e:
         print(f"neut log backend: {e}", file=sys.stderr)
         return 1
     return 0
@@ -287,7 +287,7 @@ def _cmd_sinks(_args: argparse.Namespace) -> int:
     try:
         from neutron_os.infra.log_sinks import LogSinkFactory
         sinks = LogSinkFactory.available()
-    except Exception as e:
+    except (ImportError, AttributeError, TypeError) as e:
         print(f"neut log sinks: {e}", file=sys.stderr)
         return 1
 

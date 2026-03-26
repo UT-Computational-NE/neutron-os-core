@@ -31,16 +31,11 @@ logger = logging.getLogger(__name__)
 def _all_source_docs(engine) -> list[str]:
     """Collect all docs from configured source_dirs."""
     from neutron_os import REPO_ROOT
+    from neutron_os.infra.config_loader import load_yaml
+
     config_path = REPO_ROOT / ".neut" / "publisher" / "workflow.yaml"
-    folders = []
-    if config_path.exists():
-        try:
-            import yaml
-            with open(config_path) as f:
-                cfg = yaml.safe_load(f) or {}
-            folders = cfg.get("source_dirs", cfg.get("folders", []))
-        except Exception:
-            pass
+    cfg = load_yaml(config_path)
+    folders = cfg.get("source_dirs", cfg.get("folders", []))
     if not folders:
         folders = [
             {"path": "docs/requirements", "pattern": "*.md"},
@@ -1105,18 +1100,13 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         # --all: collect from configured folders
         # Check workflow.yaml and .publisher.yaml for folder config
         folders = []
+        from neutron_os.infra.config_loader import load_yaml
+
         for config_name in [".neut/publisher/workflow.yaml", ".publisher.yaml"]:
-            config_path = REPO_ROOT / config_name
-            if config_path.exists():
-                try:
-                    import yaml
-                    with open(config_path) as f:
-                        cfg = yaml.safe_load(f) or {}
-                    folders = cfg.get("source_dirs", cfg.get("folders", []))
-                    if folders:
-                        break
-                except Exception:
-                    pass
+            cfg = load_yaml(REPO_ROOT / config_name)
+            folders = cfg.get("source_dirs", cfg.get("folders", []))
+            if folders:
+                break
 
         if not folders:
             # Scan all standard doc directories
@@ -1171,16 +1161,13 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     # Read config
     onedrive_root = "NeutronOS"
     site_url = ""
-    if config_path.exists():
-        try:
-            import yaml
-            with open(config_path) as f:
-                cfg = yaml.safe_load(f) or {}
-            storage_cfg = cfg.get("storage", {})
-            onedrive_root = storage_cfg.get("onedrive_root", storage_cfg.get("onedrive_folder", "NeutronOS"))
-            site_url = storage_cfg.get("onedrive_url", "")
-        except Exception:
-            pass
+    from neutron_os.infra.config_loader import load_yaml
+
+    cfg = load_yaml(config_path)
+    if cfg:
+        storage_cfg = cfg.get("storage", {})
+        onedrive_root = storage_cfg.get("onedrive_root", storage_cfg.get("onedrive_folder", "NeutronOS"))
+        site_url = storage_cfg.get("onedrive_url", "")
 
     if storage == "box-browser":
         provider = BoxBrowserStorageProvider({

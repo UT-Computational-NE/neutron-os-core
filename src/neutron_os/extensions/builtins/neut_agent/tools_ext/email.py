@@ -360,21 +360,17 @@ def _handle_list(params: dict) -> dict:
 
 def _load_smtp_config() -> dict:
     """Load SMTP config from .publisher.yaml."""
-    try:
-        import yaml  # type: ignore
-    except ImportError:
-        # Fallback: try JSON config
-        config_path = _REPO_ROOT / ".publisher.json"
-        if config_path.exists():
-            data = json.loads(config_path.read_text(encoding="utf-8"))
+    from neutron_os.infra.config_loader import load_yaml
+
+    # Try YAML configs first
+    for name in (".publisher.yaml", ".publisher.yml"):
+        data = load_yaml(_REPO_ROOT / name)
+        if data:
             return data.get("notification", {}).get("smtp", {})
-        return {}
 
-    config_path = _REPO_ROOT / ".publisher.yaml"
-    if not config_path.exists():
-        config_path = _REPO_ROOT / ".publisher.yml"
-    if not config_path.exists():
-        return {}
-
-    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    return data.get("notification", {}).get("smtp", {})
+    # Fallback: try JSON config
+    config_path = _REPO_ROOT / ".publisher.json"
+    if config_path.exists():
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        return data.get("notification", {}).get("smtp", {})
+    return {}

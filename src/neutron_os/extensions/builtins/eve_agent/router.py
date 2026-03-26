@@ -24,14 +24,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-try:
-    import yaml
-    YAML_AVAILABLE = True
-except ImportError:
-    YAML_AVAILABLE = False
-    yaml = None  # type: ignore[assignment]
-
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.config_loader import load_yaml
 from neutron_os.infra.state import atomic_write
 
 from .models import Signal
@@ -140,16 +134,9 @@ class Router:
 
     def _load_config(self) -> None:
         """Load endpoint definitions from YAML."""
-        if not YAML_AVAILABLE:
-            print("Warning: PyYAML not installed, using empty endpoint config")
+        config = load_yaml(self.config_path)
+        if not config:
             return
-
-        if not self.config_path.exists():
-            return
-
-        assert yaml is not None  # guarded by YAML_AVAILABLE check above
-        with open(self.config_path) as f:
-            config = yaml.safe_load(f) or {}
 
         for endpoint_id, cfg in config.items():
             if not isinstance(cfg, dict):
