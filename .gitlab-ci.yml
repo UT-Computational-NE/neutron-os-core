@@ -74,6 +74,8 @@ variables:
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
+    # Configure git to use GITHUB_TOKEN for axiom dependency clone
+    - git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
     - pip install --quiet -e ".[all]"
 
 # =============================================================================
@@ -201,6 +203,7 @@ publish:dev:
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
+    - git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
     - pip install --quiet build twine
     - |
       python3 -c "
