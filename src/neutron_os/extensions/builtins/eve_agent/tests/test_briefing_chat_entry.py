@@ -21,7 +21,7 @@ def _sample_briefing_data() -> dict:
         "generated_at": datetime.now(UTC).isoformat(),
         "time_window_start": "2026-02-25T08:00:00+00:00",
         "time_window_end": "2026-02-26T08:00:00+00:00",
-        "summary": "Three key developments this week: TRIGA control system upgrade "
+        "summary": "Three key developments this week: Alpha control system upgrade "
                    "completed, new safety protocol drafted, and simulation pipeline "
                    "reached v0.3 milestone.",
         "signal_count": 12,

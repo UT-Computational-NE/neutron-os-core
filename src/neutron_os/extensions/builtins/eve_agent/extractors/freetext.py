@@ -83,7 +83,7 @@ class FreetextExtractor(BaseExtractor):
         import json as json_mod
 
         system = (
-            "You are a signal extraction assistant for a nuclear engineering program. "
+            "You are a signal extraction assistant for an engineering program. "
             "Extract structured signals from the provided text. "
             "Return a JSON array of objects, each with: "
             '"signal_type" (one of: progress, blocker, decision, action_item, status_change), '

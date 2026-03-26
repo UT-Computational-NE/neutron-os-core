@@ -8,7 +8,7 @@ intelligently determining the time window based on:
 
 Topic-Focused Briefings:
 - "Brief me on Kevin" → signals mentioning Kevin
-- "Brief me on TRIGA" → signals about the TRIGA initiative
+- "Brief me on Alpha" → signals about the Alpha initiative
 - "Brief me on blockers" → all blockers across initiatives
 - "Brief me on travel" → upcoming/recent travel signals
 - "Brief me on tech" → technical signals (code, bugs, deploys)
@@ -113,7 +113,7 @@ TOPIC_KEYWORDS = {
     ],
     BriefingTopic.INITIATIVES: [
         "initiative", "project", "prd", "milestone", "deliverable",
-        "phase", "sprint", "triga", "msr", "digital twin", "bubble flow",
+        "phase", "sprint", "alpha", "beta", "digital twin", "loop",
     ],
     BriefingTopic.ROADMAPS: [
         "roadmap", "timeline", "schedule", "deadline", "due", "milestone",

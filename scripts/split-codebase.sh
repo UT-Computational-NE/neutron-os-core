@@ -91,7 +91,14 @@ AXIOM_PATHS=(
 )
 
 # Nuclear keywords to check for (word boundaries to avoid false positives like "heuristic")
-NUCLEAR_KEYWORDS="\bTRIGA\b|\bMCNP\b|\bSCALE\b|\bHEU\b|\bLEU\b|\breactor\b|\b10 CFR\b|\bNETL\b|\bTACC\b|\bnuclear\b"
+# Note: SCALE removed - causes false positives with CSS "initial-scale" and similar
+NUCLEAR_KEYWORDS="\bTRIGA\b|\bMCNP\b|\bHEU\b|\bLEU\b|\breactor\b|\b10 CFR\b|\bNETL\b|\bTACC\b|\bnuclear\b"
+
+# Files/folders that are intentionally nuclear-specific (stay in neutron-os layer)
+# These are excluded from verify-local checks using grep --exclude-dir
+NUCLEAR_SPECIFIC_DIRS=(
+    "docs"  # Internal docs folders (PRDs/specs with nuclear-specific content)
+)
 
 phase1_prepare() {
     echo "=== Phase 1: In-Place Refactoring ==="
@@ -138,11 +145,19 @@ phase1_verify_local() {
     cd "$PROJECT_ROOT"
     found=0
     
+    # Build exclude patterns for grep
+    exclude_args=""
+    for dir in "${NUCLEAR_SPECIFIC_DIRS[@]}"; do
+        exclude_args="$exclude_args --exclude-dir=$dir"
+    done
+    
     for path in "${AXIOM_PATHS[@]}"; do
         if [[ -e "$path" ]]; then
-            if grep -qriE "$NUCLEAR_KEYWORDS" "$path" 2>/dev/null; then
+            # shellcheck disable=SC2086
+            if grep -qriE --binary-files=without-match $exclude_args "$NUCLEAR_KEYWORDS" "$path" 2>/dev/null; then
                 echo "❌ Nuclear keyword found in: $path"
-                grep -riE "$NUCLEAR_KEYWORDS" "$path" | head -5
+                # shellcheck disable=SC2086
+                grep -riE --binary-files=without-match $exclude_args "$NUCLEAR_KEYWORDS" "$path" | head -5
                 found=1
             fi
         fi

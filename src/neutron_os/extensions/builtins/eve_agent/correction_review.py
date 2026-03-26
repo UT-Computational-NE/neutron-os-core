@@ -759,8 +759,8 @@ class CorrectionReviewSystem:
 Examples of corrections:
 - "new tronics" → "neutronics" (technical_term, confidence: 0.95)
   Reason: Technical term for neutron physics analysis
-- "any U.P." → "NEUP" (acronym, confidence: 0.92)
-  Reason: Nuclear Energy University Program
+- "any U.P." → "RUP" (acronym, confidence: 0.92)
+  Reason: Research University Program
 """
 
         lines = ["Examples of approved corrections (from human reviewers):"]

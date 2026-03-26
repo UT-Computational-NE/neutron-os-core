@@ -234,11 +234,11 @@ class TestEndToEndContextFlow:
             id="corr_test_flow",
             transcript_path="/test/path.md",
             original=original_text,
-            corrected="molten salt reactor",
+            corrected="thermal system",
             category="technical_term",
             confidence=0.95,
             context=context_with_term,
-            reason="Nuclear engineering term",
+            reason="Engineering term",
         )
 
         # Context should contain original

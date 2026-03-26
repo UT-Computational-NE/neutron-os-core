@@ -175,7 +175,7 @@ class TestCorrectorIdGeneration:
                     category="technical_term",
                     confidence=0.95,
                     context="...the rock committee...",
-                    reason="ROC = Reactor Operations Committee",
+                    reason="ROC = Research Operations Committee",
                 ),
             ],
         )

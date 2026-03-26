@@ -382,7 +382,7 @@ class TestWeeklySummaryAnnotations:
         correlator.initiatives = [
             Initiative(
                 id="1", name="MIT Loop",
-                pause_reason="MIT reactor offline since 2024",
+                pause_reason="MIT system offline since 2024",
                 strategic_weight=2,
             ),
         ]
@@ -401,7 +401,7 @@ class TestWeeklySummaryAnnotations:
         path = synth.write_weekly_summary(changelog, correlator=correlator)
 
         content = path.read_text()
-        assert "Paused: MIT reactor offline since 2024" in content
+        assert "Paused: MIT system offline since 2024" in content
 
     def test_stale_initiative_needs_attention(self, tmp_path):
         """Stale initiatives without pause_reason show '(Needs attention)'."""

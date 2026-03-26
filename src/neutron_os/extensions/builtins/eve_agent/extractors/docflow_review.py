@@ -765,8 +765,8 @@ def register_prd(
     """Register a PRD for DocFlow sync.
 
     Usage:
-        neut docflow register --prd reactor-ops-log \\
-            --md docs/requirements/prd-reactor-ops-log.md \\
+        neut docflow register --prd ops-log \\
+            --md docs/requirements/prd-ops-log.md \\
             --uri "https://company.sharepoint.com/..." \\
             --format ms_word
     """

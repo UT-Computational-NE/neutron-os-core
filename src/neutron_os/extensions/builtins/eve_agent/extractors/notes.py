@@ -41,8 +41,8 @@ class NotesExtractor:
 
     # Keywords that indicate PRD relevance
     PRD_KEYWORDS = {
-        "ops_log": ["ops", "operations", "console", "shift", "reactor", "compliance", "nrc", "log"],
-        "experiment_manager": ["experiment", "sample", "irradiation", "roc", "tracking", "lifecycle"],
+        "ops_log": ["ops", "operations", "console", "shift", "system", "compliance", "log"],
+        "experiment_manager": ["experiment", "sample", "testing", "roc", "tracking", "lifecycle"],
         "operator_dashboard": ["operator", "dashboard", "alerts", "monitoring", "real-time"],
         "researcher_dashboard": ["researcher", "results", "analysis", "data", "my experiments"],
     }

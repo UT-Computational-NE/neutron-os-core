@@ -119,7 +119,7 @@ class TestNote:
     """Test POST /note endpoint."""
 
     def test_submit_note(self, server, inbox):
-        data = urllib.parse.urlencode({"text": "Remember to check the reactor logs"}).encode()
+        data = urllib.parse.urlencode({"text": "Remember to check the system logs"}).encode()
         req = urllib.request.Request(
             _url(server, "/note"),
             data=data,
@@ -134,7 +134,7 @@ class TestNote:
         notes = list(inbox.glob("note_*.md"))
         assert len(notes) == 1
         content = notes[0].read_text()
-        assert "reactor logs" in content
+        assert "system logs" in content
 
     def test_empty_note_rejected(self, server):
         data = urllib.parse.urlencode({"text": ""}).encode()

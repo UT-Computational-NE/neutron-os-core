@@ -171,8 +171,8 @@ class TestBriefingFiltering:
              "raw_text": "Alice blocked", "detail": "blocker", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "decision", "people": ["Ben"], "initiatives": ["Alpha"],
              "raw_text": "Ben decided", "detail": "decision", "timestamp": datetime.now(UTC).isoformat()},
-            {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["NETL"],
-             "raw_text": "Kevin on NETL", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
+            {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["Beta"],
+             "raw_text": "Kevin on Beta", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
         ]
 
     def test_filter_by_person(self, service, sample_signal_dicts):

@@ -370,23 +370,34 @@ class GitLabDiffExtractor(BaseExtractor):
         """Guess initiative name from GitLab project path.
 
         Maps repo paths to initiative names for correlation.
+        Mappings are loaded from config/gitlab_initiatives.json if available,
+        falling back to extracting the repo name from the path.
         """
         path_lower = project_path.lower()
 
-        mappings = {
-            "triga_digital_twin": "TRIGA Digital Twin",
-            "bubble_flow_loop": "Bubble Flow Loop DT",
-            "mit_irradiation_loop": "MIT Irradiation Loop DT",
-            "msr_digital_twin": "MSR Digital Twin (Open)",
-            "off_gas_digital_twin": "OffGas Digital Twin",
-            "cover_gas_loop": "Cover Gas Loop DT",
-            "ercot_digital_twin": "ERCOT DT",
-            "neutron-os": "NeutronOS",
-            "netl_pxi": "NETL PXI",
-        }
+        # Try to load custom mappings from config
+        mappings = GitLabDiffExtractor._load_initiative_mappings()
 
         for fragment, initiative in mappings.items():
             if fragment in path_lower:
                 return initiative
 
         return project_path.split("/")[-1] if "/" in project_path else project_path
+
+    @staticmethod
+    def _load_initiative_mappings() -> dict[str, str]:
+        """Load repo path → initiative name mappings from config.
+
+        Looks for runtime/config/gitlab_initiatives.json.
+        Returns empty dict if not found (falls back to repo name extraction).
+        """
+        import json
+        from pathlib import Path
+
+        config_path = Path("runtime/config/gitlab_initiatives.json")
+        if config_path.exists():
+            try:
+                return json.loads(config_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                pass
+        return {}

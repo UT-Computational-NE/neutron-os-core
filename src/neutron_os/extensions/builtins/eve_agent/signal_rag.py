@@ -2,8 +2,8 @@
 
 Provides semantic search over accumulated signals to support:
 - Topic-focused briefings ("brief me on Kevin")
-- Pattern detection ("what's the status of the TRIGA initiative?")
-- Historical context ("what did we discuss about thermal hydraulics last month?")
+- Pattern detection ("what's the status of the Alpha initiative?")
+- Historical context ("what did we discuss about thermal systems last month?")
 
 Architecture:
 - Embeddings generated via OpenAI or local model
@@ -16,7 +16,7 @@ Usage:
     rag = SignalRAG()
     rag.index_signals(signals)
 
-    results = rag.query("What's happening with the TRIGA reactor?")
+    results = rag.query("What's the status of the Alpha initiative?")
     for r in results:
         print(r.signal.detail, r.relevance)
 """
@@ -119,12 +119,12 @@ TOPIC_KEYWORDS = {
         "code", "bug", "feature", "api", "database", "server", "deploy",
         "git", "merge", "branch", "test", "ci", "cd", "docker", "kubernetes",
         "python", "javascript", "react", "model", "simulation", "thermal",
-        "hydraulics", "neutronics", "sam", "moose", "openmc",
+        "hydraulics", "simulation", "analysis", "optimization",
     ],
     TopicCategory.INITIATIVES: [
         "initiative", "project", "prd", "roadmap", "milestone", "deliverable",
         "phase", "sprint", "quarter", "goal", "objective", "okr",
-        "triga", "msr", "digital twin", "bubble flow", "offgas",
+        "digital twin", "data pipeline", "platform", "integration",
     ],
     TopicCategory.ROADMAPS: [
         "roadmap", "timeline", "schedule", "deadline", "due date", "milestone",

@@ -198,12 +198,12 @@ class TestCorrectionPropagation:
             correction_id="test_789",
             original="any up",
             suggested="N-UP",  # Wrong
-            actual_correct="NEUP",  # Correct
+            actual_correct="RUP",  # Correct
             category="acronym",
             signal_ids=["sig_002"],
             published_endpoints=["changelog_2026-02-24.md"],
             flagged_by="ben",
-            reason="NEUP is the nuclear program, not N-UP",
+            reason="RUP is the research program, not R-UP",
         )
 
         assert result.action == "rejection"

@@ -1033,7 +1033,7 @@ def cmd_brief(args: argparse.Namespace) -> None:
         print()
         print("  Usage: neut signal brief \"Kevin\"")
         print("         neut signal brief \"blockers\"")
-        print("         neut signal brief \"TRIGA digital twin\"")
+        print("         neut signal brief \"project alpha\"")
         print()
         return
 
@@ -2132,7 +2132,7 @@ Context: {context_display}
 Your role:
 - Help the user figure out what the correct term should be
 - Consider phonetic similarity (what sounds like the original?)
-- Consider domain context (nuclear engineering, software, research)
+- Consider domain context (engineering, software, research)
 - Suggest alternatives based on the user's ideas
 - Be concise and practical
 

@@ -26,13 +26,13 @@ except ImportError:
 
 
 # Known mappings from Word doc names to .md sources
+# Note: Actual mappings are loaded from config; these are generic examples
 DOC_MAPPINGS = {
-    "reactor-ops-log": "docs/requirements/prd-reactor-ops-log.md",
-    "ops-log": "docs/requirements/prd-reactor-ops-log.md",
+    "ops-log": "docs/requirements/prd-ops-log.md",
     "experiment-manager": "docs/requirements/prd-experiment-manager.md",
     "master-prd": "docs/requirements/prd-executive.md",
     "executive-prd": "docs/requirements/prd-executive.md",
-    "neutron-os-executive": "docs/requirements/prd-executive.md",
+    "platform-executive": "docs/requirements/prd-executive.md",
     "data-architecture": "docs/tech-specs/spec-data-architecture.md",
 }
 

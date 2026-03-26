@@ -60,7 +60,7 @@ class CalendarEvent:
 
     # Classification hints
     is_recurring: bool = False
-    recurrence_name: str = ""  # e.g., "Weekly TRIGA Standup"
+    recurrence_name: str = ""  # e.g., "Weekly Project Standup"
 
     # Links
     meeting_link: str = ""  # Zoom/Teams/Meet URL

@@ -45,8 +45,8 @@ class CalendarExtractor:
 
     # Keywords that indicate PRD relevance
     PRD_KEYWORDS = {
-        "ops_log": ["ops", "operations", "console", "shift", "reactor", "compliance", "nrc"],
-        "experiment_manager": ["experiment", "sample", "irradiation", "roc", "tracking"],
+        "ops_log": ["ops", "operations", "console", "shift", "system", "compliance"],
+        "experiment_manager": ["experiment", "sample", "testing", "roc", "tracking"],
         "operator_dashboard": ["operator", "dashboard", "alerts", "monitoring"],
         "researcher_dashboard": ["researcher", "results", "analysis", "data"],
     }

@@ -866,7 +866,7 @@ class InboxHandler(BaseHTTPRequestHandler):
 
     def _serve_neut_image(self):
         """Serve the Neut mascot image."""
-        img_path = Path(__file__).parent / "neut_long_light_background.png"
+        img_path = Path(__file__).parent / "logo_light_background.png"
         if img_path.exists():
             self.send_response(HTTPStatus.OK)
             # File is JPEG despite .png extension

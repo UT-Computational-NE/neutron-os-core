@@ -202,7 +202,7 @@ class TranscriptExtractor(BaseExtractor):
         import json as json_mod
 
         system = (
-            "You are analyzing a meeting transcript for a nuclear engineering program. "
+            "You are analyzing a meeting transcript for an engineering program. "
             "Extract structured signals. Focus on: decisions made, action items assigned, "
             "blockers raised, progress updates, and status changes. "
             "Return a JSON array of objects, each with: "
