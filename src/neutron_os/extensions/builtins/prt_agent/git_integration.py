@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from neutron_os.infra.git import git_branch, git_is_dirty, git_remote_url, git_sha, run_git
+
 
 class SyncStatus(Enum):
     IN_SYNC = "in_sync"
@@ -49,22 +51,15 @@ class GitContext:
 def get_git_context(repo_root: Path) -> GitContext:
     """Get current git context from the repository."""
     try:
-        branch = _run_git(repo_root, "rev-parse", "--abbrev-ref", "HEAD").strip()
-        sha = _run_git(repo_root, "rev-parse", "HEAD").strip()  # Full SHA
-        status = _run_git(repo_root, "status", "--porcelain")
-        is_dirty = bool(status.strip())
-
-        # Get remote URL
-        remote_url = None
-        try:
-            remote_url = _run_git(repo_root, "remote", "get-url", "origin").strip()
-        except (subprocess.CalledProcessError, ValueError):
-            pass
+        branch = git_branch(repo_root)
+        sha = git_sha(repo_root)
+        dirty = git_is_dirty(repo_root)
+        remote = git_remote_url(repo_root)
 
         ahead = 0
         behind = 0
         try:
-            counts = _run_git(
+            counts = run_git(
                 repo_root, "rev-list", "--count", "--left-right", "HEAD...@{upstream}"
             ).strip()
             parts = counts.split("\t")
@@ -77,10 +72,10 @@ def get_git_context(repo_root: Path) -> GitContext:
         return GitContext(
             current_branch=branch,
             commit_sha=sha,
-            is_dirty=is_dirty,
+            is_dirty=dirty,
             ahead_count=ahead,
             behind_count=behind,
-            remote_url=remote_url,
+            remote_url=remote,
         )
 
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -121,7 +116,7 @@ def is_file_changed_since(
     """Check if a file has changed since a given commit."""
     try:
         rel_path = file_path.relative_to(repo_root)
-        result = _run_git(
+        result = run_git(
             repo_root, "diff", "--name-only", since_sha, "--", str(rel_path)
         )
         return bool(result.strip())
@@ -132,7 +127,7 @@ def is_file_changed_since(
 def get_changed_docs(repo_root: Path, since_sha: str, docs_dir: str = "docs") -> list[str]:
     """Get list of .md files changed since a commit."""
     try:
-        result = _run_git(
+        result = run_git(
             repo_root, "diff", "--name-only", since_sha, "--", f"{docs_dir}/"
         )
         return [
@@ -142,18 +137,6 @@ def get_changed_docs(repo_root: Path, since_sha: str, docs_dir: str = "docs") ->
         ]
     except subprocess.CalledProcessError:
         return []
-
-
-def _run_git(repo_root: Path, *args: str) -> str:
-    """Run a git command and return stdout."""
-    result = subprocess.run(
-        ["git", *args],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout
 
 
 def remote_url_to_web_url(

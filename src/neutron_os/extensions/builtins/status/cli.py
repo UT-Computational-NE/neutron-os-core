@@ -22,6 +22,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
+from neutron_os.infra.cli_format import section_header, separator
+
 
 class HealthStatus(Enum):
     """Health status levels."""
@@ -578,8 +580,7 @@ def format_health_table(health: SystemHealth, use_color: bool = True) -> str:
     bold = "\033[1m" if use_color else ""
 
     lines = []
-    lines.append(f"{bold}NeutronOS System Health{reset}")
-    lines.append("=" * 50)
+    lines.append(section_header(f"{bold}NeutronOS System Health{reset}", width=50))
 
     for svc in health.services:
         color = svc.color_code if use_color else ""
@@ -601,13 +602,13 @@ def format_health_table(health: SystemHealth, use_color: bool = True) -> str:
         from neutron_os.infra.connections import format_status_section
         conn_output = format_status_section()
         if conn_output and "No connections" not in conn_output:
-            lines.append("-" * 50)
+            lines.append(separator("-", width=50))
             lines.append(f"{bold}Connections{reset}")
             lines.append(conn_output)
     except Exception:
         pass
 
-    lines.append("-" * 50)
+    lines.append(separator("-", width=50))
 
     # Overall status
     overall_icon = {

@@ -24,6 +24,7 @@ import logging
 import sys
 from pathlib import Path
 
+from neutron_os.infra.cli_format import section_header, separator
 from neutron_os.infra.time_utils import time_ago
 
 logger = logging.getLogger(__name__)
@@ -104,9 +105,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
 
         # Show publication details if available
         if result and isinstance(result, dict):
-            print("\n" + "=" * 70)
-            print("✓ Document Published Successfully")
-            print("=" * 70)
+            print("\n" + section_header("✓ Document Published Successfully", width=70))
             if result.get('version'):
                 print(f"Version:  {result['version']}")
             if result.get('storage'):
@@ -115,7 +114,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
                 print(f"URL:      {result['url']}")
             if result.get('git_footer'):
                 print(f"Git URL:  {result['git_footer']}")
-            print("=" * 70 + "\n")
+            print(separator("=", width=70) + "\n")
     else:
         print("Specify a file or use --all --changed-only")
         sys.exit(1)
@@ -160,9 +159,9 @@ def cmd_status(args: argparse.Namespace) -> None:
 
     # Detailed view
     for i, doc in enumerate(docs):
-        print(f"\n{'─' * 80}")
+        print("\n" + separator())
         print(f"📄 {doc.doc_id}")
-        print(f"{'─' * 80}")
+        print(separator())
 
         # Status badge
         status_icon = "✓" if doc.status == "published" else "○" if doc.status == "draft" else "?"
@@ -212,11 +211,11 @@ def cmd_status(args: argparse.Namespace) -> None:
             if doc.published.generation_provider:
                 print("             • Footer: Included (git source URL, version, date)")
 
-    print(f"\n{'─' * 80}")
+    print("\n" + separator())
     print(f"Total: {len(docs)} document(s)")
     in_manifest_count = sum(1 for d in docs if d.doc_id in manifests)
     print(f"In manifest: {in_manifest_count}/{len(docs)}")
-    print(f"{'─' * 80}\n")
+    print(separator() + "\n")
 
 
 def cmd_check_links(args: argparse.Namespace) -> None:
@@ -229,26 +228,24 @@ def cmd_check_links(args: argparse.Namespace) -> None:
     valid = results.get("valid", [])
     missing = results.get("missing", [])
 
-    print("\n" + "=" * 80)
-    print("Cross-Document Link Verification")
-    print("=" * 80)
+    print("\n" + section_header("Cross-Document Link Verification"))
 
     if not valid and not missing:
         print("\nℹ No documents in registry. Publish some documents first.")
         print("  Run: neut pub publish <file>")
-        print("=" * 80 + "\n")
+        print(separator("=") + "\n")
         return
 
     if valid:
         print(f"\n✓ Valid Links ({len(valid)}):")
-        print("─" * 80)
+        print(separator())
         for path in sorted(valid):
             doc_id = Path(path).stem
             print(f"  ✓ {doc_id:<40} {path}")
 
     if missing:
         print(f"\n✗ Missing Source Files ({len(missing)}):")
-        print("─" * 80)
+        print(separator())
         for path in sorted(missing):
             doc_id = Path(path).stem
             print(f"  ✗ {doc_id:<40} {path}")
@@ -258,7 +255,7 @@ def cmd_check_links(args: argparse.Namespace) -> None:
     total = len(valid) + len(missing)
     if total > 0:
         pct = (len(valid) / total) * 100 if total > 0 else 0
-        print(f"\n{'─' * 80}")
+        print("\n" + separator())
         print(f"Link Health: {len(valid)}/{total} ({pct:.0f}%)")
         if pct == 100:
             print("✓ All links are valid!")
@@ -267,7 +264,7 @@ def cmd_check_links(args: argparse.Namespace) -> None:
         else:
             print("✗ Many links are broken. Run 'neut pub scan' for details.")
 
-    print("=" * 80 + "\n")
+    print(separator("=") + "\n")
 
 
 def cmd_diff(args: argparse.Namespace) -> None:
@@ -277,25 +274,23 @@ def cmd_diff(args: argparse.Namespace) -> None:
     engine = PublisherEngine()
     changed = engine.diff()
 
-    print("\n" + "=" * 80)
-    print("Changed Documents Since Last Publish")
-    print("=" * 80)
+    print("\n" + section_header("Changed Documents Since Last Publish"))
 
     if not changed:
         print("\n✓ No documents changed since last publish.")
         print("\n  To publish changed docs: neut pub publish --all --changed-only")
     else:
         print(f"\n⚠ {len(changed)} file(s) changed:")
-        print("─" * 80)
+        print(separator())
         for doc in sorted(changed):
             doc_id = Path(doc).stem
             print(f"  • {doc_id:<40} {doc}")
 
-        print("\n" + "─" * 80)
+        print("\n" + separator())
         print("To publish these changes:")
         print("  neut pub publish --all --changed-only")
 
-    print("=" * 80 + "\n")
+    print(separator("=") + "\n")
 
 
 def cmd_pull(args: argparse.Namespace) -> None:
@@ -375,9 +370,7 @@ def cmd_providers(args: argparse.Namespace) -> None:
     config = load_config()
     all_providers: dict[str, list[str]] = PublisherFactory.available()  # type: ignore[assignment]
 
-    print("\n" + "=" * 80)
-    print("Publisher Providers")
-    print("=" * 80)
+    print("\n" + section_header("Publisher Providers"))
 
     category_info = {
         "generation": {
@@ -419,7 +412,7 @@ def cmd_providers(args: argparse.Namespace) -> None:
         print(f"\n{label}")
         if desc:
             print(f"  {desc}")
-        print("─" * 78)
+        print(separator(width=78))
 
         if names:
             for name in sorted(names):
@@ -428,9 +421,9 @@ def cmd_providers(args: argparse.Namespace) -> None:
         else:
             print("  (no providers registered)")
 
-    print("\n" + "─" * 80)
+    print("\n" + separator())
     print("★ = currently active (from .publisher.yaml)")
-    print("=" * 80 + "\n")
+    print(separator("=") + "\n")
 
 
 def cmd_watch(args: argparse.Namespace) -> None:
@@ -471,9 +464,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
     results = engine.scan_docs(folders)
     manifests = engine.load_manifests(folders)
 
-    print("\n" + "=" * 80)
-    print("Document Manifest Scan")
-    print("=" * 80)
+    print("\n" + section_header("Document Manifest Scan"))
 
     tracked = results.get("tracked", [])
     untracked = results.get("untracked", [])
@@ -482,7 +473,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
     # Tracked documents with SharePoint status
     if tracked:
         print(f"\n✓ Tracked in Manifest ({len(tracked)}):")
-        print("─" * 80)
+        print(separator())
 
         # Group by manifest
         by_manifest = {}
@@ -505,7 +496,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
     # Untracked files
     if untracked:
         print(f"\n⚠ Untracked Files ({len(untracked)}):")
-        print("─" * 80)
+        print(separator())
         for filename in sorted(untracked):
             print(f"  • {filename}")
         print("\n  To add: neut pub onboard <doc_id> <filename> --folder <path>")
@@ -513,7 +504,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
     # Orphaned entries
     if orphaned:
         print(f"\n✗ Orphaned Manifest Entries ({len(orphaned)}):")
-        print("─" * 80)
+        print(separator())
         for doc_id in sorted(orphaned):
             if doc_id in manifests:
                 source_path = manifests[doc_id]["source_path"]
@@ -522,7 +513,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
         print("  Either: 1) Restore the file, or 2) Remove from manifest")
 
     # Summary
-    print(f"\n{'─' * 80}")
+    print("\n" + separator())
     total_docs = len(tracked) + len(untracked)
     total_configured = sum(
         1 for doc_id in tracked
@@ -536,7 +527,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
     if not untracked and not orphaned:
         print("\n  ✓ All documents tracked and accounted for!")
 
-    print("=" * 80 + "\n")
+    print(separator("=") + "\n")
 
 
 def cmd_onboard(args: argparse.Namespace) -> None:
@@ -578,9 +569,7 @@ def cmd_onboard(args: argparse.Namespace) -> None:
     )
 
     if success:
-        print("\n" + "=" * 70)
-        print("✓ Document Onboarded Successfully")
-        print("=" * 70)
+        print("\n" + section_header("✓ Document Onboarded Successfully", width=70))
         print(f"Manifest:  {manifest_path.relative_to(engine.config.repo_root)}")
         print(f"Doc ID:    {args.doc_id}")
         print(f"Source:    {source_path.relative_to(engine.config.repo_root)}")
@@ -589,7 +578,7 @@ def cmd_onboard(args: argparse.Namespace) -> None:
         else:
             print("Published: (not set)")
             print("\n💡 Tip: Set SharePoint URL with: neut pub onboard <id> <file> --url <url>")
-        print("=" * 70 + "\n")
+        print(separator("=", width=70) + "\n")
     else:
         print("✗ Failed to onboard document")
         sys.exit(1)
@@ -700,19 +689,17 @@ def cmd_overview(args: argparse.Namespace) -> None:
     valid_links = len(links.get("valid", []))
     broken_links = len(links.get("missing", []))
 
-    print("\n" + "=" * 80)
-    print("📊 Publisher Ecosystem Overview")
-    print("=" * 80)
+    print("\n" + section_header("Publisher Ecosystem Overview"))
 
     print("\n📋 DOCUMENTS")
-    print("─" * 80)
+    print(separator())
     print(f"  Total Tracked:           {total_tracked}")
     print(f"  Untracked Files:         {total_untracked}")
     print(f"  With SharePoint URLs:    {with_urls}")
     print(f"  Awaiting Configuration:  {without_urls}")
 
     print("\n🔗 LINKS")
-    print("─" * 80)
+    print(separator())
     print(f"  Valid Links:             {valid_links}")
     print(f"  Broken/Missing:          {broken_links}")
     if valid_links + broken_links > 0:
@@ -721,7 +708,7 @@ def cmd_overview(args: argparse.Namespace) -> None:
         print(f"  Health:                  {health_pct:.0f}% {status}")
 
     print("\n📁 BY FOLDER")
-    print("─" * 80)
+    print(separator())
     print("  PRDs:")
     print(f"    • Tracked:    {len(prd_docs.get('tracked', []))}")
     print(f"    • Untracked:  {len(prd_docs.get('untracked', []))}")
@@ -731,7 +718,7 @@ def cmd_overview(args: argparse.Namespace) -> None:
     print(f"    • Untracked:  {len(spec_docs.get('untracked', []))}")
 
     print("\n💡 NEXT STEPS")
-    print("─" * 80)
+    print(separator())
     if total_untracked > 0:
         print(f"  • {total_untracked} untracked documents — run 'neut pub scan' to see them")
     if without_urls > 0:
@@ -741,7 +728,7 @@ def cmd_overview(args: argparse.Namespace) -> None:
     if not total_untracked and not without_urls and not broken_links:
         print("  ✓ Everything configured and healthy! Ready to publish.")
 
-    print("=" * 80 + "\n")
+    print(separator("=") + "\n")
 
 
 # ---------------------------------------------------------------------------
@@ -1017,16 +1004,14 @@ def cmd_push(args: argparse.Namespace) -> None:
             source, storage_override=storage, draft=draft, force=force,
         )
         if result and isinstance(result, dict):
-            print("\n" + "=" * 70)
-            print("✓ Published successfully")
-            print("=" * 70)
+            print("\n" + section_header("✓ Published successfully", width=70))
             if result.get("version"):
                 print(f"Version:  {result['version']}")
             if result.get("storage"):
                 print(f"Storage:  {result['storage']}")
             if result.get("url"):
                 print(f"URL:      {result['url']}")
-            print("=" * 70 + "\n")
+            print(separator("=", width=70) + "\n")
     except Exception as e:
         print(f"✗ Publish failed: {e}", file=sys.stderr)
         raise
