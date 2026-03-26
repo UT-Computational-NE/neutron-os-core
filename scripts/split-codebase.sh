@@ -19,7 +19,10 @@ AXIOM_REPO="git@github.com:benboooth/axiom.git"
 
 # Files that should be in axiom (generic platform)
 AXIOM_PATHS=(
+    "src/neutron_os/__init__.py"
+    "src/neutron_os/neut_cli.py"
     "src/neutron_os/cli_registry.py"
+    "src/neutron_os/infra/__init__.py"
     "src/neutron_os/infra/audit_log.py"
     "src/neutron_os/infra/auth"
     "src/neutron_os/infra/cli_format.py"
@@ -49,6 +52,7 @@ AXIOM_PATHS=(
     "src/neutron_os/infra/time_utils.py"
     "src/neutron_os/infra/toml_compat.py"
     "src/neutron_os/infra/trace.py"
+    "src/neutron_os/extensions/__init__.py"
     "src/neutron_os/extensions/cli.py"
     "src/neutron_os/extensions/contracts.py"
     "src/neutron_os/extensions/discovery.py"
@@ -85,6 +89,18 @@ AXIOM_PATHS=(
     "runtime/config.example/llm-providers.toml"
     "runtime/config.example/settings.toml"
     "runtime/config.example/logging.toml"
+    "runtime/config.example/models.toml"
+    "runtime/config.example/install.toml"
+    "runtime/config.example/retention.yaml"
+    "runtime/config.example/routing_allowlist.txt"
+    "runtime/config.example/injection_patterns.txt"
+    "runtime/config.example/mirror_scrub_terms.txt"
+    "runtime/config.example/stt_glossary.json"
+    "runtime/config.example/templates"
+    "runtime/config.example/heartbeat.md"
+    "runtime/config.example/initiatives.md"
+    "runtime/config.example/people.md"
+    "tests"
     "Dockerfile"
     "Makefile"
     "conftest.py"
@@ -226,15 +242,22 @@ phase2_create_axiom() {
         mv src/neutron_os src/axiom
     fi
     
-    # Update imports
+    # Update imports in Python files
     find . -name "*.py" -type f -exec sed -i '' \
         -e 's/from neutron_os/from axiom/g' \
         -e 's/import neutron_os/import axiom/g' \
         -e 's/neutron_os\./axiom./g' \
+        -e 's/"neutron_os"/"axiom"/g' \
         {} +
-    
+
+    # Update TOML config files (pyproject.toml, neut-extension.toml, etc.)
     find . -name "*.toml" -type f -exec sed -i '' \
         -e 's/neutron-os/axiom/g' \
+        -e 's/neutron_os/axiom/g' \
+        {} +
+
+    # Update YAML files
+    find . -name "*.yaml" -name "*.yml" -type f -exec sed -i '' \
         -e 's/neutron_os/axiom/g' \
         {} +
     
@@ -250,20 +273,47 @@ license = "MIT"
 requires-python = ">=3.11"
 
 dependencies = [
-    "httpx>=0.27",
-    "pydantic>=2.0",
-    "rich>=13.0",
-    "typer>=0.12",
-    "structlog>=24.0",
+    "pyyaml>=6.0",
+    "argcomplete>=3.0",
+    "tomlkit>=0.13",
+]
+
+[project.optional-dependencies]
+publisher = ["python-docx>=1.1"]
+rag = [
+    "psycopg2-binary>=2.9",
+    "requests>=2.28",
+    "watchdog>=3.0",
+]
+signal = [
+    "psycopg2-binary>=2.9",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
     "pgvector>=0.2",
-    "psycopg[binary]>=3.1",
-    "tomli>=2.0",
-    "openai>=1.0",
-    "anthropic>=0.25",
+]
+repos = [
+    "PyGithub>=2.0",
+    "python-gitlab>=4.0",
+]
+browser = ["playwright>=1.40"]
+chat = [
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "pygments>=2.17",
+]
+mcp = ["mcp>=1.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "pyright>=1.1",
+]
+all = [
+    "axiom[publisher,rag,signal,repos,chat,mcp,dev]",
 ]
 
 [project.scripts]
-axiom = "axiom.cli:main"
+axiom = "axiom.neut_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -271,6 +321,31 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/axiom"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/axiom/extensions/builtins"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501", "SIM108", "SIM105", "SIM102", "SIM117", "SIM115",
+    "UP042", "B904", "B027", "B007", "B905", "B023", "SIM103",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["axiom"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "standard"
+reportMissingImports = "warning"
+reportMissingModuleSource = false
 EOF
     
     echo ""
