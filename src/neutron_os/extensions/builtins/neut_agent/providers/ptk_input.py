@@ -138,7 +138,7 @@ class PTKInputProvider(InputProvider):
 
         # Continuation lines show dim "...> " prefix
         _HTML = HTML  # local binding for pyright narrowing
-        def _continuation(width, line_number, wrap_count):
+        def _continuation(width, _line_number, wrap_count):
             if wrap_count:
                 return _HTML("<continuation>     </continuation>")
             return _HTML("<continuation>...&gt; </continuation>")

@@ -582,8 +582,8 @@ def register_source(
         # Store for auto-discovery
         mod = importlib.import_module(cls.__module__)
         if not hasattr(mod, "_REGISTERED_SOURCES"):
-            setattr(mod, "_REGISTERED_SOURCES", [])
-        getattr(mod, "_REGISTERED_SOURCES").append((meta, cls))
+            mod._REGISTERED_SOURCES = []  # type: ignore[attr-defined]
+        mod._REGISTERED_SOURCES.append((meta, cls))  # type: ignore[attr-defined]
 
         return cls
 

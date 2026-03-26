@@ -138,7 +138,7 @@ def _extract_terms_heuristic(content: str) -> list[str]:
     return list(set(terms))
 
 
-def _run_review(repo_root: Path, sha: str, touched_files: list[str]) -> None:
+def _run_review(repo_root: Path, sha: str, _touched_files: list[str]) -> None:
     """Run LLM review on touched files and register nudges for any findings."""
     try:
         from neutron_os.infra.gateway import Gateway

@@ -399,7 +399,7 @@ Examples:
 
     # argcomplete: offer registered connection names as completions
     try:
-        def _complete_connection_names(prefix, parsed_args, **kwargs):
+        def _complete_connection_names(prefix, _parsed_args, **kwargs):
             try:
                 return [c.name for c in get_registry().all()
                         if c.name.startswith(prefix)]

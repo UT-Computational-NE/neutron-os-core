@@ -299,7 +299,7 @@ class DocumentValidator:
 
 def validate_all_documents(
     repo_root: Path,
-    include_drafts: bool = True,
+    _include_drafts: bool = True,
 ) -> dict[str, ValidationResult]:
     """Validate all tracked documents in the repository.
 

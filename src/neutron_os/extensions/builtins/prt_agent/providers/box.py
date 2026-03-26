@@ -182,7 +182,7 @@ class BoxProvider:
             "Box download coming in future release."
         )
 
-    def move(self, file_id: str, new_destination: str) -> dict:
+    def move(self, _file_id: str, _new_destination: str) -> dict:
         """Move/rename file on Box.
 
         Args:

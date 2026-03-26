@@ -434,7 +434,7 @@ class LoopTracker:
         """Get all iterations for an initiative."""
         return [it for it in self.iterations.values() if it.initiative == initiative]
 
-    def compute_metrics(self, since_days: int = 30) -> LoopHealthMetrics:
+    def compute_metrics(self, _since_days: int = 30) -> LoopHealthMetrics:
         """Compute health metrics from recent iterations."""
         datetime.now().isoformat()[:10]  # Simplified
 

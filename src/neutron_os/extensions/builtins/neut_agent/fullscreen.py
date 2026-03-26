@@ -762,10 +762,10 @@ class _ScrollMetricsCapture(Margin):
     def __init__(self, tui):
         self._tui = tui
 
-    def get_width(self, get_ui_content):
+    def get_width(self, get_ui_content):  # noqa: ARG002
         return 0
 
-    def create_margin(self, window_render_info, width, height):
+    def create_margin(self, window_render_info, width, height):  # noqa: ARG002
         if window_render_info is not None:
             self._tui._scroll_content_height = window_render_info.content_height
             self._tui._scroll_window_height = window_render_info.window_height
