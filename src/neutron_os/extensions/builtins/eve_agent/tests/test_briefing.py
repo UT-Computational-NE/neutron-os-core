@@ -66,10 +66,10 @@ class TestBriefingService:
             Signal(
                 source="voice",
                 timestamp=(datetime.now(UTC) - timedelta(hours=2)).isoformat(),
-                raw_text="Kevin is working on TRIGA thermal hydraulics",
-                detail="Kevin progressing on TRIGA thermal work",
+                raw_text="Kevin is working on data pipeline optimization",
+                detail="Kevin progressing on Alpha thermal work",
                 people=["Kevin"],
-                initiatives=["TRIGA Digital Twin"],
+                initiatives=["Project Alpha"],
                 signal_type="progress",
             ),
             Signal(
@@ -77,7 +77,7 @@ class TestBriefingService:
                 timestamp=(datetime.now(UTC) - timedelta(hours=1)).isoformat(),
                 raw_text="Blocked on NRC approval for license amendment",
                 detail="NRC approval blocking progress",
-                initiatives=["TRIGA Digital Twin"],
+                initiatives=["Project Alpha"],
                 signal_type="blocker",
             ),
             Signal(
@@ -165,11 +165,11 @@ class TestBriefingFiltering:
     def sample_signal_dicts(self):
         """Create diverse signal dicts for filtering tests."""
         return [
-            {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["TRIGA"],
+            {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["Alpha"],
              "raw_text": "Kevin working", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "blocker", "people": ["Alice"], "initiatives": ["MSR"],
              "raw_text": "Alice blocked", "detail": "blocker", "timestamp": datetime.now(UTC).isoformat()},
-            {"signal_type": "decision", "people": ["Ben"], "initiatives": ["TRIGA"],
+            {"signal_type": "decision", "people": ["Ben"], "initiatives": ["Alpha"],
              "raw_text": "Ben decided", "detail": "decision", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["NETL"],
              "raw_text": "Kevin on NETL", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
@@ -189,12 +189,12 @@ class TestBriefingFiltering:
     def test_filter_by_initiative(self, service, sample_signal_dicts):
         filtered = service._filter_signals_by_topic(
             sample_signal_dicts,
-            topic="TRIGA",
+            topic="Alpha",
             category=BriefingTopic.INITIATIVES,
         )
 
         for sig in filtered:
-            assert any("TRIGA" in init for init in sig.get("initiatives", []))
+            assert any("Alpha" in init for init in sig.get("initiatives", []))
 
     def test_filter_blockers_only(self, service, sample_signal_dicts):
         filtered = service._filter_signals_by_topic(
