@@ -4,11 +4,11 @@ Tracks loop iterations, subscriptions, and health metrics to measure and
 improve feedback loop velocity over time.
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-import json
 
 
 class LoopStage(Enum):

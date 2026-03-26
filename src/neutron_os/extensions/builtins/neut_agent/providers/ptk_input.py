@@ -10,27 +10,33 @@ Uses prompt_toolkit.PromptSession for a rich input experience with:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from .base import InputProvider
 
 try:
     from prompt_toolkit import PromptSession
     from prompt_toolkit.completion import WordCompleter
-    from prompt_toolkit.history import FileHistory
     from prompt_toolkit.formatted_text import HTML
+    from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.styles import Style
 
     _PTK_AVAILABLE = True
 except ImportError:
     _PTK_AVAILABLE = False
+    PromptSession = None  # type: ignore[assignment,misc]
+    WordCompleter = None  # type: ignore[assignment,misc]
+    FileHistory = None  # type: ignore[assignment,misc]
+    HTML = None  # type: ignore[assignment,misc]
+    KeyBindings = None  # type: ignore[assignment,misc]
+    Style = None  # type: ignore[assignment,misc]
 
 
 _HISTORY_DIR = Path.home() / ".config" / "neut"
 _HISTORY_FILE = _HISTORY_DIR / "chat_history"
 
 # Container bg:default + noreverse ensures our inline styles aren't overridden
+assert Style is not None  # always available at module level when ptk is installed
 _PTK_STYLE = Style.from_dict({
     "prompt": "#00cfff bold",
     "continuation": "ansibrightblack",
@@ -46,8 +52,8 @@ class PTKInputProvider(InputProvider):
         if not _PTK_AVAILABLE:
             raise ImportError("prompt_toolkit is required for PTKInputProvider")
 
-        self._session: Optional[PromptSession] = None
-        self._completer: Optional[WordCompleter] = None
+        self._session: PromptSession | None = None  # type: ignore[valid-type]
+        self._completer: WordCompleter | None = None  # type: ignore[valid-type]
         self._mode: str = "Ask"
 
     def _build_toolbar(self):
@@ -72,6 +78,11 @@ class PTKInputProvider(InputProvider):
         ]
 
     def setup(self, slash_commands: list[str] | None = None) -> None:
+        assert WordCompleter is not None  # guarded by __init__
+        assert KeyBindings is not None
+        assert PromptSession is not None
+        assert FileHistory is not None
+
         # Ensure history directory exists
         _HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -115,6 +126,7 @@ class PTKInputProvider(InputProvider):
         self._session = None
 
     def prompt(self, prefix: str = "you> ", show_border: bool = False) -> str:
+        assert HTML is not None  # guarded by __init__
         if self._session is None:
             self.setup()
 
@@ -125,14 +137,16 @@ class PTKInputProvider(InputProvider):
             formatted_prefix = prefix
 
         # Continuation lines show dim "...> " prefix
+        _HTML = HTML  # local binding for pyright narrowing
         def _continuation(width, line_number, wrap_count):
             if wrap_count:
-                return HTML("<continuation>     </continuation>")
-            return HTML("<continuation>...&gt; </continuation>")
+                return _HTML("<continuation>     </continuation>")
+            return _HTML("<continuation>...&gt; </continuation>")
 
         # Show bottom toolbar with mode indicator while typing
         toolbar = (lambda: self._build_toolbar()) if show_border else None
 
+        assert self._session is not None, "call setup() before prompt()"
         result = self._session.prompt(
             formatted_prefix,
             bottom_toolbar=toolbar,

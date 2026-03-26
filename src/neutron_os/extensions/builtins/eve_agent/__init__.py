@@ -7,20 +7,20 @@ Extracts design signals, clusters by PRD, synthesizes updates,
 and tracks loop health metrics to increase velocity over time.
 """
 
-from .models import Signal, Extraction, Changelog, ChangelogEntry, SignalManifest
-from .extractors import CalendarExtractor, NotesExtractor, FeedbackExtractor
 from .clustering import PRDClusterer, SignalCluster
-from .synthesis import PRDUpdater, PRDUpdateDraft, BriefingGenerator, DesignBriefing
+from .extractors import CalendarExtractor, FeedbackExtractor, NotesExtractor
 from .loop import (
-    LoopStage,
-    FeedbackType,
-    SubscriberRole,
     ArtifactType,
-    Subscription,
-    LoopIteration,
+    FeedbackType,
     LoopHealthMetrics,
+    LoopIteration,
+    LoopStage,
     LoopTracker,
+    SubscriberRole,
+    Subscription,
 )
+from .models import Changelog, ChangelogEntry, Extraction, Signal, SignalManifest
+from .synthesis import BriefingGenerator, DesignBriefing, PRDUpdateDraft, PRDUpdater
 
 __version__ = "0.1.0"
 

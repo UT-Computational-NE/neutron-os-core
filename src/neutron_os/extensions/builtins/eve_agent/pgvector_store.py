@@ -27,12 +27,14 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Iterator, Any
+from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 K3D_CONFIG_DIR = _REPO_ROOT / "infra" / "k3d"
 
@@ -166,7 +168,7 @@ class VectorDB:
 
     EMBEDDING_DIM = 1536  # OpenAI text-embedding-3-small dimension
 
-    def __init__(self, connection_url: Optional[str] = None):
+    def __init__(self, connection_url: str | None = None):
         self.connection_url = connection_url or os.environ.get("NEUT_DB_URL") or DEFAULT_LOCAL_URL
         self._conn = None
         self._connected = False
@@ -211,6 +213,7 @@ class VectorDB:
         """Get a database cursor with auto-commit."""
         if not self._connected:
             self.connect()
+        assert self._conn is not None
         cursor = self._conn.cursor()
         try:
             yield cursor
@@ -392,7 +395,7 @@ class VectorDB:
                 record.mention_count,
             ))
 
-    def get_signal(self, signal_id: str) -> Optional[SignalRecord]:
+    def get_signal(self, signal_id: str) -> SignalRecord | None:
         """Get a signal by ID."""
         with self._cursor() as cur:
             cur.execute("SELECT * FROM signals WHERE id = %s", (signal_id,))
@@ -414,7 +417,7 @@ class VectorDB:
                 version=row[11] or 1,
             )
 
-    def get_media(self, media_id: str) -> Optional[MediaRecord]:
+    def get_media(self, media_id: str) -> MediaRecord | None:
         """Get a media item by ID."""
         with self._cursor() as cur:
             cur.execute("SELECT * FROM media WHERE id = %s", (media_id,))
@@ -446,7 +449,7 @@ class VectorDB:
         embedding: list[float],
         top_k: int = 10,
         min_score: float = 0.0,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
     ) -> list[SearchResult]:
         """Vector similarity search over signals.
 
@@ -515,7 +518,7 @@ class VectorDB:
         embedding: list[float],
         top_k: int = 10,
         min_score: float = 0.0,
-        accessible_to: Optional[str] = None,
+        accessible_to: str | None = None,
     ) -> list[SearchResult]:
         """Vector similarity search over media with access control."""
         max_distance = 1.0 - min_score
@@ -639,7 +642,7 @@ class PgVectorStore:
     while using PostgreSQL + pgvector under the hood.
     """
 
-    def __init__(self, db: Optional[VectorDB] = None):
+    def __init__(self, db: VectorDB | None = None):
         self._db = db or VectorDB()
         self._db.connect()
 

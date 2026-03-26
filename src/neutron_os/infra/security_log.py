@@ -30,19 +30,18 @@ Usage:
 from __future__ import annotations
 
 import logging
-import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from neutron_os.infra.state import locked_append_jsonl
 from neutron_os.infra.neut_logging import get_logger, neut_signal
+from neutron_os.infra.state import locked_append_jsonl
 
 _log = get_logger(__name__)
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class SecurityLog:
@@ -61,7 +60,7 @@ class SecurityLog:
     # ------------------------------------------------------------------
 
     @classmethod
-    def get(cls) -> "SecurityLog":
+    def get(cls) -> SecurityLog:
         global _instance
         if _instance is None:
             _instance = cls()

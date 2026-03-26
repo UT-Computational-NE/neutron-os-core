@@ -16,10 +16,8 @@ Usage:
 
 from __future__ import annotations
 
-import re
 import logging
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
@@ -57,7 +55,7 @@ class ChunkSanitizer:
     with ``[REDACTED:injection]`` in the returned text.
     """
 
-    def __init__(self, patterns_path: Optional[Path] = None) -> None:
+    def __init__(self, patterns_path: Path | None = None) -> None:
         self._path = Path(patterns_path) if patterns_path else _PATTERNS_FILE
         self._patterns: list[str] | None = None
 

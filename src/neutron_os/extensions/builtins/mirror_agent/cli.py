@@ -74,6 +74,7 @@ def _dispatch(args):
 
 def _cmd_review(args):
     from neutron_os.infra.gateway import Gateway
+
     from .reviewer import review_mirror_content
 
     repo_root = _repo_root()
@@ -116,6 +117,7 @@ def _cmd_review(args):
 def _cmd_push(args):
     """Run review gate, then push if clear (or user confirms)."""
     from neutron_os.infra.gateway import Gateway
+
     from .reviewer import review_mirror_content
 
     repo_root = _repo_root()

@@ -16,8 +16,8 @@ import os
 import platform
 import traceback as tb_module
 from argparse import Namespace
-from datetime import datetime, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
 
 from neutron_os.infra.orchestrator.bus import EventBus
 
@@ -220,5 +220,5 @@ def emit_cli_error(
         "fingerprint": _fingerprint(command, error),
         "recovered": recovered,
         "environment": _collect_environment(),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }, source="neut_cli")

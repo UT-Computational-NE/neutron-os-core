@@ -3,11 +3,11 @@
 Creates narrative briefings from signal clusters for stakeholder communication.
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-import json
 
 
 class BriefingType(Enum):

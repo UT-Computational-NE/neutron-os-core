@@ -36,13 +36,12 @@ from __future__ import annotations
 import json
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
-
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import locked_append_jsonl
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CORRECTIONS_DIR = _RUNTIME_DIR / "inbox" / "corrections"
 
@@ -88,7 +87,7 @@ class AppliedCorrection:
 
     def __post_init__(self):
         if not self.applied_at:
-            self.applied_at = datetime.now(timezone.utc).isoformat()
+            self.applied_at = datetime.now(UTC).isoformat()
         if not self.id:
             self.id = f"corr_{secrets.token_hex(6)}"
 
@@ -172,7 +171,7 @@ class ResynthesisJob:
 
     def __post_init__(self):
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
         if not self.id:
             self.id = f"resyn_{secrets.token_hex(6)}"
 
@@ -189,7 +188,7 @@ class CorrectionReviewSystem:
     4. get_accuracy_stats() - Track what's working, what's not
     """
 
-    def __init__(self, corrections_dir: Optional[Path] = None):
+    def __init__(self, corrections_dir: Path | None = None):
         self.corrections_dir = corrections_dir or CORRECTIONS_DIR
         self.corrections_dir.mkdir(parents=True, exist_ok=True)
 
@@ -218,8 +217,8 @@ class CorrectionReviewSystem:
         confidence: float,
         context: str,
         reason: str,
-        signal_ids: Optional[list[str]] = None,
-        published_endpoints: Optional[list[str]] = None,
+        signal_ids: list[str] | None = None,
+        published_endpoints: list[str] | None = None,
     ) -> AppliedCorrection:
         """Record a correction that was auto-applied. NON-BLOCKING.
 
@@ -250,7 +249,7 @@ class CorrectionReviewSystem:
                 published_endpoints=published_endpoints or [],
                 feedback=reviewed.feedback,
                 feedback_by=f"{reviewed.feedback_by}_auto",
-                feedback_at=datetime.now(timezone.utc).isoformat(),
+                feedback_at=datetime.now(UTC).isoformat(),
                 feedback_note="Auto-inherited from reviewed sibling pattern",
                 correct_value=reviewed.correct_value,
             )
@@ -273,7 +272,7 @@ class CorrectionReviewSystem:
         locked_append_jsonl(self.applied_file, json.loads(correction.to_jsonl()))
         return correction
 
-    def get_applied(self, correction_id: str) -> Optional[AppliedCorrection]:
+    def get_applied(self, correction_id: str) -> AppliedCorrection | None:
         """Look up an applied correction by ID."""
         if not self.applied_file.exists():
             return None
@@ -312,7 +311,7 @@ class CorrectionReviewSystem:
         self,
         original: str,
         corrected: str,
-        exclude_id: Optional[str] = None,
+        exclude_id: str | None = None,
     ) -> list[AppliedCorrection]:
         """Find all unfeedback corrections with the same original→corrected pattern.
 
@@ -340,7 +339,7 @@ class CorrectionReviewSystem:
         self,
         original: str,
         corrected: str,
-    ) -> Optional[AppliedCorrection]:
+    ) -> AppliedCorrection | None:
         """Find a reviewed correction with the same original→corrected pattern.
 
         Used during record_applied() to auto-inherit feedback from sibling
@@ -364,7 +363,7 @@ class CorrectionReviewSystem:
         original: str,
         corrected: str,
         confirmed_by: str,
-        exclude_id: Optional[str] = None,
+        exclude_id: str | None = None,
     ) -> list[AppliedCorrection]:
         """Confirm all corrections matching a pattern (auto-confirm siblings).
 
@@ -464,7 +463,7 @@ class CorrectionReviewSystem:
         correction_id: str,
         marked_by: str,
         note: str = "",
-    ) -> Optional[AppliedCorrection]:
+    ) -> AppliedCorrection | None:
         """Mark a correction as unknown/unintelligible.
 
         Use when the audio is unclear and the correct interpretation cannot
@@ -484,7 +483,7 @@ class CorrectionReviewSystem:
         new_corrected_value: str,
         confirmed_by: str,
         note: str = "",
-    ) -> Optional[AppliedCorrection]:
+    ) -> AppliedCorrection | None:
         """Confirm with a user-provided correction value.
 
         Used when the LLM's suggestion was close but not quite right.
@@ -510,7 +509,7 @@ class CorrectionReviewSystem:
                     corr.corrected = new_corrected_value
                     corr.feedback = "confirmed"
                     corr.feedback_by = confirmed_by
-                    corr.feedback_at = datetime.now(timezone.utc).isoformat()
+                    corr.feedback_at = datetime.now(UTC).isoformat()
                     corr.feedback_note = note or f"Edited from '{original_suggestion}'"
                     corr.correct_value = new_corrected_value  # For training
                     updated = corr
@@ -532,9 +531,9 @@ class CorrectionReviewSystem:
         correction_id: str,
         feedback_status: str,
         feedback_by: str,
-        actual_correct: Optional[str] = None,
+        actual_correct: str | None = None,
         feedback_note: str = "",
-    ) -> Optional[AppliedCorrection]:
+    ) -> AppliedCorrection | None:
         """Update feedback on an applied correction (rewrite entire file)."""
         if not self.applied_file.exists():
             return None
@@ -550,7 +549,7 @@ class CorrectionReviewSystem:
                 if corr.id == correction_id:
                     corr.feedback = feedback_status
                     corr.feedback_by = feedback_by
-                    corr.feedback_at = datetime.now(timezone.utc).isoformat()
+                    corr.feedback_at = datetime.now(UTC).isoformat()
                     corr.feedback_note = feedback_note
                     if actual_correct:
                         corr.correct_value = actual_correct
@@ -579,7 +578,7 @@ class CorrectionReviewSystem:
             reason=correction.reason,
             source_transcript=correction.transcript_path,
             approved_by=confirmed_by,
-            approved_at=datetime.now(timezone.utc).isoformat(),
+            approved_at=datetime.now(UTC).isoformat(),
             was_edited=False,  # It was auto-applied correctly
         )
 
@@ -598,7 +597,7 @@ class CorrectionReviewSystem:
             "suggested": correction.corrected,  # What LLM incorrectly suggested
             "actual_correct": actual_correct,   # What it should have been
             "flagged_by": flagged_by,
-            "flagged_at": datetime.now(timezone.utc).isoformat(),
+            "flagged_at": datetime.now(UTC).isoformat(),
             "reason": reason,
             "context": correction.context,
             "category": correction.category,
@@ -607,7 +606,7 @@ class CorrectionReviewSystem:
 
         locked_append_jsonl(self.errors_file, data)
 
-    def _queue_resynthesis_for_error(self, correction: AppliedCorrection) -> Optional[ResynthesisJob]:
+    def _queue_resynthesis_for_error(self, correction: AppliedCorrection) -> ResynthesisJob | None:
         """Queue re-synthesis to fix published content after error flagged."""
         if not correction.signal_ids or not correction.published_endpoints:
             return None
@@ -629,7 +628,7 @@ class CorrectionReviewSystem:
 
     def get_training_examples(
         self,
-        category: Optional[str] = None,
+        category: str | None = None,
         limit: int = 50,
     ) -> list[TrainingExample]:
         """Get training examples for few-shot prompting.
@@ -714,7 +713,7 @@ class CorrectionReviewSystem:
     def _save_resynthesis_queue(self, jobs: list[ResynthesisJob]) -> None:
         """Save re-synthesis queue."""
         data = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "jobs": [{"id": j.id, "signal_id": j.signal_id, "transcript_path": j.transcript_path,
                      "correction_id": j.correction_id, "published_endpoints": j.published_endpoints,
                      "status": j.status, "created_at": j.created_at, "completed_at": j.completed_at,
@@ -733,7 +732,7 @@ class CorrectionReviewSystem:
         for job in jobs:
             if job.id == job_id:
                 job.status = "completed" if success else "failed"
-                job.completed_at = datetime.now(timezone.utc).isoformat()
+                job.completed_at = datetime.now(UTC).isoformat()
                 job.error = error
                 break
 

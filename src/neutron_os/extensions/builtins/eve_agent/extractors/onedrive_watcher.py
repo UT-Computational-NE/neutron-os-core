@@ -24,7 +24,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
@@ -264,7 +264,7 @@ def poll_onedrive_folder(
 
     # Update watch state
     watch_state.files = current_files
-    watch_state.last_check = datetime.now(timezone.utc).isoformat()
+    watch_state.last_check = datetime.now(UTC).isoformat()
     watch_state.save()
 
     return changes

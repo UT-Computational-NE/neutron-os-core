@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 
 from neutron_os.extensions.builtins.neut_agent.entry import _format_briefing_context, enter_chat
 from neutron_os.infra.orchestrator.session import Session
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -19,7 +18,7 @@ def _sample_briefing_data() -> dict:
     """Return a realistic Briefing.to_dict() payload."""
     return {
         "briefing_id": "abc123",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "time_window_start": "2026-02-25T08:00:00+00:00",
         "time_window_end": "2026-02-26T08:00:00+00:00",
         "summary": "Three key developments this week: TRIGA control system upgrade "

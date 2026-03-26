@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest import mock
 
 
-
 class TestBoxBrowserStorage:
 
     def test_has_session_false_when_no_state(self, tmp_path: Path):
@@ -68,4 +67,6 @@ class TestBoxBrowserStorage:
         assert provider.get_canonical_url("") == ""
 
     def test_import_does_not_fail(self):
-        from neutron_os.extensions.builtins.prt_agent.providers.storage import box_browser  # noqa: F401
+        from neutron_os.extensions.builtins.prt_agent.providers.storage import (
+            box_browser,  # noqa: F401
+        )

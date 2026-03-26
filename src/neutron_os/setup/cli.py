@@ -9,9 +9,8 @@ Usage:
 
 from __future__ import annotations
 
-import sys
-
 import argparse
+import sys
 
 from neutron_os.setup.state import clear_state
 from neutron_os.setup.wizard import SetupWizard

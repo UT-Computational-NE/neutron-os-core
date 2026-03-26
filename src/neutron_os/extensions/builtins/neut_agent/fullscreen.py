@@ -26,29 +26,29 @@ from __future__ import annotations
 
 import hashlib
 import os
+import random
 import re
 import shutil
 import subprocess
 import sys
-from neutron_os.extensions.builtins.mo_agent import acquire_dir
 import textwrap
 import threading
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterator, Optional, TYPE_CHECKING
-
-import random
+from typing import TYPE_CHECKING, Any
 
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.clipboard import ClipboardData
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.formatted_text import FormattedText
-from prompt_toolkit.key_binding import KeyBindings, ConditionalKeyBindings, merge_key_bindings
+from prompt_toolkit.key_binding import ConditionalKeyBindings, KeyBindings, merge_key_bindings
 from prompt_toolkit.layout.containers import (
     ConditionalContainer,
     Float,
@@ -63,28 +63,29 @@ from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.layout.margins import Margin
 from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.layout.processors import BeforeInput, Processor, Transformation
-from prompt_toolkit.selection import SelectionType, SelectionState
-from prompt_toolkit.clipboard import ClipboardData
 from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.selection import SelectionState, SelectionType
 from prompt_toolkit.styles import Style
+
+from neutron_os.extensions.builtins.mo_agent import acquire_dir
 
 from .providers.base import RenderProvider
 from .pulse_spinner import (
-    PULSE_FRAMES,
     _FRAME_INTERVAL,
+    PULSE_FRAMES,
     _format_elapsed,
     _format_tokens,
 )
 
 if TYPE_CHECKING:
-    from .agent import ChatAgent
+    from neutron_os.infra.gateway import StreamChunk
     from neutron_os.infra.orchestrator.actions import Action
     from neutron_os.infra.orchestrator.session import SessionStore
-    from neutron_os.infra.gateway import StreamChunk
+
+    from .agent import ChatAgent
 
 from neutron_os.extensions.builtins.update.background import BackgroundUpdateChecker
 from neutron_os.extensions.builtins.update.version_check import VersionInfo
-
 
 # ---------------------------------------------------------------------------
 # Color theme — matches Cherenkov blue brand from setup/renderer.py
@@ -194,7 +195,7 @@ class _OutputLexer(Lexer):
             return (id(self), ctrl.sel_start, ctrl.sel_end)
         return id(self)
 
-    def lex_document(self, document):
+    def lex_document(self, document):  # type: ignore[override]
         lines = document.lines
 
         # Snapshot the selection range (may change between renders)
@@ -1012,8 +1013,8 @@ def _relative_time(iso_str: str) -> str:
     try:
         dt = datetime.fromisoformat(iso_str)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        now = datetime.now(UTC)
         delta = now - dt
         secs = int(delta.total_seconds())
         if secs < 60:
@@ -1044,7 +1045,7 @@ class _PlaceholderProcessor(Processor):
     def __init__(self, get_text):
         self._get_text = get_text
 
-    def apply_transformation(self, ti):
+    def apply_transformation(self, ti):  # type: ignore[override]
         if not ti.document.text and ti.lineno == 0:
             placeholder = self._get_text()
             if placeholder:
@@ -1159,20 +1160,20 @@ class FullScreenChat:
         self._mode_idx = 0  # index into _MODES
         self._spinner_visible = False
         self._spinner_text: FormattedText = FormattedText([])
-        self._approval_pending: Optional[_ApprovalRequest] = None
+        self._approval_pending: _ApprovalRequest | None = None
         self._output_lock = threading.Lock()
         self._raw_output = ""  # Raw text without word-wrap breaks
         self._last_model = ""
         self._last_tokens = ""
         self._last_cost = ""
-        self._picker: Optional[PickerState] = None
+        self._picker: PickerState | None = None
 
         # Suggestion state — drives placeholder text in input bar
         self._suggestion_key = "welcome"
         self._suggestion_idx = 0
 
         # Pending command suggestion — set when a fuzzy match is offered
-        self._pending_command: Optional[str] = None
+        self._pending_command: str | None = None
 
         # Input history (shell-style up/down cycling)
         self._input_history: list[str] = []
@@ -1198,7 +1199,7 @@ class FullScreenChat:
         self._spinner_output_tokens = 0
         self._spinner_start: float = 0.0
         self._spinner_stop_event = threading.Event()
-        self._spinner_thread: Optional[threading.Thread] = None
+        self._spinner_thread: threading.Thread | None = None
 
         # Build UI
         self._output_buffer = Buffer(read_only=True, name="output")
@@ -1465,14 +1466,14 @@ class FullScreenChat:
         def _copy_or_cancel(event):
             # Check output area mouse selection first
             ctrl = self._output_window.content
-            if (hasattr(ctrl, "sel_start") and ctrl.sel_start is not None
-                    and ctrl.sel_end is not None):
-                selected_text = self._output_buffer.text[ctrl.sel_start:ctrl.sel_end]
+            if (hasattr(ctrl, "sel_start") and ctrl.sel_start is not None  # type: ignore[union-attr]
+                    and ctrl.sel_end is not None):  # type: ignore[union-attr]
+                selected_text = self._output_buffer.text[ctrl.sel_start:ctrl.sel_end]  # type: ignore[union-attr]
                 if selected_text:
                     event.app.clipboard.set_data(ClipboardData(selected_text))
                     _copy_to_system_clipboard(selected_text)
-                ctrl.sel_start = None
-                ctrl.sel_end = None
+                ctrl.sel_start = None  # type: ignore[union-attr]
+                ctrl.sel_end = None  # type: ignore[union-attr]
                 event.app.invalidate()
                 return
             # Check input buffer selection (shift+arrow)
@@ -2128,7 +2129,7 @@ class FullScreenChat:
         # delegating to cli._handle_slash_command — so we can track
         # the pending state and accept "yes" on the next input.
         from .commands import find_close_command, get_slash_commands
-        known_first_words = {c.split()[0] for c in get_slash_commands().keys()}
+        known_first_words = {c.split()[0] for c in get_slash_commands()}
         if cmd not in known_first_words:
             suggestion = find_close_command(text)
             if suggestion:
@@ -2261,7 +2262,10 @@ class FullScreenChat:
 
         # Show changelog summary if available
         try:
-            from neutron_os.extensions.builtins.update.version_check import read_pending_changelog, clear_pending_changelog
+            from neutron_os.extensions.builtins.update.version_check import (
+                clear_pending_changelog,
+                read_pending_changelog,
+            )
             changelog = read_pending_changelog()
             if changelog:
                 categories = changelog.get("categories", {})

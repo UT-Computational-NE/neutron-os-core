@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 from neutron_os.setup import renderer
 from neutron_os.setup.guides import (
@@ -35,13 +34,13 @@ PHASES = ["probe", "summary", "infra", "credentials", "config", "test", "done"]
 class SetupWizard:
     """Orchestrates the interactive setup flow."""
 
-    def __init__(self, root: Optional[Path] = None):
+    def __init__(self, root: Path | None = None):
         if root is None:
             from neutron_os.setup.probe import _find_project_root
             root = _find_project_root()
         self.root = root
         self.state: SetupState = load_state(root) or SetupState()
-        self.probe_result: Optional[ProbeResult] = None
+        self.probe_result: ProbeResult | None = None
 
     def run(self) -> None:
         """Run the full wizard, resuming from last saved phase."""
@@ -126,7 +125,7 @@ class SetupWizard:
         renderer.status_line("Python", pr.python_version, True)
 
         if pr.is_git_repo:
-            renderer.status_line("Project", "Found (branch: {})".format(pr.git_branch), True)
+            renderer.status_line("Project", f"Found (branch: {pr.git_branch})", True)
         else:
             renderer.status_line("Project", "Not inside a git repository", False)
 
@@ -186,10 +185,10 @@ class SetupWizard:
     def _phase_infra(self) -> None:
         """Set up infrastructure: Docker, K3D, PostgreSQL."""
         from neutron_os.setup.infra import (
+            InfraStatus,
             check_docker,
             check_k3d,
             check_neut_cluster,
-            InfraStatus,
             run_infra_setup,
         )
 
@@ -245,8 +244,8 @@ class SetupWizard:
         renderer.text("Let's set up your connections. You can skip any for now.\n")
 
         try:
-            from neutron_os.infra.connections import get_registry, has_credential, get_cli_tool
             from neutron_os.extensions.builtins.connect.cli import setup_connection
+            from neutron_os.infra.connections import get_cli_tool, get_registry, has_credential
 
             registry = get_registry()
             connections = registry.all()

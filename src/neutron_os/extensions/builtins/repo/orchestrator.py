@@ -16,14 +16,13 @@ import argparse
 import json
 import os
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Optional
 
 from neutron_os.extensions.builtins.repo.base import RepoSourceProvider, is_within_days
 from neutron_os.extensions.builtins.repo.config import SourceConfig, load_config
-
 
 # ---------------------------------------------------------------------------
 # Provider factory
@@ -125,20 +124,22 @@ class RepoExportOrchestrator:
         all_projects = _flatten_projects(results)
 
         # Try to resolve raw author names via the sense correlator
-        resolve_author = None
+        _resolve_fn: Callable[[str], str] | None = None
         try:
             from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
             correlator = Correlator()
-            def resolve_author(name: str) -> str:
+            def _do_resolve(name: str) -> str:
                 person = correlator.match_person(name)
                 return person.name if person else name
+            _resolve_fn = _do_resolve
         except Exception:
             pass  # No config available — use raw names
+        resolve_author = _resolve_fn
 
         summary = _compute_summary(all_projects, days, resolve_author=resolve_author)
 
         export_data = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "time_window_days": days,
             "sources": results,
             "projects": all_projects,
@@ -178,7 +179,7 @@ def _flatten_projects(results: dict[str, dict]) -> list[dict]:
 def _compute_summary(
     projects: list[dict],
     days: int,
-    resolve_author: Optional[Callable[[str], str]] = None,
+    resolve_author: Callable[[str], str] | None = None,
 ) -> dict:
     """Compute cross-project summary statistics.
 

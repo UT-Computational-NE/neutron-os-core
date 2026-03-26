@@ -16,13 +16,13 @@ import difflib
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 try:
     from docx import Document
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
+    Document = None  # type: ignore[assignment,misc]
 
 
 # Known mappings from Word doc names to .md sources
@@ -42,6 +42,7 @@ def extract_docx_text(docx_path: Path) -> str:
     if not DOCX_AVAILABLE:
         raise ImportError("python-docx not installed. Run: pip install python-docx")
 
+    assert Document is not None  # guarded above
     doc = Document(str(docx_path))
     paragraphs = []
 
@@ -123,7 +124,7 @@ def show_diff(md_text: str, docx_text: str, context_lines: int = 3) -> list[str]
     return list(diff)
 
 
-def find_md_source(docx_name: str, root: Path) -> Optional[Path]:
+def find_md_source(docx_name: str, root: Path) -> Path | None:
     """Find the corresponding .md source for a docx file."""
     docx_stem = Path(docx_name).stem.lower()
 
@@ -144,7 +145,7 @@ def find_md_source(docx_name: str, root: Path) -> Optional[Path]:
     return None
 
 
-def reconcile_file(docx_path: Path, md_path: Optional[Path], root: Path) -> dict:
+def reconcile_file(docx_path: Path, md_path: Path | None, root: Path) -> dict:
     """Reconcile a single docx file with its markdown source."""
     result = {
         "docx": str(docx_path),

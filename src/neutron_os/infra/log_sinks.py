@@ -41,7 +41,7 @@ dependencies are available. See docs/tech-specs/spec-logging.md §13.
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 

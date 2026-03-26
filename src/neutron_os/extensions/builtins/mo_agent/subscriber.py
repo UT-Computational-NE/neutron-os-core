@@ -113,16 +113,16 @@ def _get_agent():
         if not gateway.available:
             return None
 
-        from .agent import MoAgent
         from . import manager
+        from .agent import MoAgent
 
         agent = MoAgent(gateway=gateway, bus=_bus)
         mgr = manager()
 
         # Try to set up monitor
         try:
-            from .vitals import VitalsMonitor
             from .network import NetworkLedger
+            from .vitals import VitalsMonitor
             monitor = VitalsMonitor(mgr, NetworkLedger.shared(), _bus)
             agent.set_manager(mgr, monitor)
         except Exception:

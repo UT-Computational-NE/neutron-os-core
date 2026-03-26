@@ -2,7 +2,11 @@
 
 import sys
 
-from neutron_os.extensions.builtins.neut_agent.tools import get_all_tools, _scan_extensions, _ext_cache
+from neutron_os.extensions.builtins.neut_agent.tools import (
+    _ext_cache,
+    _scan_extensions,
+    get_all_tools,
+)
 
 
 class TestExtensionDiscovery:

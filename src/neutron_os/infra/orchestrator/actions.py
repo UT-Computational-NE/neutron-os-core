@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class ActionStatus(Enum):
@@ -45,11 +45,11 @@ class Action:
     status: ActionStatus = ActionStatus.PENDING
     action_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
-    completed_at: Optional[str] = None
-    result: Optional[dict[str, Any]] = None
-    error: Optional[str] = None
+    completed_at: str | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
 
     def approve(self) -> None:
         self.status = ActionStatus.APPROVED
@@ -60,12 +60,12 @@ class Action:
 
     def complete(self, result: dict[str, Any] | None = None) -> None:
         self.status = ActionStatus.COMPLETED
-        self.completed_at = datetime.now(timezone.utc).isoformat()
+        self.completed_at = datetime.now(UTC).isoformat()
         self.result = result
 
     def fail(self, error: str) -> None:
         self.status = ActionStatus.FAILED
-        self.completed_at = datetime.now(timezone.utc).isoformat()
+        self.completed_at = datetime.now(UTC).isoformat()
         self.error = error
 
     def to_dict(self) -> dict[str, Any]:

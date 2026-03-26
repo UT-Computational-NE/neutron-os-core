@@ -27,7 +27,7 @@ try:
     from .state import DocumentState
 except ImportError:
     # Fallback: DocumentState may not exist in some contexts
-    DocumentState = Any
+    DocumentState = Any  # type: ignore[assignment,misc]
 
 
 @dataclass
@@ -99,7 +99,7 @@ class DocumentValidator:
     def validate_document(
         self,
         doc_id: str,
-        state: DocumentState | None = None,
+        state: DocumentState | None = None,  # type: ignore[type-arg]
     ) -> ValidationResult:
         """Validate a single document's state and files.
 
@@ -193,7 +193,7 @@ class DocumentValidator:
     def _check_metadata(
         self,
         result: ValidationResult,
-        state: DocumentState,
+        state: DocumentState,  # type: ignore[type-arg]
         markdown_path: Path,
         source_docx: Path,
     ) -> None:

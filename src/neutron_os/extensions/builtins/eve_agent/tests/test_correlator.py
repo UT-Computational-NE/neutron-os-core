@@ -1,6 +1,7 @@
 """Unit tests for the entity correlator."""
 
 import pytest
+
 from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
 from neutron_os.extensions.builtins.eve_agent.models import Signal
 
@@ -181,8 +182,12 @@ class TestFlexibleColumnOrder:
         assert dana.role == "PI"
 
         # Both forge usernames resolve
-        assert correlator.match_person("danafox").name == "Dana Fox"
-        assert correlator.match_person("dfox").name == "Dana Fox"
+        match1 = correlator.match_person("danafox")
+        assert match1 is not None
+        assert match1.name == "Dana Fox"
+        match2 = correlator.match_person("dfox")
+        assert match2 is not None
+        assert match2.name == "Dana Fox"
 
     def test_missing_github_column(self, tmp_path):
         """Old-format people.md without GitHub still parses."""
@@ -199,7 +204,9 @@ class TestFlexibleColumnOrder:
         eve = correlator.people[0]
         assert eve.github == ""
         assert eve.gitlab == "eadams"
-        assert correlator.match_person("Evie").name == "Eve Adams"
+        evie = correlator.match_person("Evie")
+        assert evie is not None
+        assert evie.name == "Eve Adams"
 
 
 class TestResolveSignals:

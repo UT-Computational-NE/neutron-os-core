@@ -6,11 +6,9 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-
-from neutron_os.extensions.builtins.mo_agent.manifest import Manifest, ScratchEntry
 from neutron_os.extensions.builtins.mo_agent.manager import MoManager
+from neutron_os.extensions.builtins.mo_agent.manifest import Manifest, ScratchEntry
 from neutron_os.extensions.builtins.mo_agent.paths import resolve_base_dir
-
 
 # ---------------------------------------------------------------------------
 # paths.resolve_base_dir
@@ -201,6 +199,7 @@ class TestMoManager:
         for e in mgr.all_entries():
             if e.path == str(path):
                 e.created_at = "2020-01-01T00:00:00+00:00"
+                assert mgr._manifest is not None
                 mgr._manifest._entries[e.id] = e
                 mgr._manifest._save()
 
@@ -243,6 +242,7 @@ class TestMoManager:
         assert any(t == "mo.acquired" for t, _ in events)
 
         events.clear()
+        assert path is not None
         mgr.release(path)
         assert any(t == "mo.released" for t, _ in events)
 

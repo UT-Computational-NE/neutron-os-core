@@ -15,7 +15,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # reviewer.py — unit tests
 # ---------------------------------------------------------------------------
@@ -120,7 +119,7 @@ def test_mirror_review_is_clear_property():
 
 def test_flagged_property_filters_reviews():
     """MirrorReview.flagged returns only REVIEW_NEEDED items."""
-    from neutron_os.extensions.builtins.mirror_agent.reviewer import MirrorReview, FileReview
+    from neutron_os.extensions.builtins.mirror_agent.reviewer import FileReview, MirrorReview
 
     clear = FileReview(path="ok.py", verdict="CLEAR")
     flagged = FileReview(path="bad.py", verdict="REVIEW_NEEDED", findings=["Contains PII"])
@@ -204,10 +203,11 @@ def test_review_file_uses_gateway_prompt_kwarg(tmp_path):
 def test_ci_mode_exits_nonzero_on_findings(tmp_path, monkeypatch):
     """--ci flag causes sys.exit(1) when review finds issues."""
     import argparse
+
     from neutron_os.extensions.builtins.mirror_agent import cli as mirror_cli
 
     # Build a fake flagged result
-    from neutron_os.extensions.builtins.mirror_agent.reviewer import MirrorReview, FileReview
+    from neutron_os.extensions.builtins.mirror_agent.reviewer import FileReview, MirrorReview
     flagged_result = MirrorReview(
         files_reviewed=1,
         files_flagged=1,
@@ -231,6 +231,7 @@ def test_ci_mode_exits_nonzero_on_findings(tmp_path, monkeypatch):
 def test_ci_mode_does_not_exit_on_clear(tmp_path, monkeypatch):
     """--ci flag does not exit when review is clean."""
     import argparse
+
     from neutron_os.extensions.builtins.mirror_agent import cli as mirror_cli
     from neutron_os.extensions.builtins.mirror_agent.reviewer import MirrorReview
 
@@ -250,9 +251,9 @@ def test_ci_mode_does_not_exit_on_clear(tmp_path, monkeypatch):
 
 def test_eventbus_heartbeat_triggers_mirror_subscriber():
     """Publishing mo.heartbeat on the bus invokes the mirror handler."""
-    from neutron_os.infra.orchestrator.bus import EventBus
-    from neutron_os.extensions.builtins.mirror_agent.subscriber import register
     import neutron_os.extensions.builtins.mirror_agent.subscriber as sub
+    from neutron_os.extensions.builtins.mirror_agent.subscriber import register
+    from neutron_os.infra.orchestrator.bus import EventBus
 
     sub._reviewed.clear()
 

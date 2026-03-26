@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -118,6 +118,7 @@ def _cmd_status(args) -> int:
     # Memory (if psutil available)
     try:
         import os
+
         import psutil
         rss = psutil.Process(os.getpid()).memory_info().rss
         print(f"  Memory:    {_fmt_bytes(rss)} RSS")
@@ -126,8 +127,8 @@ def _cmd_status(args) -> int:
 
     # Pressure
     try:
-        from .vitals import VitalsMonitor
         from .network import NetworkLedger
+        from .vitals import VitalsMonitor
         monitor = VitalsMonitor(mgr, NetworkLedger.shared())
         monitor.sample()
         pressure = monitor.check_pressure()
@@ -162,7 +163,7 @@ def _cmd_status(args) -> int:
     # Entry table
     print()
     print(f"  {'Owner':<20} {'Type':<6} {'Retention':<10} {'Age':<9} {'Size':<10}")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for e in entries:
         etype = "dir" if e.is_dir else "file"
         age = _fmt_age(e.created_at, now)
@@ -186,7 +187,7 @@ def _cmd_ls(args) -> int:
         print("No active M-O entries.")
         return 0
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     print(f"{'ID':<14} {'Owner':<20} {'Type':<6} {'Retention':<10} {'PID':<8} {'Age':<9} {'Path'}")
     print("-" * 100)
     for e in entries:
@@ -221,7 +222,8 @@ def _cmd_clean(args) -> int:
     # Repo hygiene (--repo flag)
     if getattr(args, "repo", False):
         from neutron_os import REPO_ROOT
-        from .repo_hygiene import scan_repo_hygiene, clean_clutter
+
+        from .repo_hygiene import clean_clutter, scan_repo_hygiene
 
         dry_run = getattr(args, "dry_run", False)
         print()
@@ -240,8 +242,9 @@ def _cmd_clean(args) -> int:
         if findings.get("stale_neut"):
             print(f"\nStale .neut/ items: {', '.join(findings['stale_neut'])}")
             if not dry_run:
-                from neutron_os import REPO_ROOT
                 import shutil
+
+                from neutron_os import REPO_ROOT
                 for name in findings["stale_neut"]:
                     stale_path = REPO_ROOT / ".neut" / name
                     if stale_path.is_dir():
@@ -289,8 +292,8 @@ def _cmd_purge(args) -> int:
 
 def _cmd_vitals(args) -> int:
     try:
-        from .vitals import VitalsMonitor
         from .network import NetworkLedger
+        from .vitals import VitalsMonitor
     except ImportError as e:
         print(f"Vitals unavailable: {e}")
         return 1
@@ -375,9 +378,9 @@ def _cmd_diagnose(args) -> int:
     mgr = _get_manager()
 
     try:
-        from .vitals import VitalsMonitor
-        from .network import NetworkLedger
         from .agent import MoAgent
+        from .network import NetworkLedger
+        from .vitals import VitalsMonitor
 
         monitor = VitalsMonitor(mgr, NetworkLedger.shared())
         snap = monitor.sample()
@@ -522,7 +525,7 @@ def _fmt_bytes(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if abs(n) < 1024:
             return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
-        n = n / 1024
+        n = int(n / 1024)
     return f"{n:.1f} TB"
 
 

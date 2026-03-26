@@ -15,9 +15,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from neutron_os.rag.watcher import _DebounceMap, RAGWatchHandler
 from neutron_os.rag.store import CORPUS_INTERNAL
-
+from neutron_os.rag.watcher import RAGWatchHandler, _DebounceMap
 
 # ---------------------------------------------------------------------------
 # _DebounceMap
@@ -96,7 +95,7 @@ class TestRAGWatchHandlerDispatch:
 
     def test_passes_path_object_to_handle(self):
         captured = []
-        self.handler._handle = lambda p: captured.append(p)
+        self.handler._handle = lambda path: captured.append(path)  # type: ignore[assignment]
         self.handler.dispatch(_event("/fake/repo/docs/x.md", event_type="modified"))
         assert len(captured) == 1
         assert isinstance(captured[0], Path)

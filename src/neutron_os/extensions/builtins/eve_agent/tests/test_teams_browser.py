@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest import mock
 
 
-
 class TestTeamsBrowserExtractor:
     """Unit tests for TeamsBrowserExtractor (mocked Playwright)."""
 

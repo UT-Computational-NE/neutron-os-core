@@ -8,7 +8,7 @@ only use thread-safe methods (e.g. FullScreenChat._append_output).
 from __future__ import annotations
 
 import threading
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from .version_check import VersionChecker, VersionInfo
 
@@ -21,7 +21,7 @@ class BackgroundUpdateChecker:
 
     def __init__(
         self,
-        on_update_available: Optional[Callable[[VersionInfo], None]] = None,
+        on_update_available: Callable[[VersionInfo], None] | None = None,
         initial_delay: float = _INITIAL_DELAY,
         interval: float = _CHECK_INTERVAL,
     ):
@@ -29,9 +29,9 @@ class BackgroundUpdateChecker:
         self._initial_delay = initial_delay
         self._interval = interval
         self._checker = VersionChecker()
-        self._latest: Optional[VersionInfo] = None
+        self._latest: VersionInfo | None = None
         self._stop_event = threading.Event()
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def start(self) -> None:
         """Start the background check loop."""
@@ -53,11 +53,11 @@ class BackgroundUpdateChecker:
             self._thread = None
 
     @property
-    def latest(self) -> Optional[VersionInfo]:
+    def latest(self) -> VersionInfo | None:
         """Most recent check result (thread-safe read)."""
         return self._latest
 
-    def check_now(self) -> Optional[VersionInfo]:
+    def check_now(self) -> VersionInfo | None:
         """Run a synchronous check immediately (blocking)."""
         try:
             info = self._checker.check_remote_version(timeout=5.0)

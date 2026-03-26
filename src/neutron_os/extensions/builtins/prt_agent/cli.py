@@ -22,8 +22,8 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -141,11 +141,11 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
 def _format_time_ago(iso_timestamp: str) -> str:
     """Convert ISO timestamp to human-readable 'time ago' format."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     try:
         pub_time = datetime.fromisoformat(iso_timestamp)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         delta = now - pub_time
 
         days = delta.days
@@ -401,11 +401,11 @@ def cmd_providers(args: argparse.Namespace) -> None:
     except ImportError:
         pass
 
-    from .factory import PublisherFactory
     from .config import load_config
+    from .factory import PublisherFactory
 
     config = load_config()
-    all_providers = PublisherFactory.available()
+    all_providers: dict[str, list[str]] = PublisherFactory.available()  # type: ignore[assignment]
 
     print("\n" + "=" * 80)
     print("Publisher Providers")
@@ -629,13 +629,13 @@ def cmd_onboard(args: argparse.Namespace) -> None:
 
 def cmd_review(args: argparse.Namespace) -> None:
     """Interactive human-in-the-loop review of a draft document."""
-    from neutron_os.review.models import ReviewSessionStore
-    from neutron_os.review.runner import ReviewRunner
     from neutron_os.review.adapters.draft_adapter import (
         DraftReviewAdapter,
         create_draft_session,
         find_draft,
     )
+    from neutron_os.review.models import ReviewSessionStore
+    from neutron_os.review.runner import ReviewRunner
 
     store = ReviewSessionStore()
 
@@ -888,7 +888,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _find_compile_manifest(path: Path) -> Optional[Path]:
+def _find_compile_manifest(path: Path) -> Path | None:
     """Search *path* and its parents for a .compile.yaml manifest.
 
     Checks:
@@ -907,7 +907,7 @@ def _find_compile_manifest(path: Path) -> Optional[Path]:
     return None
 
 
-def _assemble_from_manifest(manifest_path: Path, output_path: Optional[Path] = None) -> Path:
+def _assemble_from_manifest(manifest_path: Path, output_path: Path | None = None) -> Path:
     """Concatenate source files from a .compile.yaml manifest into a single .md.
 
     Returns the path to the assembled file.
@@ -991,8 +991,9 @@ def cmd_push(args: argparse.Namespace) -> None:
 
     First run with --headed opens a browser for Microsoft login.
     """
-    from .engine import PublisherEngine
     import tempfile
+
+    from .engine import PublisherEngine
 
     engine = PublisherEngine()
     force = getattr(args, "force", False)
@@ -1028,7 +1029,7 @@ def cmd_push(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     # Auto-detect .compile.yaml for multi-section assembly
-    assembled_tmp: Optional[Path] = None
+    assembled_tmp: Path | None = None
     source = target
 
     manifest = _find_compile_manifest(target)
@@ -1164,8 +1165,8 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
 
     # Resolve browser storage provider
     try:
-        from .providers.storage.onedrive_browser import OneDriveBrowserStorageProvider
         from .providers.storage.box_browser import BoxBrowserStorageProvider
+        from .providers.storage.onedrive_browser import OneDriveBrowserStorageProvider
     except ImportError:
         print("\n✗ Playwright not installed. Run:")
         print("    pip install playwright && playwright install chromium")
@@ -1299,8 +1300,8 @@ def _postprocess_docx(docx_path: Path) -> None:
     """
     try:
         from docx import Document
-        from docx.oxml.ns import qn
         from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
         from docx.shared import Inches  # noqa: F401 (Emu removed)
 
         doc = Document(str(docx_path))
@@ -1485,7 +1486,7 @@ def _needs_regeneration(md_path: Path, docx_path: Path) -> bool:
     return source_hash != stored_hash
 
 
-def _generate_docx(md_path: Path) -> Path:
+def _generate_docx(md_path: Path) -> Path | None:
     """Generate a .docx from a .md file using pandoc. Returns path to .docx."""
     import subprocess
 

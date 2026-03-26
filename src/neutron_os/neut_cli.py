@@ -18,8 +18,8 @@ Installation:
 """
 
 import argparse
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Ensure repo root is on sys.path when running from source checkout.
@@ -112,8 +112,9 @@ def _do_self_update(old_version: str) -> None:
 
     # Stash changelog so it shows on next launch
     try:
-        from neutron_os.extensions.builtins.update.cli import Updater
         from importlib.metadata import version as pkg_version
+
+        from neutron_os.extensions.builtins.update.cli import Updater
         new_version = pkg_version("neutron-os")
         updater = Updater()
         updater._stash_changelog(old_version, new_version, [])
@@ -126,7 +127,10 @@ def _do_self_update(old_version: str) -> None:
 def _show_pending_changelog() -> None:
     """Display pending changelog from a recent update, then clear it."""
     try:
-        from neutron_os.extensions.builtins.update.version_check import read_pending_changelog, clear_pending_changelog
+        from neutron_os.extensions.builtins.update.version_check import (
+            clear_pending_changelog,
+            read_pending_changelog,
+        )
         changelog = read_pending_changelog()
         if not changelog or changelog.get("shown"):
             return
@@ -366,8 +370,9 @@ def _gather_diagnostics() -> dict:
 def _llm_diagnose(diagnostics: dict, error_context: str | None = None) -> str | None:
     """Use LLM with project context to diagnose issues intelligently."""
     try:
-        from neutron_os.infra.gateway import Gateway
         from pathlib import Path
+
+        from neutron_os.infra.gateway import Gateway
 
         gateway = Gateway()
         if not gateway.available:
@@ -524,8 +529,8 @@ def _copy_top_level_args(
         try:
             new_action = dst_parser.add_argument(*names, **kwargs)
             # Carry over argcomplete completers
-            if hasattr(action, "completer") and action.completer is not None:
-                new_action.completer = action.completer
+            if hasattr(action, "completer") and action.completer is not None:  # type: ignore[union-attr]
+                new_action.completer = action.completer  # type: ignore[union-attr,attr-defined]
         except Exception:
             pass
 
@@ -797,6 +802,7 @@ def main():
     else:
         try:
             import importlib
+            assert module_path is not None
             module = importlib.import_module(module_path)
             module.main()
         except ImportError as e:

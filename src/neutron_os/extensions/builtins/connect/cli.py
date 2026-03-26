@@ -14,11 +14,14 @@ import argparse
 import json
 import sys
 
+# format_status_section and _connection_status_info are in infra/connections.py
+# (shared platform layer, not extension-specific)
 from neutron_os.infra.connections import (
     Connection,
     ConnectionHealth,
     ConnectionRegistry,
     HealthStatus,
+    _connection_status_info,
     check_health,
     clear_credential,
     format_status_section,
@@ -29,13 +32,6 @@ from neutron_os.infra.connections import (
     run_post_setup_hook,
     store_credential,
 )
-
-
-# format_status_section and _connection_status_info are in infra/connections.py
-# (shared platform layer, not extension-specific)
-
-from neutron_os.infra.connections import _connection_status_info
-
 
 # ---------------------------------------------------------------------------
 # Health check all

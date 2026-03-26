@@ -51,7 +51,7 @@ class IssueProviderFactory:
             raise ValueError(
                 f"Unknown issue provider: '{name}'. Available: {available}"
             )
-        return cls._providers[name](config or {})
+        return cls._providers[name](config or {})  # type: ignore[call-arg]
 
     @classmethod
     def available(cls) -> list[str]:

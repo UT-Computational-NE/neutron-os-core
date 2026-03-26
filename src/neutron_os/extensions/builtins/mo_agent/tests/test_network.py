@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-
-
 from neutron_os.extensions.builtins.mo_agent.network import (
     NetworkLedger,
     RequestRecord,
 )
-
 
 # ---------------------------------------------------------------------------
 # RequestRecord

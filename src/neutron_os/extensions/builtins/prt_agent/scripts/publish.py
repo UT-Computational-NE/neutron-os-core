@@ -27,21 +27,21 @@ Status transitions:
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 import subprocess
+
+# Add parent to path for imports
+import sys
 from datetime import datetime
 from pathlib import Path
 
 from neutron_os.infra.state import LockedJsonFile
 
-# Add parent to path for imports
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from ..cleanup import apply_cleanup
+from ..state import DocumentState, PublicationRecord, StateStore
 from ..validation import DocumentValidator
-from ..state import StateStore, DocumentState, PublicationRecord
 
 
 def get_commit_sha() -> str:

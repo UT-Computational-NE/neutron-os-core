@@ -264,6 +264,7 @@ def test_cli_index_with_explicit_path(tmp_path):
 
     # Verify it's searchable
     url = _get_db_url()
+    assert url is not None
     from neutron_os.rag.store import RAGStore
     s = RAGStore(url)
     s.connect()
@@ -437,11 +438,13 @@ def test_cli_reindex_clears_and_rebuilds(tmp_path, capsys):
     the speed of a full index.
     """
     from unittest.mock import patch
+
     from neutron_os.rag import cli as rag_cli
     from neutron_os.rag.ingest import IngestStats
     from neutron_os.rag.store import CORPUS_INTERNAL, RAGStore
 
     url = _get_db_url()
+    assert url is not None
     s = RAGStore(url)
     s.connect()
 
@@ -472,6 +475,7 @@ def test_cli_reindex_clears_and_rebuilds(tmp_path, capsys):
     assert "3 files" in out
 
     # Sentinel must be gone — delete_corpus was called on the real store
+    assert url is not None
     s = RAGStore(url)
     s.connect()
     doc = s.get_document(TEST_PREFIX + "sentinel-reindex.md", corpus=CORPUS_INTERNAL)

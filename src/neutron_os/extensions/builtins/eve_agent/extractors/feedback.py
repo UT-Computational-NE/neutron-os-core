@@ -15,8 +15,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from ..models import Signal, Extraction
 from ..loop import FeedbackType
+from ..models import Extraction, Signal
 
 
 class FeedbackSource(Enum):

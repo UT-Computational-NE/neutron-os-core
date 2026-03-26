@@ -20,13 +20,14 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from .agent import ChatAgent
-from .cli import run_repl
-from .fullscreen import FullScreenChat, _SUGGESTIONS
-from .provider_factory import create_render_provider, create_input_provider
+from neutron_os.infra.gateway import Gateway
 from neutron_os.infra.orchestrator.bus import EventBus
 from neutron_os.infra.orchestrator.session import SessionStore
-from neutron_os.infra.gateway import Gateway
+
+from .agent import ChatAgent
+from .cli import run_repl
+from .fullscreen import _SUGGESTIONS, FullScreenChat
+from .provider_factory import create_input_provider, create_render_provider
 
 
 def _format_briefing_context(briefing_data: dict) -> str:

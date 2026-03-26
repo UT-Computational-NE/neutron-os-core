@@ -14,7 +14,7 @@ import argparse
 import sys
 from typing import Any
 
-from .store import SettingsStore, _DEFAULTS
+from .store import _DEFAULTS, SettingsStore
 
 
 def _fmt_value(v: Any) -> str:
@@ -80,7 +80,7 @@ def main():
         # Show all settings
         settings = store.all()
         if args.global_scope:
-            from .store import _flatten, _load_toml, _GLOBAL_SETTINGS_PATH
+            from .store import _GLOBAL_SETTINGS_PATH, _flatten, _load_toml
             settings = _flatten(_load_toml(_GLOBAL_SETTINGS_PATH))
         if not settings:
             print("\n  No settings configured. Using defaults.\n")
@@ -131,6 +131,7 @@ def main():
     if args.cmd == "edit":
         import os
         import subprocess
+
         from .store import _GLOBAL_SETTINGS_PATH, _PROJECT_SETTINGS_PATH
 
         path = _GLOBAL_SETTINGS_PATH if scope == "global" else _PROJECT_SETTINGS_PATH
@@ -138,7 +139,7 @@ def main():
         if not path.exists():
             # Seed with current settings so the user has something to edit
             store_snapshot = store.all()
-            from .store import _unflatten, _save_toml
+            from .store import _save_toml, _unflatten
             _save_toml(path, _unflatten(store_snapshot))
 
         editor = os.environ.get("EDITOR", os.environ.get("VISUAL", "vi"))

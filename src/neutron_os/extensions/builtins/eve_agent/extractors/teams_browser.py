@@ -38,12 +38,11 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
 from ..models import Extraction, Signal
-from ..registry import register_source, SourceType
+from ..registry import SourceType, register_source
 from .base import BaseExtractor
 
 logger = logging.getLogger(__name__)
@@ -99,8 +98,8 @@ class TeamsBrowserExtractor(BaseExtractor):
 
     def __init__(
         self,
-        session_dir: Optional[Path] = None,
-        download_dir: Optional[Path] = None,
+        session_dir: Path | None = None,
+        download_dir: Path | None = None,
         headless: bool = True,
         days: int = 7,
         auth_method: str = "browser",
@@ -148,8 +147,8 @@ class TeamsBrowserExtractor(BaseExtractor):
 
     def fetch_transcripts(
         self,
-        days: Optional[int] = None,
-        headless: Optional[bool] = None,
+        days: int | None = None,
+        headless: bool | None = None,
     ) -> list[Path]:
         """Fetch meeting transcripts from Teams.
 
@@ -413,7 +412,7 @@ class TeamsBrowserExtractor(BaseExtractor):
 
         return downloaded
 
-    def extract(self, source_path: Path, **kwargs) -> Extraction:
+    def extract(self, source_path: Path, **kwargs) -> Extraction:  # type: ignore[override]
         """Fetch transcripts from Teams and return extraction results."""
         errors: list[str] = []
         signals: list[Signal] = []

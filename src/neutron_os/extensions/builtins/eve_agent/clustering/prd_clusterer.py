@@ -5,10 +5,10 @@ Groups signals by target PRD, then by theme within each PRD.
 Note: Uses Signal.initiatives[0] as the PRD target (maps initiatives -> PRDs).
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

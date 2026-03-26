@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
 from neutron_os.extensions.builtins.repo.base import RepoActivity, RepoInfo
 from neutron_os.extensions.builtins.repo.config import SourceConfig, detect_sources, load_config
 from neutron_os.extensions.builtins.repo.orchestrator import (
@@ -18,7 +17,6 @@ from neutron_os.extensions.builtins.repo.orchestrator import (
     _compute_summary,
     _flatten_projects,
 )
-
 
 # ---------------------------------------------------------------------------
 # Config detection

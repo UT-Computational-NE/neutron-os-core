@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from ...factory import PublisherFactory
-from ..base import StorageProvider, UploadResult, StorageEntry
+from ..base import StorageEntry, StorageProvider, UploadResult
 
 logger = logging.getLogger(__name__)
 
@@ -740,27 +740,26 @@ class OneDriveBrowserStorageProvider(StorageProvider):
     def list_files(self, folder: str = "") -> list[StorageEntry]:
         return []  # Not implemented for browser provider
 
-    def download(self, remote_path: str, local_path: Path) -> bool:
+    def download(self, storage_id: str, local_path: Path) -> bool:
         return False  # Use OneDrive web UI directly
 
-    def delete(self, remote_path: str) -> bool:
+    def delete(self, storage_id: str) -> bool:
         return False  # Not implemented
 
     def get_canonical_url(self, storage_id: str) -> str:
         return ""  # URL returned during upload
 
-    def list_artifacts(self, folder: str = "") -> list[dict]:
+    def list_artifacts(self, folder: str = "") -> list[StorageEntry] | list[dict]:
         return []  # Not implemented for browser provider
 
-    def move(self, source: str, destination: str) -> bool:
+    def move(self, source: str, destination: str) -> UploadResult | bool:
         return False  # Not implemented for browser provider
 
 
 # Register with the publisher factory
 try:
-    PublisherFactory.register_storage(
-        "onedrive-browser",
-        OneDriveBrowserStorageProvider,
+    PublisherFactory.register(
+        "storage", "onedrive-browser", OneDriveBrowserStorageProvider,
     )
 except Exception:
     pass  # Factory may not be initialized yet

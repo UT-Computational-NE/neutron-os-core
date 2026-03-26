@@ -24,15 +24,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
-
-from neutron_os.infra.gateway import Gateway
-from .models import Signal
-
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.gateway import Gateway
+
+from .models import Signal
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 PRD_DIR = _REPO_ROOT / "docs" / "prd"
 SUGGESTIONS_FILE = _RUNTIME_DIR / "inbox" / "processed" / "prd_suggestions.json"
@@ -89,7 +88,7 @@ class RelevanceMatch:
 
     def __post_init__(self):
         if not self.suggested_at:
-            self.suggested_at = datetime.now(timezone.utc).isoformat()
+            self.suggested_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {
@@ -135,7 +134,7 @@ class SmartRouter:
             if prd:
                 self.prds[prd.doc_id] = prd
 
-    def _parse_prd(self, path: Path) -> Optional[PRDTarget]:
+    def _parse_prd(self, path: Path) -> PRDTarget | None:
         """Extract key fields from a PRD markdown file."""
         try:
             content = path.read_text(encoding="utf-8")
@@ -254,7 +253,7 @@ class SmartRouter:
     def match_to_prds(
         self,
         signals: list[Signal],
-        prd_filter: Optional[list[str]] = None,
+        prd_filter: list[str] | None = None,
         min_relevance: float = 0.3,
     ) -> list[RelevanceMatch]:
         """Use LLM to match signals to relevant PRDs.
@@ -404,7 +403,7 @@ genuine relevance, not tangential connections. Consider:
 
         return added
 
-    def get_pending_suggestions(self, prd_id: Optional[str] = None) -> list[dict]:
+    def get_pending_suggestions(self, prd_id: str | None = None) -> list[dict]:
         """Get unreviewed suggestions, optionally filtered by PRD."""
         pending = [s for s in self.suggestions if not s.get("reviewed", False)]
         if prd_id:

@@ -20,7 +20,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
@@ -354,7 +354,7 @@ def aar_handler(topic: str, data: dict[str, Any]) -> None:
     outcome = _outcome_from_topic(topic)
     report = _build_aar(topic, data, outcome)
     fingerprint = data.get("fingerprint", "unknown")
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
 
     # Write markdown file
     _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -411,7 +411,7 @@ def _one_line_summary(topic: str, data: dict[str, Any], outcome: str) -> str:
 def _build_aar(topic: str, data: dict[str, Any], outcome: str) -> str:
     """Build a markdown After Action Report."""
     fingerprint = data.get("fingerprint", "unknown")
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     error_signal = data.get("error_signal", data)
 
     lines = [

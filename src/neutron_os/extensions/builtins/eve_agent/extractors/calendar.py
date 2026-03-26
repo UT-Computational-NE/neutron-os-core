@@ -4,12 +4,12 @@ Extracts signals from calendar events (Google Calendar API or .ics files).
 Identifies meetings, deadlines, and scheduling patterns relevant to PRDs.
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
 
-from ..models import Signal, Extraction
+from ..models import Extraction, Signal
 
 
 @dataclass

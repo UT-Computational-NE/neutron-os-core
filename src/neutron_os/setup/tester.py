@@ -11,7 +11,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -59,7 +58,7 @@ def _timed(fn):
 class ChannelTester:
     """Runs independent health checks for each configured channel."""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         if project_root is None:
             from neutron_os.setup.probe import _find_project_root
             project_root = _find_project_root()

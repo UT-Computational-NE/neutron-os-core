@@ -29,16 +29,15 @@ from __future__ import annotations
 
 import json
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Callable
-
-
-from neutron_os.infra.state import LockedJsonFile, locked_append_jsonl
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import LockedJsonFile, locked_append_jsonl
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 PROPAGATION_QUEUE = _RUNTIME_DIR / "inbox" / "corrections" / "propagation_queue.json"
 PROPAGATION_LOG = _RUNTIME_DIR / "inbox" / "corrections" / "propagation_log.jsonl"
@@ -84,7 +83,7 @@ class PropagationJob:
         if not self.id:
             self.id = f"prop_{secrets.token_hex(6)}"
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {
@@ -102,7 +101,7 @@ class PropagationJob:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PropagationJob":
+    def from_dict(cls, data: dict) -> PropagationJob:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
@@ -367,7 +366,7 @@ class CorrectionPropagator:
 
         for job in jobs:
             job.status = PropagationStatus.IN_PROGRESS.value
-            job.started_at = datetime.now(timezone.utc).isoformat()
+            job.started_at = datetime.now(UTC).isoformat()
 
             handler = self._handlers.get(job.propagation_type)
             if not handler:
@@ -379,7 +378,7 @@ class CorrectionPropagator:
                 success = handler(job)
                 if success:
                     job.status = PropagationStatus.COMPLETED.value
-                    job.completed_at = datetime.now(timezone.utc).isoformat()
+                    job.completed_at = datetime.now(UTC).isoformat()
                     completed += 1
 
                     if job.propagation_type in (PropagationType.GLOSSARY_ADD.value, PropagationType.GLOSSARY_REMOVE.value):
@@ -532,7 +531,7 @@ class CorrectionPropagator:
         notification_log = _RUNTIME_DIR / "inbox" / "notifications.jsonl"
 
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "type": notification_type,
             "message": message,
             "importance": importance,
@@ -574,6 +573,7 @@ class CorrectionPropagator:
         """Load propagation queue."""
         if not PROPAGATION_QUEUE.exists():
             return []
+        data: dict = {}
         try:
             with LockedJsonFile(PROPAGATION_QUEUE) as f:
                 data = f.read()
@@ -584,7 +584,7 @@ class CorrectionPropagator:
     def _save_queue(self, jobs: list[PropagationJob]) -> None:
         """Save propagation queue."""
         data = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "jobs": [j.to_dict() for j in jobs],
         }
         with LockedJsonFile(PROPAGATION_QUEUE, exclusive=True) as f:
@@ -610,7 +610,7 @@ class CorrectionPropagator:
     def _log_propagation(self, result: PropagationResult) -> None:
         """Log propagation result to audit trail."""
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **result.to_dict(),
         }
 

@@ -213,9 +213,9 @@ def _substitute_env_vars(text: str) -> str:
     """Replace ${VAR_NAME} with environment variable values."""
     import re
 
-    def replacer(match):
+    def replacer(match: re.Match[str]) -> str:
         var_name = match.group(1)
-        return os.environ.get(var_name, match.group(0))
+        return os.environ.get(var_name) or match.group(0)
 
     return re.sub(r"\$\{(\w+)\}", replacer, text)
 

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-
-from ..tools import ToolDef
+from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.orchestrator.actions import ActionCategory
 
-from neutron_os import REPO_ROOT as _REPO_ROOT
+from ..tools import ToolDef
 
 TOOLS = [
     ToolDef(

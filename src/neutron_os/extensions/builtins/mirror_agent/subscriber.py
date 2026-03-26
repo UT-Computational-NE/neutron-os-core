@@ -143,8 +143,9 @@ def _run_review(repo_root: Path, sha: str, touched_files: list[str]) -> None:
     try:
         from neutron_os.infra.gateway import Gateway
         from neutron_os.infra.nudges import NudgeStore
+
+        from .cli import EXCLUDE_PATHS, PUBLIC_PATHS
         from .reviewer import review_mirror_content
-        from .cli import PUBLIC_PATHS, EXCLUDE_PATHS
 
         gateway = Gateway()
         if not gateway.active_provider:
@@ -178,7 +179,7 @@ def _run_review(repo_root: Path, sha: str, touched_files: list[str]) -> None:
 
 def _public_files_changed(repo_root: Path, from_ref: str, to_ref: str) -> list[str]:
     """Return public-path files changed between two refs."""
-    from .cli import PUBLIC_PATHS, EXCLUDE_PATHS
+    from .cli import EXCLUDE_PATHS, PUBLIC_PATHS
     try:
         out = subprocess.check_output(
             ["git", "diff", "--name-only", from_ref, to_ref],

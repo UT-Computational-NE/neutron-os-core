@@ -49,6 +49,11 @@ class GitLabIssueProvider(IssueProvider):
         except Exception:
             return False
 
+    def _get_project(self):
+        """Return the project object, raising if not connected."""
+        assert self._project is not None, "must call _connect() first"
+        return self._project
+
     def available(self) -> bool:
         return self._connect()
 
@@ -57,7 +62,7 @@ class GitLabIssueProvider(IssueProvider):
         if not self._connect():
             return None
         try:
-            issues = self._project.issues.list(
+            issues = self._get_project().issues.list(
                 state="opened",
                 labels=["self-heal"],
                 search=fingerprint,
@@ -78,20 +83,20 @@ class GitLabIssueProvider(IssueProvider):
             # Extract issue IID from URL
             # URL format: https://gitlab.example.com/group/project/-/issues/123
             iid = int(issue_url.rstrip("/").split("/")[-1])
-            issue = self._project.issues.get(iid)
+            issue = self._get_project().issues.get(iid)
             issue.notes.create({"body": body})
             return True
         except Exception:
             return False
 
-    def update_issue_labels(self, issue_url: str, add_labels: list[str] = None,
-                           remove_labels: list[str] = None) -> bool:
+    def update_issue_labels(self, issue_url: str, add_labels: list[str] | None = None,
+                           remove_labels: list[str] | None = None) -> bool:
         """Add or remove labels on a GitLab issue."""
         if not self._connect():
             return False
         try:
             iid = int(issue_url.rstrip("/").split("/")[-1])
-            issue = self._project.issues.get(iid)
+            issue = self._get_project().issues.get(iid)
             current = set(issue.labels)
             if add_labels:
                 current.update(add_labels)
@@ -109,7 +114,7 @@ class GitLabIssueProvider(IssueProvider):
             return False
         try:
             iid = int(issue_url.rstrip("/").split("/")[-1])
-            issue = self._project.issues.get(iid)
+            issue = self._get_project().issues.get(iid)
             issue.state_event = "close"
             issue.save()
             return True
@@ -122,7 +127,7 @@ class GitLabIssueProvider(IssueProvider):
             return ""
         try:
             # Ensure labels exist (GitLab creates them on use)
-            issue = self._project.issues.create({
+            issue = self._get_project().issues.create({
                 "title": title,
                 "description": body,
                 "labels": ",".join(labels),

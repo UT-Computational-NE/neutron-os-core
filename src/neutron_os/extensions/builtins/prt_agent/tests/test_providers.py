@@ -7,13 +7,12 @@ They test the interface, not implementation details.
 import pytest
 
 from neutron_os.extensions.builtins.prt_agent.providers.base import (
-    GenerationProvider,
-    StorageProvider,
     FeedbackProvider,
-    NotificationProvider,
     GenerationOptions,
+    GenerationProvider,
+    NotificationProvider,
+    StorageProvider,
 )
-
 
 # ─── Storage Provider Contract Tests ───
 
@@ -23,7 +22,9 @@ class TestLocalStorageContract:
 
     @pytest.fixture
     def provider(self, tmp_path):
-        from neutron_os.extensions.builtins.prt_agent.providers.storage.local import LocalStorageProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.local import (
+            LocalStorageProvider,
+        )
 
         return LocalStorageProvider({"base_dir": str(tmp_path / "output")})
 
@@ -93,7 +94,9 @@ class TestTerminalNotificationContract:
 
     @pytest.fixture
     def provider(self):
-        from neutron_os.extensions.builtins.prt_agent.providers.notification.terminal import TerminalNotificationProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.notification.terminal import (
+            TerminalNotificationProvider,
+        )
 
         return TerminalNotificationProvider({})
 
@@ -128,7 +131,9 @@ class TestDocxFeedbackContract:
 
     @pytest.fixture
     def provider(self):
-        from neutron_os.extensions.builtins.prt_agent.providers.feedback.docx_comments import DocxFeedbackProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.feedback.docx_comments import (
+            DocxFeedbackProvider,
+        )
 
         return DocxFeedbackProvider({})
 
@@ -161,7 +166,9 @@ class TestPandocDocxContract:
 
     @pytest.fixture
     def provider(self):
-        from neutron_os.extensions.builtins.prt_agent.providers.generation.pandoc_docx import PandocDocxProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.generation.pandoc_docx import (
+            PandocDocxProvider,
+        )
 
         return PandocDocxProvider({})
 

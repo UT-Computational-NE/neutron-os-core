@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from neutron_os.extensions.builtins.repo.base import (
     MAX_COMMIT_MESSAGE_LENGTH,
@@ -117,7 +117,7 @@ class GitLabProvider(RepoSourceProvider):
                 return RepoActivity()
             raise
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         activity = RepoActivity()
         activity.commits = self._get_commits(project, cutoff)

@@ -8,11 +8,12 @@ selected at runtime based on available dependencies.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from neutron_os.infra.orchestrator.actions import Action
     from neutron_os.infra.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
 
 
 class RenderProvider(ABC):

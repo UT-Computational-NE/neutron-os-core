@@ -8,13 +8,14 @@ diffs, and streaming markdown.
 from __future__ import annotations
 
 import re
-from typing import Any, Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any
 
 from .base import RenderProvider
 
 if TYPE_CHECKING:
-    from neutron_os.infra.orchestrator.actions import Action
     from neutron_os.infra.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
 
 try:
     from rich.console import Console
@@ -27,6 +28,12 @@ try:
     _RICH_AVAILABLE = True
 except ImportError:
     _RICH_AVAILABLE = False
+    Console = None  # type: ignore[assignment,misc]
+    Live = None  # type: ignore[assignment,misc]
+    Markdown = None  # type: ignore[assignment,misc]
+    Panel = None  # type: ignore[assignment,misc]
+    Text = None  # type: ignore[assignment,misc]
+    Theme = None  # type: ignore[assignment,misc]
 
 _DIFF_RE = re.compile(r"^(---|\+\+\+|@@|[-+])\s", re.MULTILINE)
 
@@ -56,6 +63,8 @@ class RichRenderProvider(RenderProvider):
         if not _RICH_AVAILABLE:
             raise ImportError("rich is required for RichRenderProvider")
 
+        assert Theme is not None
+        assert Console is not None
         custom_theme = Theme({
             "thinking": "dim italic",
             "tool.name": "bold cyan",
@@ -71,8 +80,10 @@ class RichRenderProvider(RenderProvider):
         self._active_spinner = None
 
     def stream_text(self, chunks: Iterator[StreamChunk]) -> str:
-        from ..pulse_spinner import TrigaPulseSpinner
+        assert Markdown is not None and Live is not None  # guarded by __init__
         import sys
+
+        from ..pulse_spinner import TrigaPulseSpinner
 
         accumulated = ""
         is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
@@ -142,6 +153,7 @@ class RichRenderProvider(RenderProvider):
         return accumulated
 
     def render_welcome(self, gateway=None, show_banner: bool = False) -> None:
+        assert Text is not None  # guarded by __init__
         if show_banner:
             from neutron_os.setup.renderer import _BANNER
             banner_text = Text(_BANNER.strip("\n"), style="bold #00cfff")
@@ -266,6 +278,7 @@ class RichRenderProvider(RenderProvider):
         self.console.print(f"  [status]{line}[/]")
 
     def render_thinking(self, text: str, collapsed: bool = True) -> None:
+        assert Panel is not None and Text is not None  # guarded by __init__
         if not text:
             return
         lines = text.splitlines()
@@ -284,6 +297,7 @@ class RichRenderProvider(RenderProvider):
         self.console.print(panel)
 
     def render_message(self, role: str, content: str) -> None:
+        assert Markdown is not None  # guarded by __init__
         if role == "assistant":
             self.console.print()
             self.console.print(Markdown(content))

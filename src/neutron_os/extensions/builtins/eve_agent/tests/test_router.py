@@ -2,8 +2,8 @@
 
 import pytest
 
-from neutron_os.extensions.builtins.eve_agent.router import Router, Endpoint, TransitRecord
 from neutron_os.extensions.builtins.eve_agent.models import Signal
+from neutron_os.extensions.builtins.eve_agent.router import Endpoint, Router, TransitRecord
 
 
 class TestEndpoint:

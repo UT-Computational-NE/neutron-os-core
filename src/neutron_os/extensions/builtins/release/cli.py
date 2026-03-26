@@ -17,7 +17,6 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -35,7 +34,7 @@ class ReleaseInfo:
 class ReleaseManager:
     """Orchestrates the release process."""
 
-    def __init__(self, repo_root: Optional[Path] = None, dry_run: bool = False):
+    def __init__(self, repo_root: Path | None = None, dry_run: bool = False):
         from neutron_os import REPO_ROOT
         self.repo_root = repo_root or REPO_ROOT
         self.dry_run = dry_run

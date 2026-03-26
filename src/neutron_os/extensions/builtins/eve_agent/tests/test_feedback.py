@@ -1,17 +1,18 @@
 """Unit tests for the feedback collection system."""
 
-import pytest
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
+
 from neutron_os.extensions.builtins.eve_agent.feedback import (
+    FEEDBACK_DIR,
+    FEEDBACK_LOG,
+    FEEDBACK_TYPES,
+    PENDING_REQUESTS,
     FeedbackCollector,
     FeedbackRequest,
     SignalFeedback,
-    FEEDBACK_TYPES,
-    FEEDBACK_DIR,
-    PENDING_REQUESTS,
-    FEEDBACK_LOG,
 )
 from neutron_os.extensions.builtins.eve_agent.models import Signal
 

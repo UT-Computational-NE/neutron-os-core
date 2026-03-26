@@ -99,4 +99,6 @@ class TestOneDriveBrowserStorage:
         assert all(not r.success for r in results)
 
     def test_import_does_not_fail(self):
-        from neutron_os.extensions.builtins.prt_agent.providers.storage import onedrive_browser  # noqa: F401
+        from neutron_os.extensions.builtins.prt_agent.providers.storage import (
+            onedrive_browser,  # noqa: F401
+        )

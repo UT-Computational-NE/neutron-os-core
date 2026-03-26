@@ -12,14 +12,13 @@ from __future__ import annotations
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".odt", ".txt", ".md", ".xlsx", ".doc"}
 
 
-def extract_text(path: Path) -> Optional[str]:
+def extract_text(path: Path) -> str | None:
     """Extract plain text from a document file.
 
     Returns None if extraction fails or format is unsupported.
@@ -45,7 +44,7 @@ def extract_text(path: Path) -> Optional[str]:
         return None
 
 
-def _read_text_file(path: Path) -> Optional[str]:
+def _read_text_file(path: Path) -> str | None:
     try:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
@@ -53,7 +52,7 @@ def _read_text_file(path: Path) -> Optional[str]:
         return None
 
 
-def _extract_pdf(path: Path) -> Optional[str]:
+def _extract_pdf(path: Path) -> str | None:
     """Extract text using pdftotext (poppler-utils) CLI."""
     try:
         result = subprocess.run(
@@ -85,7 +84,7 @@ def _extract_pdf(path: Path) -> Optional[str]:
     return None
 
 
-def _extract_docx(path: Path) -> Optional[str]:
+def _extract_docx(path: Path) -> str | None:
     """Extract text from Word documents using python-docx."""
     try:
         from docx import Document
@@ -100,7 +99,7 @@ def _extract_docx(path: Path) -> Optional[str]:
     return None
 
 
-def _extract_pptx(path: Path) -> Optional[str]:
+def _extract_pptx(path: Path) -> str | None:
     """Extract text from PowerPoint files using python-pptx."""
     try:
         from pptx import Presentation
@@ -125,15 +124,14 @@ def _extract_pptx(path: Path) -> Optional[str]:
     return None
 
 
-def _extract_odt(path: Path) -> Optional[str]:
+def _extract_odt(path: Path) -> str | None:
     """Extract text from ODT files using zip + XML parsing."""
-    import zipfile
     import xml.etree.ElementTree as ET
+    import zipfile
 
     try:
-        with zipfile.ZipFile(str(path)) as zf:
-            with zf.open("content.xml") as f:
-                tree = ET.parse(f)
+        with zipfile.ZipFile(str(path)) as zf, zf.open("content.xml") as f:
+            tree = ET.parse(f)
         # Strip all XML tags, keep text
         text = ET.tostring(tree.getroot(), encoding="unicode", method="text")
         if text.strip():
@@ -143,7 +141,7 @@ def _extract_odt(path: Path) -> Optional[str]:
     return None
 
 
-def _extract_xlsx(path: Path) -> Optional[str]:
+def _extract_xlsx(path: Path) -> str | None:
     """Extract text from Excel spreadsheets using openpyxl."""
     try:
         import openpyxl
@@ -167,7 +165,7 @@ def _extract_xlsx(path: Path) -> Optional[str]:
     return None
 
 
-def _extract_doc(path: Path) -> Optional[str]:
+def _extract_doc(path: Path) -> str | None:
     """Extract text from legacy .doc files via antiword CLI (best-effort)."""
     try:
         result = subprocess.run(
@@ -187,7 +185,7 @@ def _extract_doc(path: Path) -> Optional[str]:
 
 def extract_directory(
     root: Path,
-    output_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
 ) -> dict[str, str]:
     """Extract text from all supported files in a directory tree.
 

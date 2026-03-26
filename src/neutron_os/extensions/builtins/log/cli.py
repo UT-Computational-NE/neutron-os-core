@@ -15,10 +15,9 @@ import argparse
 import json
 import sys
 import time
-from datetime import datetime, timezone, timedelta
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Iterator
-
 
 # ---------------------------------------------------------------------------
 # JSONL helpers
@@ -45,7 +44,7 @@ def _routing_events_path() -> Path | None:
         from neutron_os.infra.audit_log import AuditLog
         al = AuditLog.get()
         if hasattr(al, "routing_events_path"):
-            return Path(al.routing_events_path)
+            return Path(al.routing_events_path)  # type: ignore[attr-defined]
     except Exception:
         pass
     # Fallback: look in standard runtime location
@@ -62,7 +61,7 @@ def _routing_events_path() -> Path | None:
 def _since_cutoff(days: int | None) -> datetime | None:
     if days is None:
         return None
-    return datetime.now(timezone.utc) - timedelta(days=days)
+    return datetime.now(UTC) - timedelta(days=days)
 
 
 def _parse_ts(record: dict) -> datetime | None:
@@ -218,7 +217,7 @@ def _cmd_stats(_args: argparse.Namespace) -> int:
         from neutron_os.infra.audit_log import AuditLog
         al = AuditLog.get()
         backend_info = al.backend_info() if hasattr(al, "backend_info") else {}
-        backend_name = backend_info.get("type") or backend_info.get("backend") or str(type(al).__name__)
+        backend_name = getattr(backend_info, "backend", None) or str(type(al).__name__)
     except Exception as e:
         backend_name = f"(unavailable: {e})"
         backend_info = {}
@@ -254,7 +253,7 @@ def _cmd_stats(_args: argparse.Namespace) -> int:
                 ec_count += 1
             if rec.get("blocked") or rec.get("is_blocked"):
                 blocked_count += 1
-        print(f"\nrouting_events:")
+        print("\nrouting_events:")
         print(f"  ec_violations: {ec_count}")
         print(f"  blocked: {blocked_count}")
     else:
@@ -272,7 +271,7 @@ def _cmd_backend(_args: argparse.Namespace) -> int:
         from neutron_os.infra.audit_log import AuditLog
         al = AuditLog.get()
         info = al.backend_info() if hasattr(al, "backend_info") else {}
-        name = info.get("name") or info.get("type") or info.get("backend") or str(type(al).__name__)
+        name = getattr(info, "backend", None) or str(type(al).__name__)
         print(name)
     except Exception as e:
         print(f"neut log backend: {e}", file=sys.stderr)
@@ -286,7 +285,7 @@ def _cmd_backend(_args: argparse.Namespace) -> int:
 
 def _cmd_sinks(_args: argparse.Namespace) -> int:
     try:
-        from neutron_os.infra.log_sink import LogSinkFactory
+        from neutron_os.infra.log_sinks import LogSinkFactory
         sinks = LogSinkFactory.available()
     except Exception as e:
         print(f"neut log sinks: {e}", file=sys.stderr)
@@ -297,13 +296,7 @@ def _cmd_sinks(_args: argparse.Namespace) -> int:
         return 0
 
     for sink in sinks:
-        if isinstance(sink, dict):
-            name = sink.get("name") or sink.get("type") or str(sink)
-        elif hasattr(sink, "name"):
-            name = sink.name
-        else:
-            name = str(sink)
-        print(name)
+        print(sink)
 
     return 0
 

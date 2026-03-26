@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .network import NetworkLedger, NetworkStats
@@ -53,7 +53,7 @@ class VitalsSnapshot:
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -173,7 +173,7 @@ class VitalsMonitor:
         """Scan manifest for leak patterns."""
         signals: list[LeakSignal] = []
         entries = self._mgr.all_entries()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Group by owner
         by_owner: dict[str, list] = {}

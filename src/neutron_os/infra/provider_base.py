@@ -334,7 +334,8 @@ def ensure_provider_uids(path: Path, table_key: str = "") -> bool:
 
     if wrote_any:
         try:
-            import tempfile, os
+            import os
+            import tempfile
             new_text = tomlkit.dumps(doc)
             tmp_fd, tmp_path = tempfile.mkstemp(
                 dir=path.parent, prefix=path.stem, suffix=".tmp"

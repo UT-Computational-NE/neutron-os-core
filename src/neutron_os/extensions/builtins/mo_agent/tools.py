@@ -8,8 +8,8 @@ Tools are divided into READ (safe) and WRITE (mutating) categories.
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
-
 
 # --- Tool definitions (OpenAI function-calling format) ---
 
@@ -306,13 +306,13 @@ def _exec_release_entries(params: dict[str, Any]) -> dict[str, Any]:
     if mgr is None:
         return {"error": "MoManager not available"}
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     entries = mgr.all_entries()
     owner = params.get("owner")
     retention = params.get("retention")
     min_age = params.get("min_age_seconds", 0)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     released = 0
     freed_bytes = 0

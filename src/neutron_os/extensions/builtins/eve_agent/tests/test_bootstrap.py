@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 import subprocess
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from ..bootstrap import (
@@ -27,7 +28,6 @@ from ..bootstrap import (
     BootstrapStep,
     StepResult,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -234,10 +234,9 @@ class TestPostgresSetup:
             with patch.object(bootstrap, "_run_cmd") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0)
 
-                with patch("time.sleep"):
-                    with patch("tempfile.NamedTemporaryFile"):
-                        with patch("os.unlink"):
-                            bootstrap.setup_postgres()
+                with patch("time.sleep"), patch("tempfile.NamedTemporaryFile"):
+                    with patch("os.unlink"):
+                        bootstrap.setup_postgres()
 
                 # Should have called kubectl apply
                 assert mock_run.called

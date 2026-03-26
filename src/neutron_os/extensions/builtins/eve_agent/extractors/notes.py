@@ -4,12 +4,12 @@ Extracts signals from personal notes (markdown, text files).
 Parses structured and unstructured notes for PRD-relevant content.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import re
 
-from ..models import Signal, Extraction
+from ..models import Extraction, Signal
 
 
 @dataclass

@@ -1,8 +1,12 @@
 """Unit tests for document state persistence."""
 
 import pytest
-from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
-from neutron_os.extensions.builtins.prt_agent.state import StateStore
+
+from neutron_os.extensions.builtins.prt_agent.state import (
+    DocumentState,
+    PublicationRecord,
+    StateStore,
+)
 
 
 @pytest.fixture
@@ -46,7 +50,9 @@ class TestStateStore:
 
         s2 = StateStore(path)
         assert s2.count == 1
-        assert s2.get("doc1").status == "published"
+        doc1 = s2.get("doc1")
+        assert doc1 is not None
+        assert doc1.status == "published"
 
     def test_list_by_status(self, store):
         store.update(DocumentState(doc_id="a", source_path="a.md", status="local"))
@@ -74,7 +80,9 @@ class TestStateStore:
         store.update(DocumentState(doc_id="doc", source_path="doc.md", status="local"))
         store.update(DocumentState(doc_id="doc", source_path="doc.md", status="published"))
         assert store.count == 1
-        assert store.get("doc").status == "published"
+        doc = store.get("doc")
+        assert doc is not None
+        assert doc.status == "published"
 
     def test_complex_state_persistence(self, tmp_path):
         """State with publication records persists correctly."""
@@ -103,5 +111,7 @@ class TestStateStore:
         # Reload
         store2 = StateStore(path)
         restored = store2.get("complex")
+        assert restored is not None
+        assert restored.published is not None
         assert restored.published.version == "v2"
         assert restored.published.storage_provider == "local"

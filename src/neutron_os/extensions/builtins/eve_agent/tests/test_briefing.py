@@ -1,15 +1,16 @@
 """Unit tests for the briefing service."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from neutron_os.extensions.builtins.eve_agent.briefing import (
+    TOPIC_KEYWORDS,
+    Briefing,
     BriefingService,
     BriefingTopic,
     ConsumptionEvent,
     ConsumptionRecord,
-    Briefing,
-    TOPIC_KEYWORDS,
 )
 from neutron_os.extensions.builtins.eve_agent.models import Signal
 
@@ -35,7 +36,7 @@ class TestConsumptionRecord:
     def test_roundtrip(self):
         record = ConsumptionRecord(
             event_type=ConsumptionEvent.BRIEFING_DELIVERED,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             details={"topic": "general"},
         )
 
@@ -64,7 +65,7 @@ class TestBriefingService:
         return [
             Signal(
                 source="voice",
-                timestamp=(datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(),
+                timestamp=(datetime.now(UTC) - timedelta(hours=2)).isoformat(),
                 raw_text="Kevin is working on TRIGA thermal hydraulics",
                 detail="Kevin progressing on TRIGA thermal work",
                 people=["Kevin"],
@@ -73,7 +74,7 @@ class TestBriefingService:
             ),
             Signal(
                 source="voice",
-                timestamp=(datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
+                timestamp=(datetime.now(UTC) - timedelta(hours=1)).isoformat(),
                 raw_text="Blocked on NRC approval for license amendment",
                 detail="NRC approval blocking progress",
                 initiatives=["TRIGA Digital Twin"],
@@ -81,7 +82,7 @@ class TestBriefingService:
             ),
             Signal(
                 source="voice",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 raw_text="Conference abstract accepted for ANS meeting",
                 detail="ANS conference abstract accepted",
                 signal_type="decision",
@@ -130,7 +131,7 @@ class TestBriefingService:
         start, end, confidence, reason = service._determine_time_window()
 
         # Should be within last 48 hours by default
-        assert start < datetime.now(timezone.utc)
+        assert start < datetime.now(UTC)
 
         # Record consumption
         service.record_consumption(
@@ -165,13 +166,13 @@ class TestBriefingFiltering:
         """Create diverse signal dicts for filtering tests."""
         return [
             {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["TRIGA"],
-             "raw_text": "Kevin working", "detail": "progress", "timestamp": datetime.now(timezone.utc).isoformat()},
+             "raw_text": "Kevin working", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "blocker", "people": ["Alice"], "initiatives": ["MSR"],
-             "raw_text": "Alice blocked", "detail": "blocker", "timestamp": datetime.now(timezone.utc).isoformat()},
+             "raw_text": "Alice blocked", "detail": "blocker", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "decision", "people": ["Ben"], "initiatives": ["TRIGA"],
-             "raw_text": "Ben decided", "detail": "decision", "timestamp": datetime.now(timezone.utc).isoformat()},
+             "raw_text": "Ben decided", "detail": "decision", "timestamp": datetime.now(UTC).isoformat()},
             {"signal_type": "progress", "people": ["Kevin"], "initiatives": ["NETL"],
-             "raw_text": "Kevin on NETL", "detail": "progress", "timestamp": datetime.now(timezone.utc).isoformat()},
+             "raw_text": "Kevin on NETL", "detail": "progress", "timestamp": datetime.now(UTC).isoformat()},
         ]
 
     def test_filter_by_person(self, service, sample_signal_dicts):

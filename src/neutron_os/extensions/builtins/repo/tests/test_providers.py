@@ -6,13 +6,12 @@ Mock all external API calls — these tests run without network access.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from neutron_os.extensions.builtins.repo.base import RepoActivity, RepoInfo, RepoSourceProvider
-
 
 # ---------------------------------------------------------------------------
 # ABC contract
@@ -168,7 +167,7 @@ class TestGitHubProvider:
         mock_repo.full_name = "test-org/test-repo"
         mock_repo.html_url = "https://github.com/test-org/test-repo"
         mock_repo.default_branch = "main"
-        mock_repo.pushed_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        mock_repo.pushed_at = datetime(2025, 1, 1, tzinfo=UTC)
 
         mock_org = MagicMock()
         mock_org.get_repos.return_value = [mock_repo]
@@ -191,7 +190,7 @@ class TestGitHubProvider:
         mock_commit.sha = "abc12345"
         mock_commit.commit.author.name = "Dev"
         mock_commit.commit.author.email = "dev@test.com"
-        mock_commit.commit.author.date = datetime(2025, 6, 1, tzinfo=timezone.utc)
+        mock_commit.commit.author.date = datetime(2025, 6, 1, tzinfo=UTC)
         mock_commit.commit.message = "feat: test commit"
 
         mock_gh_repo = MagicMock()
@@ -253,5 +252,5 @@ class TestUtilities:
         # A date very far in the past should not be within 7 days
         assert is_within_days("2020-01-01T00:00:00Z", 7) is False
         # Now should be within any window
-        now_str = datetime.now(timezone.utc).isoformat()
+        now_str = datetime.now(UTC).isoformat()
         assert is_within_days(now_str, 1) is True

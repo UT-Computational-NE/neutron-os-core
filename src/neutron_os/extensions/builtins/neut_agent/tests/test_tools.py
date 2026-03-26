@@ -3,8 +3,8 @@
 
 from neutron_os.extensions.builtins.neut_agent.tools import (
     TOOL_REGISTRY,
-    get_tool_definitions,
     execute_tool,
+    get_tool_definitions,
 )
 from neutron_os.infra.orchestrator.actions import ActionCategory
 

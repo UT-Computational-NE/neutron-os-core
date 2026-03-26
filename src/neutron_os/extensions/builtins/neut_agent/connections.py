@@ -239,8 +239,8 @@ def _setup_private_network_llm(connection_name: str) -> int:
     Args:
         connection_name: The `name` field from the [[connections]] block in the manifest.
     """
-    import re
     import socket
+
     from neutron_os import REPO_ROOT
 
     # -- Resolve connection metadata from the registry -----------------------
@@ -277,7 +277,7 @@ def _setup_private_network_llm(connection_name: str) -> int:
     if not providers_path.exists():
         providers_path = config_dir / "models.toml"
     if not providers_path.exists():
-        print(f"  \u2717 llm-providers.toml not found — run: neut config")
+        print("  \u2717 llm-providers.toml not found — run: neut config")
         return 1
 
     content = providers_path.read_text(encoding="utf-8")
@@ -307,7 +307,7 @@ def _setup_private_network_llm(connection_name: str) -> int:
         providers_path.write_text(content.rstrip() + "\n" + new_block, encoding="utf-8")
         print(f"  \u2713 Added {display} to llm-providers.toml")
         if routing_tier == "restricted":
-            print(f"    routing_tier = restricted (private LLM, falls back to cloud when VPN down)")
+            print("    routing_tier = restricted (private LLM, falls back to cloud when VPN down)")
         else:
             print(f"    routing_tier = {routing_tier}")
 

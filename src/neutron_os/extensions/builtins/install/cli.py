@@ -15,12 +15,11 @@ import sys
 
 from .installer import (
     Environment,
-    InstallStep,
+    _load_state,
+    _save_state,
     detect_environment,
     load_manifest,
     run_step,
-    _load_state,
-    _save_state,
 )
 
 

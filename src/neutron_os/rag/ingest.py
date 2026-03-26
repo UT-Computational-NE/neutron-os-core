@@ -11,12 +11,11 @@ import hashlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .chunker import chunk_markdown
 from .embeddings import embed_texts
-from .extract import extract_text, SUPPORTED_EXTENSIONS
-from .store import CORPUS_INTERNAL, CORPUS_ORG, RAGStore
+from .extract import SUPPORTED_EXTENSIONS, extract_text
+from .store import CORPUS_INTERNAL, RAGStore
 
 log = logging.getLogger(__name__)
 
@@ -40,9 +39,9 @@ def _md5(path: Path) -> str:
 def ingest_file(
     path: Path,
     store: RAGStore,
-    repo_root: Optional[Path] = None,
+    repo_root: Path | None = None,
     corpus: str = CORPUS_INTERNAL,
-    owner: Optional[str] = None,
+    owner: str | None = None,
 ) -> IngestStats:
     """Ingest a single file into the RAG store.
 
@@ -110,7 +109,7 @@ def ingest_path(
     path: Path,
     store: RAGStore,
     corpus: str = CORPUS_INTERNAL,
-    owner: Optional[str] = None,
+    owner: str | None = None,
 ) -> IngestStats:
     """Ingest all supported documents under *path* into *corpus*.
 
@@ -201,7 +200,7 @@ def ingest_repo(
 
     # -- Personal corpus sources (sessions, signals, git logs) ---------------
     if personal:
-        from .personal import ingest_sessions, ingest_signals, ingest_git_logs
+        from .personal import ingest_git_logs, ingest_sessions, ingest_signals
 
         sessions_dir = repo_root / "runtime" / "sessions"
         if sessions_dir.is_dir():

@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+import shutil
+from datetime import UTC, datetime, timedelta
 
+import pytest
 
 from neutron_os.extensions.builtins.mo_agent.manager import MoManager
+from neutron_os.extensions.builtins.mo_agent.network import NetworkLedger
 from neutron_os.extensions.builtins.mo_agent.vitals import (
     PressureLevel,
     VitalsMonitor,
     VitalsSnapshot,
     VitalsThresholds,
 )
-from neutron_os.extensions.builtins.mo_agent.network import NetworkLedger
-import shutil
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # VitalsSnapshot
@@ -109,8 +108,9 @@ class TestVitalsMonitor:
 
         # Backdate entry to make it look old
         for e in mgr.all_entries():
-            old_time = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+            old_time = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
             e.created_at = old_time
+            assert mgr._manifest is not None
             mgr._manifest._entries[e.id] = e
             mgr._manifest._save()
 

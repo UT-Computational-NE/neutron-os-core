@@ -25,16 +25,14 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
+from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import LockedJsonFile
 
 from .models import DATETIME_FORMAT_COMPACT
 
-
-from neutron_os import REPO_ROOT as _REPO_ROOT
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CLIPS_DIR = _RUNTIME_DIR / "inbox" / "corrections" / "audio_clips"
 REVIEW_STATE_FILE = _RUNTIME_DIR / "inbox" / "corrections" / "review_state.json"
@@ -73,7 +71,7 @@ class AudioClip:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "AudioClip":
+    def from_dict(cls, data: dict) -> AudioClip:
         return cls(**data)
 
 
@@ -110,7 +108,7 @@ class ReviewState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ReviewState":
+    def from_dict(cls, data: dict) -> ReviewState:
         return cls(
             last_review=data.get("last_review", ""),
             last_prompted=data.get("last_prompted", ""),
@@ -140,6 +138,7 @@ class GuidedCorrectionReview:
     def _load_state(self) -> ReviewState:
         """Load review state from disk."""
         if REVIEW_STATE_FILE.exists():
+            data: dict = {}
             try:
                 with LockedJsonFile(REVIEW_STATE_FILE) as f:
                     data = f.read()
@@ -158,6 +157,7 @@ class GuidedCorrectionReview:
         clips = {}
         clips_index = CLIPS_DIR / "clips_index.json"
         if clips_index.exists():
+            data: dict = {}
             try:
                 with LockedJsonFile(clips_index) as f:
                     data = f.read()
@@ -172,13 +172,13 @@ class GuidedCorrectionReview:
         """Save clip metadata index."""
         clips_index = CLIPS_DIR / "clips_index.json"
         data = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "clips": [c.to_dict() for c in self._clips.values()],
         }
         with LockedJsonFile(clips_index, exclusive=True) as f:
             f.write(data)
 
-    def get_clip_for_correction(self, correction_id: str) -> Optional[AudioClip]:
+    def get_clip_for_correction(self, correction_id: str) -> AudioClip | None:
         """Get existing clip for a correction ID (for deduplication)."""
         for clip in self._clips.values():
             if clip.correction_id == correction_id:
@@ -191,7 +191,7 @@ class GuidedCorrectionReview:
         Returns:
             Tuple of (should_prompt, reason_message)
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Check if deferred
         if self._state.deferred_until:
@@ -236,7 +236,7 @@ class GuidedCorrectionReview:
         Returns:
             Confirmation message
         """
-        defer_until = datetime.now(timezone.utc) + timedelta(hours=hours)
+        defer_until = datetime.now(UTC) + timedelta(hours=hours)
         self._state.deferred_until = defer_until.isoformat()
         self._state.deferral_count += 1
         self._save_state()
@@ -251,7 +251,7 @@ class GuidedCorrectionReview:
         end_time_sec: float,
         transcript_segment: str,
         padding_sec: float = 1.0,
-    ) -> Optional[AudioClip]:
+    ) -> AudioClip | None:
         """Extract audio clip for a correction.
 
         Uses ffmpeg to extract the relevant audio segment.
@@ -294,7 +294,7 @@ class GuidedCorrectionReview:
         duration = end - start
 
         # Generate clip ID and path (deterministic based on correction_id)
-        timestamp = datetime.now(timezone.utc).strftime(DATETIME_FORMAT_COMPACT)
+        timestamp = datetime.now(UTC).strftime(DATETIME_FORMAT_COMPACT)
         clip_id = f"clip_{correction_id[:12]}"  # Deterministic ID
         clip_filename = f"clip_{correction_id}_{timestamp}.m4a"  # Filename can have timestamp for debugging
         clip_path = CLIPS_DIR / clip_filename
@@ -310,7 +310,7 @@ class GuidedCorrectionReview:
                 start_time_sec=start,
                 end_time_sec=end,
                 duration_sec=duration,
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(UTC).isoformat(),
                 transcript_segment=transcript_segment,
             )
             self._clips[clip_id] = clip
@@ -340,7 +340,7 @@ class GuidedCorrectionReview:
                 start_time_sec=start,
                 end_time_sec=end,
                 duration_sec=duration,
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(UTC).isoformat(),
                 transcript_segment=transcript_segment,
             )
             self._clips[clip_id] = clip
@@ -357,8 +357,8 @@ class GuidedCorrectionReview:
         search_text: str,
         source_audio_path: str,
         duration_sec: float = 10.0,
-        clip_id: Optional[str] = None,
-    ) -> Optional[AudioClip]:
+        clip_id: str | None = None,
+    ) -> AudioClip | None:
         """Extract audio clip centered on a text match.
 
         Finds the best match for search_text in the transcript timestamps,
@@ -497,7 +497,7 @@ class GuidedCorrectionReview:
             return False
 
         clip.status = "approved"
-        clip.processed_at = datetime.now(timezone.utc).isoformat()
+        clip.processed_at = datetime.now(UTC).isoformat()
 
         # Update state
         if clip_id in self._state.pending_clips:
@@ -532,7 +532,7 @@ class GuidedCorrectionReview:
             return False
 
         clip.status = "rejected"
-        clip.processed_at = datetime.now(timezone.utc).isoformat()
+        clip.processed_at = datetime.now(UTC).isoformat()
 
         # Update state
         if clip_id in self._state.pending_clips:
@@ -654,7 +654,7 @@ class GuidedCorrectionReview:
         Returns:
             Stats about cleanup
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=self.CLIP_RETENTION_DAYS)
 
         stats = {
@@ -759,7 +759,7 @@ class GuidedCorrectionReview:
             })
 
         # Update session tracking
-        self._state.last_review = datetime.now(timezone.utc).isoformat()
+        self._state.last_review = datetime.now(UTC).isoformat()
         self._state.deferral_count = 0  # Reset deferral count on actual review
         self._save_state()
 

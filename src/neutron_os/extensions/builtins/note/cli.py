@@ -22,9 +22,8 @@ import subprocess
 import sys
 import tempfile
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,7 +41,7 @@ def _today_file() -> Path:
 
 
 def _timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M UTC")
+    return datetime.now(UTC).strftime("%H:%M UTC")
 
 
 def _inbox_dir() -> Path:
@@ -65,7 +64,7 @@ def _append_note(note_file: Path, text: str) -> None:
     # Copy to signal inbox for EVE ingestion
     try:
         inbox = _inbox_dir()
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")
         inbox_file = inbox / f"note_{ts}.md"
         inbox_file.write_text(f"# Note — {ts}\n\n{text.strip()}\n", encoding="utf-8")
     except Exception:
@@ -81,8 +80,8 @@ def _index_file_background(note_file: Path) -> None:
             if not url:
                 return
             from neutron_os import REPO_ROOT
-            from neutron_os.rag.store import RAGStore
             from neutron_os.rag.ingest import ingest_file
+            from neutron_os.rag.store import RAGStore
             store = RAGStore(url)
             store.connect()
             ingest_file(note_file, store, repo_root=REPO_ROOT / "runtime" / "knowledge")

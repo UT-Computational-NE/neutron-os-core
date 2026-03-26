@@ -17,30 +17,29 @@ Usage:
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    String,
-    Text,
-    Integer,
-    Float,
+    ARRAY,
     DateTime,
+    Float,
     ForeignKey,
     Index,
+    Integer,
+    String,
+    Text,
     create_engine,
-    ARRAY,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
+    Session,
     mapped_column,
     relationship,
     sessionmaker,
-    Session,
 )
-from pgvector.sqlalchemy import Vector
 
 # Embedding dimension (OpenAI text-embedding-3-small)
 EMBEDDING_DIM = 1536
@@ -54,7 +53,7 @@ def get_db_url() -> str:
     return os.environ.get("NEUT_DB_URL", DEFAULT_DB_URL)
 
 
-def get_engine(url: Optional[str] = None, **kwargs):
+def get_engine(url: str | None = None, **kwargs):
     """Create SQLAlchemy engine.
 
     Args:
@@ -94,7 +93,7 @@ class Base(DeclarativeBase):
 
 def utcnow() -> datetime:
     """Get current UTC timestamp."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Signal(Base):
@@ -108,14 +107,14 @@ class Signal(Base):
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[Optional[list]] = mapped_column(Vector(EMBEDDING_DIM))
+    embedding: Mapped[list | None] = mapped_column(Vector(EMBEDDING_DIM))
 
-    signal_type: Mapped[Optional[str]] = mapped_column(String(100))
-    initiative: Mapped[Optional[str]] = mapped_column(String(255))
-    source: Mapped[Optional[str]] = mapped_column(String(500))
-    timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    signal_type: Mapped[str | None] = mapped_column(String(100))
+    initiative: Mapped[str | None] = mapped_column(String(255))
+    source: Mapped[str | None] = mapped_column(String(500))
+    timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, default=dict)
 
     # Audit fields
     created_at: Mapped[datetime] = mapped_column(
@@ -124,7 +123,7 @@ class Signal(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
-    owner_id: Mapped[Optional[str]] = mapped_column(String(255))
+    owner_id: Mapped[str | None] = mapped_column(String(255))
     version: Mapped[int] = mapped_column(Integer, default=1)
 
     __table_args__ = (
@@ -154,18 +153,18 @@ class Media(Base):
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     path: Mapped[str] = mapped_column(String(1000), nullable=False)
-    media_type: Mapped[Optional[str]] = mapped_column(String(50))  # audio, video
-    title: Mapped[Optional[str]] = mapped_column(String(500))
+    media_type: Mapped[str | None] = mapped_column(String(50))  # audio, video
+    title: Mapped[str | None] = mapped_column(String(500))
 
-    transcript: Mapped[Optional[str]] = mapped_column(Text)
-    transcript_preview: Mapped[Optional[str]] = mapped_column(String(1000))
-    embedding: Mapped[Optional[list]] = mapped_column(Vector(EMBEDDING_DIM))
+    transcript: Mapped[str | None] = mapped_column(Text)
+    transcript_preview: Mapped[str | None] = mapped_column(String(1000))
+    embedding: Mapped[list | None] = mapped_column(Vector(EMBEDDING_DIM))
 
-    duration_sec: Mapped[Optional[float]] = mapped_column(Float)
-    recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    duration_sec: Mapped[float | None] = mapped_column(Float)
+    recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Access control
-    owner_id: Mapped[Optional[str]] = mapped_column(String(255))
+    owner_id: Mapped[str | None] = mapped_column(String(255))
 
     # Audit fields
     created_at: Mapped[datetime] = mapped_column(
@@ -177,7 +176,7 @@ class Media(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
 
     # Relationships
-    participants: Mapped[list["Participant"]] = relationship(
+    participants: Mapped[list[Participant]] = relationship(
         back_populates="media",
         cascade="all, delete-orphan",
     )
@@ -212,9 +211,9 @@ class Participant(Base):
         nullable=False,
     )
     person_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    name: Mapped[Optional[str]] = mapped_column(String(255))
+    name: Mapped[str | None] = mapped_column(String(255))
 
-    role: Mapped[Optional[str]] = mapped_column(String(100))  # speaker, mentioned, attendee
+    role: Mapped[str | None] = mapped_column(String(100))  # speaker, mentioned, attendee
     access_level: Mapped[str] = mapped_column(
         String(50), default="participant"
     )  # owner, participant, shared, none
@@ -225,7 +224,7 @@ class Participant(Base):
     )
 
     # Relationships
-    media: Mapped["Media"] = relationship(back_populates="participants")
+    media: Mapped[Media] = relationship(back_populates="participants")
 
     __table_args__ = (
         Index("idx_participants_media", "media_id"),
@@ -247,8 +246,8 @@ class Person(Base):
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    aliases: Mapped[Optional[list]] = mapped_column(ARRAY(String(255)))
-    email: Mapped[Optional[str]] = mapped_column(String(500))
+    aliases: Mapped[list | None] = mapped_column(ARRAY(String(255)))
+    email: Mapped[str | None] = mapped_column(String(500))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow

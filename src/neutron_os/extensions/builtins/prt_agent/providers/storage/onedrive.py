@@ -10,13 +10,13 @@ import os
 import time
 import urllib.parse
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ...factory import PublisherFactory
 from ..base import (
+    StorageEntry,
     StorageProvider,
     UploadResult,
-    StorageEntry,
 )
 
 
@@ -37,7 +37,7 @@ class OneDriveStorageProvider(StorageProvider):
         self.published_folder = config.get("published_folder", "/Documents/Published/")
         self.archive_folder = config.get("archive_folder", "/Documents/Published/Archive/")
 
-        self._token: Optional[str] = None
+        self._token: str | None = None
         self._token_expiry: float = 0
         self._session = None
 
@@ -49,6 +49,7 @@ class OneDriveStorageProvider(StorageProvider):
                 self._session = requests.Session()
             except ImportError:
                 raise RuntimeError("requests library required for OneDrive. Install with: pip install requests")
+        assert self._session is not None
 
     def _get_token(self) -> str:
         """Get or refresh OAuth2 access token."""
@@ -79,7 +80,7 @@ class OneDriveStorageProvider(StorageProvider):
             raise RuntimeError(f"OneDrive authentication failed: {response.text}")
 
         result = response.json()
-        self._token = result["access_token"]
+        self._token = str(result["access_token"])
         self._token_expiry = time.time() + result.get("expires_in", 3600) - 60
         return self._token
 
@@ -87,10 +88,13 @@ class OneDriveStorageProvider(StorageProvider):
         return {"Authorization": f"Bearer {self._get_token()}"}
 
     def upload(
-        self, local_path: Path, destination: str, metadata: dict
+        self, local_path: Path, destination: str | None = None, metadata: dict | None = None,
     ) -> UploadResult:
         """Upload file to OneDrive."""
         self._ensure_session()
+        assert self._session is not None
+        destination = destination or local_path.name
+        metadata = metadata or {}
 
         with open(local_path, "rb") as f:
             file_data = f.read()
@@ -119,6 +123,7 @@ class OneDriveStorageProvider(StorageProvider):
 
     def _create_share_link(self, file_id: str) -> str:
         """Create an organization-scoped shareable link."""
+        assert self._session is not None
         endpoint = f"{self.GRAPH_API_BASE}/me/drive/items/{file_id}/createLink"
         link_data = {
             "type": "organizationLink",
@@ -137,6 +142,7 @@ class OneDriveStorageProvider(StorageProvider):
     def download(self, storage_id: str, local_path: Path) -> Path:
         """Download file from OneDrive."""
         self._ensure_session()
+        assert self._session is not None
 
         endpoint = f"{self.GRAPH_API_BASE}/me/drive/items/{storage_id}/content"
         response = self._session.get(endpoint, headers=self._headers())
@@ -146,36 +152,38 @@ class OneDriveStorageProvider(StorageProvider):
         local_path.write_bytes(response.content)
         return local_path
 
-    def move(self, storage_id: str, new_destination: str) -> UploadResult:
+    def move(self, source: str, destination: str) -> UploadResult:
         """Move file to a new location in OneDrive."""
         self._ensure_session()
+        assert self._session is not None
 
         # Parse destination to get parent folder and new name
-        parts = new_destination.rsplit("/", 1)
-        new_name = parts[-1] if len(parts) > 1 else new_destination
+        parts = destination.rsplit("/", 1)
+        new_name = parts[-1] if len(parts) > 1 else destination
 
-        endpoint = f"{self.GRAPH_API_BASE}/me/drive/items/{storage_id}"
+        endpoint = f"{self.GRAPH_API_BASE}/me/drive/items/{source}"
         patch_data = {"name": new_name}
 
         headers = {**self._headers(), "Content-Type": "application/json"}
         response = self._session.patch(endpoint, headers=headers, json=patch_data)
         response.raise_for_status()
 
-        url = self._create_share_link(storage_id)
+        url = self._create_share_link(source)
 
         return UploadResult(
-            storage_id=storage_id,
+            storage_id=source,
             canonical_url=url,
-            metadata={"onedrive_name": new_destination},
+            metadata={"onedrive_name": destination},
         )
 
     def get_canonical_url(self, storage_id: str) -> str:
         """Get the shareable URL for a file."""
         return self._create_share_link(storage_id)
 
-    def list_artifacts(self, prefix: str) -> list[StorageEntry]:
+    def list_artifacts(self, folder: str = "") -> list[StorageEntry]:
         """List files in a OneDrive folder."""
         self._ensure_session()
+        assert self._session is not None
 
         endpoint = f"{self.GRAPH_API_BASE}/me/drive/items/{self.folder_id}/children"
         response = self._session.get(endpoint, headers=self._headers())
@@ -184,7 +192,7 @@ class OneDriveStorageProvider(StorageProvider):
         entries = []
         for item in response.json().get("value", []):
             name = item.get("name", "")
-            if prefix and not name.lower().startswith(prefix.lower()):
+            if folder and not name.lower().startswith(folder.lower()):
                 continue
             entries.append(StorageEntry(
                 storage_id=item.get("id", ""),
@@ -199,6 +207,7 @@ class OneDriveStorageProvider(StorageProvider):
     def delete(self, storage_id: str) -> bool:
         """Delete a file from OneDrive."""
         self._ensure_session()
+        assert self._session is not None
 
         endpoint = f"{self.GRAPH_API_BASE}/me/drive/items/{storage_id}"
         response = self._session.delete(endpoint, headers=self._headers())

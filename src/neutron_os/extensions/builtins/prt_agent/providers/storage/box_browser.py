@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from ...factory import PublisherFactory
-from ..base import StorageProvider, UploadResult, StorageEntry
+from ..base import StorageEntry, StorageProvider, UploadResult
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,8 @@ class BoxBrowserStorageProvider(StorageProvider):
     def upload(
         self,
         local_path: Path,
-        remote_name: str | None = None,
+        destination: str | None = None,
+        metadata: dict | None = None,
         *,
         draft: bool = False,
         headed: bool = False,
@@ -81,7 +82,7 @@ class BoxBrowserStorageProvider(StorageProvider):
         if not local_path.exists():
             return UploadResult(success=False, url="", error=f"File not found: {local_path}")
 
-        remote_name = remote_name or local_path.name
+        remote_name = destination or local_path.name
         headless = not headed and self.headless
         if not self.has_session() and headless:
             headless = False
@@ -118,6 +119,7 @@ class BoxBrowserStorageProvider(StorageProvider):
         *,
         draft: bool = False,
         headed: bool = False,
+        folders: list[str] | None = None,
     ) -> list[UploadResult]:
         self._ensure_playwright()
         from playwright.sync_api import sync_playwright
@@ -374,16 +376,16 @@ class BoxBrowserStorageProvider(StorageProvider):
     def list_files(self, folder: str = "") -> list[StorageEntry]:
         return []
 
-    def list_artifacts(self, folder: str = "") -> list[dict]:
+    def list_artifacts(self, folder: str = "") -> list[StorageEntry] | list[dict]:
         return []
 
-    def download(self, remote_path: str, local_path: Path) -> bool:
+    def download(self, storage_id: str, local_path: Path) -> bool:
         return False
 
-    def delete(self, remote_path: str) -> bool:
+    def delete(self, storage_id: str) -> bool:
         return False
 
-    def move(self, source: str, destination: str) -> bool:
+    def move(self, source: str, destination: str) -> UploadResult | bool:
         return False
 
     def get_canonical_url(self, storage_id: str) -> str:
@@ -394,6 +396,6 @@ class BoxBrowserStorageProvider(StorageProvider):
 
 # Register with factory
 try:
-    PublisherFactory.register_storage("box-browser", BoxBrowserStorageProvider)
+    PublisherFactory.register("storage", "box-browser", BoxBrowserStorageProvider)
 except Exception:
     pass

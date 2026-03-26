@@ -30,15 +30,15 @@ import json
 import re
 import threading
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Optional
 from urllib.parse import parse_qs
 
 # Resolve inbox path relative to tools/agents/
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INBOX_RAW = _RUNTIME_DIR / "inbox" / "raw"
 INBOX_PROCESSED = _RUNTIME_DIR / "inbox" / "processed"
@@ -711,7 +711,7 @@ class InboxHandler(BaseHTTPRequestHandler):
 
     inbox_root: Path = INBOX_RAW
     process_enabled: bool = False
-    webhook_url: Optional[str] = None
+    webhook_url: str | None = None
 
     def do_GET(self):
         if self.path == "/status":
@@ -989,7 +989,7 @@ class InboxHandler(BaseHTTPRequestHandler):
 
         # Avoid overwriting — append timestamp if exists
         if dest.exists():
-            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             stem = dest.stem
             dest = dest_dir / f"{stem}_{ts}{ext}"
 
@@ -1021,9 +1021,10 @@ class InboxHandler(BaseHTTPRequestHandler):
     def _process_voice_file(self, path: Path) -> dict:
         """Process a voice file through the extractor."""
         try:
-            from .extractors.voice import VoiceExtractor
             from neutron_os.infra.gateway import Gateway
+
             from .correlator import Correlator
+            from .extractors.voice import VoiceExtractor
 
             extractor = VoiceExtractor()
             gateway = Gateway()
@@ -1084,11 +1085,13 @@ class InboxHandler(BaseHTTPRequestHandler):
         if not self.webhook_url:
             return
 
+        webhook = self.webhook_url  # narrowed to str by guard above
+
         def send():
             try:
                 data = json.dumps(payload).encode("utf-8")
                 req = urllib.request.Request(
-                    self.webhook_url,
+                    webhook,
                     data=data,
                     headers={"Content-Type": "application/json"},
                     method="POST",
@@ -1115,7 +1118,7 @@ class InboxHandler(BaseHTTPRequestHandler):
             self._respond(HTTPStatus.BAD_REQUEST, {"error": "No text provided"})
             return
 
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")
         self.inbox_root.mkdir(parents=True, exist_ok=True)
         dest = self.inbox_root / f"note_{ts}.md"
         dest.write_text(f"# Note — {ts}\n\n{text}\n", encoding="utf-8")
@@ -1127,7 +1130,7 @@ class InboxHandler(BaseHTTPRequestHandler):
 
     def _serve_feedback_page(self):
         """Serve the feedback form for a specific signal."""
-        from .feedback import FeedbackCollector, FEEDBACK_TYPES
+        from .feedback import FEEDBACK_TYPES, FeedbackCollector
 
         # Extract request_id from path: /feedback/{request_id}
         parts = self.path.split("/")
@@ -1443,9 +1446,9 @@ class InboxHandler(BaseHTTPRequestHandler):
 def create_server(
     host: str = "0.0.0.0",
     port: int = 8765,
-    inbox_root: Optional[Path] = None,
+    inbox_root: Path | None = None,
     process_enabled: bool = False,
-    webhook_url: Optional[str] = None,
+    webhook_url: str | None = None,
 ) -> HTTPServer:
     """Create and return a configured HTTP server (not yet started).
 
@@ -1518,7 +1521,7 @@ def run_server(
     host: str = "0.0.0.0",
     port: int = 8765,
     process: bool = False,
-    webhook: Optional[str] = None,
+    webhook: str | None = None,
 ):
     """Start the inbox server (blocking).
 

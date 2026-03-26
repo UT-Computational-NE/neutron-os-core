@@ -1,17 +1,17 @@
 """Tests for output area mouse selection — position translation, style, overlay."""
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
 
 from neutron_os.extensions.builtins.neut_agent.fullscreen import (
-    _ScrollableBufferControl,
-    _OutputLexer,
+    _STYLE,
     _apply_selection_overlay,
     _highlight_fragments,
-    _STYLE,
+    _OutputLexer,
+    _ScrollableBufferControl,
 )
 
 

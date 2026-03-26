@@ -35,14 +35,13 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Optional
-
-from neutron_os.infra.state import LockedJsonFile
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import LockedJsonFile
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 BRIEFING_STATE_PATH = _RUNTIME_DIR / "inbox" / "state" / "briefing_state.json"
 PROCESSED_DIR = _RUNTIME_DIR / "inbox" / "processed"
@@ -231,13 +230,13 @@ class BriefingState:
             max_lookback_days=data.get("max_lookback_days", 7),
         )
 
-    def last_consumption(self) -> Optional[ConsumptionRecord]:
+    def last_consumption(self) -> ConsumptionRecord | None:
         """Get the most recent consumption event."""
         if not self.consumption_history:
             return None
         return max(self.consumption_history, key=lambda c: c.timestamp)
 
-    def last_briefing(self) -> Optional[Briefing]:
+    def last_briefing(self) -> Briefing | None:
         """Get the most recent briefing."""
         if not self.briefing_history:
             return None
@@ -247,13 +246,14 @@ class BriefingState:
 class BriefingService:
     """Generates on-demand executive briefings."""
 
-    def __init__(self, state_path: Optional[Path] = None):
+    def __init__(self, state_path: Path | None = None):
         self.state_path = state_path or BRIEFING_STATE_PATH
         self.state = self._load_state()
 
     def _load_state(self) -> BriefingState:
         """Load state from disk."""
         if self.state_path.exists():
+            data: dict = {}
             try:
                 with LockedJsonFile(self.state_path) as f:
                     data = f.read()
@@ -270,12 +270,12 @@ class BriefingService:
     def record_consumption(
         self,
         event_type: ConsumptionEvent,
-        details: Optional[dict] = None,
+        details: dict | None = None,
     ) -> None:
         """Record that the user consumed synthesized data."""
         record = ConsumptionRecord(
             event_type=event_type,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             details=details or {},
         )
         self.state.consumption_history.append(record)
@@ -288,7 +288,7 @@ class BriefingService:
 
     def _determine_time_window(
         self,
-        since: Optional[str | datetime] = None,
+        since: str | datetime | None = None,
     ) -> tuple[datetime, datetime, float, str]:
         """Determine the time window for the briefing.
 
@@ -296,7 +296,7 @@ class BriefingService:
 
         Conservative approach: bias toward assuming user hasn't seen data.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # If explicit 'since' provided, use it
         if since:
@@ -305,7 +305,7 @@ class BriefingService:
             else:
                 start = since
             if start.tzinfo is None:
-                start = start.replace(tzinfo=timezone.utc)
+                start = start.replace(tzinfo=UTC)
             return (start, now, 1.0, "Explicit time window requested")
 
         # Check for acknowledged briefings (highest confidence)
@@ -486,7 +486,7 @@ Generate the briefing:"""
 
         return key[:5]
 
-    def _detect_topic_category(self, topic: str) -> tuple[Optional[BriefingTopic], str]:
+    def _detect_topic_category(self, topic: str) -> tuple[BriefingTopic | None, str]:
         """Detect if topic matches a built-in category.
 
         Returns (category, normalized_query) - category may be None for custom topics.
@@ -540,7 +540,7 @@ Respond with ONLY the category name (lowercase). If it's about a specific person
         self,
         signals: list[dict],
         topic: str,
-        category: Optional[BriefingTopic] = None,
+        category: BriefingTopic | None = None,
     ) -> list[dict]:
         """Filter signals relevant to a topic using RAG or keywords."""
         if not signals:
@@ -600,7 +600,7 @@ Respond with ONLY the category name (lowercase). If it's about a specific person
         self,
         signals: list[dict],
         topic: str,
-        category: Optional[BriefingTopic],
+        category: BriefingTopic | None,
         window_reason: str,
     ) -> str:
         """Generate a topic-focused executive summary using LLM."""
@@ -652,8 +652,8 @@ Generate the focused briefing:"""
 
     def brief_me(
         self,
-        since: Optional[str | datetime] = None,
-        topic: Optional[str] = None,
+        since: str | datetime | None = None,
+        topic: str | None = None,
         acknowledge: bool = False,
     ) -> Briefing:
         """Generate an executive briefing.
@@ -714,7 +714,7 @@ Generate the focused briefing:"""
 
         briefing = Briefing(
             briefing_id=briefing_id,
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             time_window_start=start,
             time_window_end=end,
             summary=summary,
@@ -765,12 +765,12 @@ Generate the focused briefing:"""
 
     def brief_on_person(self, name: str, days: int = 14) -> Briefing:
         """Generate a briefing focused on a specific person."""
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
         return self.brief_me(since=since, topic=name)
 
     def brief_on_initiative(self, initiative: str, days: int = 30) -> Briefing:
         """Generate a briefing focused on an initiative/project."""
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
         return self.brief_me(since=since, topic=initiative)
 
     def get_available_topics(self) -> dict:
@@ -805,7 +805,7 @@ Generate the focused briefing:"""
             "initiatives": list(initiatives)[:15],
         }
 
-    def acknowledge_briefing(self, briefing_id: Optional[str] = None) -> bool:
+    def acknowledge_briefing(self, briefing_id: str | None = None) -> bool:
         """Acknowledge that user has reviewed a briefing.
 
         This updates the consumption history so future briefings start
@@ -825,13 +825,13 @@ Generate the focused briefing:"""
         )
         return True
 
-    def mark_caught_up(self, until: Optional[datetime] = None) -> None:
+    def mark_caught_up(self, until: datetime | None = None) -> None:
         """Manually mark that user is caught up until a certain time.
 
         Use this when user has consumed data through other means
         (e.g., read the changelog directly).
         """
-        until = until or datetime.now(timezone.utc)
+        until = until or datetime.now(UTC)
         self.record_consumption(
             ConsumptionEvent.MANUAL_MARK,
             {"until": until.isoformat()},
@@ -868,24 +868,24 @@ def _parse_since(expr: str) -> datetime:
         Words:     yesterday, today
         Phrases:   "2 days ago", "3 hours ago", "last week", "last month"
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     s = expr.strip().lower()
 
     # --- ISO passthrough ---
     try:
         dt = datetime.fromisoformat(expr.strip().replace("Z", "+00:00"))
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
     except ValueError:
         pass
 
     # --- Named keywords ---
     if s == "today":
-        return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+        return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
     if s == "yesterday":
         yest = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-        return yest.astimezone(timezone.utc)
+        return yest.astimezone(UTC)
 
     # --- "last week" / "last month" ---
     if s == "last week":
@@ -927,9 +927,9 @@ def _unit_to_delta(n: int, unit: str) -> timedelta:
 
 def _relative_time(dt: datetime) -> str:
     """Convert datetime to human-readable relative time."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
     delta = now - dt
     seconds = delta.total_seconds()

@@ -12,8 +12,8 @@ from typing import Any
 
 from ...factory import PublisherFactory
 from ..base import (
-    GenerationProvider,
     GenerationOptions,
+    GenerationProvider,
     GenerationResult,
 )
 
@@ -112,7 +112,7 @@ class PandocDocxProvider(GenerationProvider):
 
         if options.reference_doc or self.reference_doc:
             ref = options.reference_doc or self.reference_doc
-            cmd.extend(["--reference-doc", ref])
+            cmd.extend(["--reference-doc", str(ref)])
 
         try:
             result = subprocess.run(
@@ -151,8 +151,8 @@ class PandocDocxProvider(GenerationProvider):
 
         try:
             from docx import Document
-            from docx.shared import Pt, RGBColor
             from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+            from docx.shared import Pt, RGBColor
         except ImportError:
             return result  # python-docx not available
 
@@ -241,10 +241,10 @@ class PandocDocxProvider(GenerationProvider):
             part = doc.part
             for rel in part.rels.values():
                 if rel.is_external:
-                    target = rel._target
+                    target = str(rel._target)
                     for old_ref, new_url in link_map.items():
                         if old_ref in target:
-                            rel._target = target.replace(old_ref, new_url)
+                            rel._target = target.replace(old_ref, str(new_url))
                             modified = True
         except Exception:
             pass

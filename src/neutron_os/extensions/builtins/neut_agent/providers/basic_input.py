@@ -5,8 +5,9 @@ Supports the existing triple-quote multi-line toggle.
 
 from __future__ import annotations
 
-from .base import InputProvider
 from neutron_os.setup.renderer import _c, _Colors, _use_color
+
+from .base import InputProvider
 
 
 class BasicInputProvider(InputProvider):

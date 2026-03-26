@@ -14,9 +14,10 @@ import logging
 import os
 import sys
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.provider_base import ProviderIdentityMixin, ensure_provider_uids
@@ -100,7 +101,7 @@ class LLMProvider(ProviderIdentityMixin):
             )
 
     @property
-    def api_key(self) -> Optional[str]:
+    def api_key(self) -> str | None:
         if self.api_key_env:
             return os.environ.get(self.api_key_env)
         return None
@@ -114,7 +115,7 @@ class GatewayResponse:
     provider: str  # Which provider answered, or "stub"
     model: str = ""
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # --- New dataclasses for streaming + tool-use ---
@@ -154,7 +155,7 @@ class CompletionResponse:
     provider: str = ""
     model: str = ""
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
     stop_reason: str = ""
     # Usage tracking
     input_tokens: int = 0
@@ -236,13 +237,13 @@ def _infer_connection_from_url(url: str) -> str:
 class Gateway:
     """Model-agnostic LLM gateway with automatic fallback."""
 
-    def __init__(self, config_dir: Optional[Path] = None):
+    def __init__(self, config_dir: Path | None = None):
         if config_dir is None:
             config_dir = CONFIG_DIR if CONFIG_DIR.exists() else CONFIG_EXAMPLE_DIR
         self.config_dir = config_dir
         self.providers: list[LLMProvider] = []
-        self._provider_override: Optional[str] = None
-        self._model_override: Optional[str] = None
+        self._provider_override: str | None = None
+        self._model_override: str | None = None
         self._ec_audit_enabled: bool = False
         self._load_config()
 
@@ -266,8 +267,8 @@ class Gateway:
         self,
         task: str,
         routing_tier: str = "any",
-        required_tags: Optional[set[str]] = None,
-    ) -> Optional[LLMProvider]:
+        required_tags: set[str] | None = None,
+    ) -> LLMProvider | None:
         """Select the best available provider for a task + routing tier + tags.
 
         Priority order:
@@ -504,7 +505,7 @@ class Gateway:
         return any(p.api_key for p in self.providers)
 
     @property
-    def active_provider(self) -> Optional[LLMProvider]:
+    def active_provider(self) -> LLMProvider | None:
         """Return the first provider with a valid API key, or None."""
         for p in self.providers:
             if p.api_key:
@@ -619,7 +620,7 @@ class Gateway:
         max_tokens: int = 4096,
         task: str = "chat",
         routing_tier: str = "any",
-        routing_tags: Optional[set[str]] = None,
+        routing_tags: set[str] | None = None,
     ) -> CompletionResponse:
         """Send a completion request with native tool-use support.
 
@@ -703,7 +704,7 @@ class Gateway:
 
             response_hash = _hashlib.sha256(response.text.encode()).hexdigest() if response.text else None
             try:
-                from neutron_os.infra.audit_log import AuditLog, ECViolationError
+                from neutron_os.infra.audit_log import AuditLog
                 from neutron_os.infra.trace import current_session
                 AuditLog.get().write_routing(
                     session_id=current_session(),
@@ -1297,17 +1298,18 @@ def _harden_system_prompt(original: str) -> str:
 
 
 def _scan_response(
-    response: "CompletionResponse",
+    response: CompletionResponse,
     routing_tier: str,
     provider_name: str,
     prompt_hash: str,
-) -> "CompletionResponse":
+) -> CompletionResponse:
     """Scan an LLM response for classified terms. Returns (possibly modified) response."""
     try:
+        import hashlib as _hashlib
+
         from neutron_os.infra.router import QueryRouter
         from neutron_os.infra.security_log import SecurityLog
         from neutron_os.infra.trace import current_session
-        import hashlib as _hashlib
 
         router = QueryRouter.__new__(QueryRouter)
         router._terms = None
@@ -1435,7 +1437,7 @@ def _tools_to_anthropic_format(
     return result
 
 
-def _parse_sse_line(line: str) -> Optional[dict[str, Any]]:
+def _parse_sse_line(line: str) -> dict[str, Any] | None:
     """Parse a single SSE data line into a JSON dict, or None."""
     if not line or not line.startswith("data: "):
         return None

@@ -16,7 +16,6 @@ import sys
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class InfraStatus(Enum):
@@ -34,7 +33,7 @@ class InfraCheck:
     status: InfraStatus
     version: str = ""
     message: str = ""
-    fix_action: Optional[str] = None
+    fix_action: str | None = None
     auto_fixable: bool = False
 
     def to_dict(self) -> dict:
@@ -622,7 +621,7 @@ def troubleshoot_with_llm(checks: list[InfraCheck], error_output: str = "") -> s
     Returns suggested fixes as a string.
     """
     try:
-        from neutron_os.ask import ask_llm
+        from neutron_os.ask import ask_llm  # type: ignore[import-not-found]
     except ImportError:
         return "LLM troubleshooting not available (ask module not found)"
 
@@ -660,6 +659,7 @@ Keep your response under 200 words.
 def main(args: list[str] | None = None) -> int:
     """CLI entry point for infrastructure setup."""
     import argparse
+
     from neutron_os.setup import renderer
 
     parser = argparse.ArgumentParser(

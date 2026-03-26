@@ -20,12 +20,11 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
-from .base import BaseExtractor
 from ..models import Extraction, Signal
+from .base import BaseExtractor
 
 
 class PRDCommentsExtractor(BaseExtractor):
@@ -133,7 +132,7 @@ class PRDCommentsExtractor(BaseExtractor):
             )
 
         # Extract comments from each document
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for doc in documents:
             try:
                 comments = self._get_document_comments(access_token, doc["id"])
@@ -189,7 +188,7 @@ class PRDCommentsExtractor(BaseExtractor):
         )
 
     def _get_access_token(
-        self, client_id: str, tenant_id: str, client_secret: Optional[str]
+        self, client_id: str, tenant_id: str, client_secret: str | None
     ) -> str:
         """Authenticate with Microsoft Graph and return access token."""
         import msal
@@ -212,8 +211,9 @@ class PRDCommentsExtractor(BaseExtractor):
             print(f"  {flow['message']}")
             result = app.acquire_token_by_device_flow(flow)
 
-        if "access_token" not in result:
-            raise ValueError(result.get("error_description", "Authentication failed"))
+        if result is None or "access_token" not in result:
+            desc = result.get("error_description", "Authentication failed") if result else "Authentication failed"
+            raise ValueError(desc)
 
         return result["access_token"]
 

@@ -12,14 +12,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import PublisherConfig, _state_dir, load_config
 from .factory import PublisherFactory
-from .git_integration import get_git_context, check_branch_policy, remote_url_to_web_url
-from .state import DocumentState, PublicationRecord, LinkEntry
+from .git_integration import check_branch_policy, get_git_context, remote_url_to_web_url
 from .providers.base import (
     GenerationOptions,
     GenerationProvider,
@@ -27,7 +26,7 @@ from .providers.base import (
     StorageProvider,
 )
 from .registry import LinkRegistry
-from .state import StateStore
+from .state import DocumentState, LinkEntry, PublicationRecord, StateStore
 
 
 class PublisherEngine:
@@ -175,11 +174,11 @@ class PublisherEngine:
         # Content is identical. Apply cooldown: skip if published recently.
         if existing.published.published_at:
             try:
-                from datetime import datetime, timezone
+                from datetime import datetime
                 published_at = datetime.fromisoformat(existing.published.published_at)
                 if published_at.tzinfo is None:
-                    published_at = published_at.replace(tzinfo=timezone.utc)
-                age_seconds = (datetime.now(timezone.utc) - published_at).total_seconds()
+                    published_at = published_at.replace(tzinfo=UTC)
+                age_seconds = (datetime.now(UTC) - published_at).total_seconds()
 
                 # Read cooldown from settings (default: 5 minutes)
                 cooldown = 300
@@ -318,7 +317,7 @@ class PublisherEngine:
                 footer_metadata["source_url"] = source_url
 
         # Add version and publication date to footer
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         footer_metadata["version"] = version
         footer_metadata["published_at"] = now
 
@@ -344,7 +343,7 @@ class PublisherEngine:
         print(f"  Published: {upload_result.canonical_url}", flush=True)
 
         # Create publication record with source hash for no-op detection
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         source_hash = self._compute_source_hash(source_path)
         record = PublicationRecord(
             storage_id=upload_result.storage_id,
@@ -546,8 +545,8 @@ class PublisherEngine:
         if suffix == ".docx":
             try:
                 # python-docx has limited comment support; parse XML directly
-                from zipfile import ZipFile
                 import xml.etree.ElementTree as ET
+                from zipfile import ZipFile
 
                 with ZipFile(artifact_path) as zf:
                     if "word/comments.xml" in zf.namelist():
@@ -597,7 +596,7 @@ class PublisherEngine:
                 continue
 
             try:
-                with open(manifest_path, 'r') as f:
+                with open(manifest_path) as f:
                     manifest = json.load(f)
 
                 for entry in manifest.get("tracked_files", []):
@@ -673,7 +672,7 @@ class PublisherEngine:
         doc_id: str,
         source_path: Path,
         manifest_path: Path,
-        published_url: Optional[str] = None,
+        published_url: str | None = None,
     ) -> bool:
         """Add a document to a manifest.
 
@@ -689,7 +688,7 @@ class PublisherEngine:
         try:
             # Load existing manifest
             if manifest_path.exists():
-                with open(manifest_path, 'r') as f:
+                with open(manifest_path) as f:
                     manifest = json.load(f)
             else:
                 manifest = {

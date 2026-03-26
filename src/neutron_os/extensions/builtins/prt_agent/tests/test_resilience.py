@@ -9,9 +9,10 @@ Tests cover:
 """
 
 import pytest
+
 from ..cleanup import MarkdownCleanup
+from ..models.document import Document, Image, Link, Section
 from ..validation import DocumentValidator
-from ..models.document import Document, Section, Image, Link
 
 
 class TestCleanupRobustness:

@@ -28,10 +28,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Generator
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class PgStateHandle:
             raise RuntimeError("write() requires exclusive=True")
 
         cur = self._conn.cursor()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         actor = os.environ.get("USER", "unknown")
 
         if self._initial_version is None:

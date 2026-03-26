@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -34,7 +34,7 @@ class ScratchEntry:
         if not self.id:
             self.id = uuid4().hex[:12]
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
         if not self.pid:
             self.pid = os.getpid()
 
@@ -95,6 +95,7 @@ class Manifest:
         if not self._path.exists():
             self._entries = {}
             return
+        data: dict | list = {}
         try:
             with LockedJsonFile(self._path) as f:
                 data = f.read()

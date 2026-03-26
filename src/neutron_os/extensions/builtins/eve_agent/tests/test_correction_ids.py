@@ -157,7 +157,11 @@ class TestCorrectorIdGeneration:
 
     def test_corrector_generates_deterministic_ids(self):
         """Test that TranscriptCorrector generates deterministic IDs."""
-        from neutron_os.extensions.builtins.eve_agent.corrector import TranscriptCorrector, Correction, CorrectionResult
+        from neutron_os.extensions.builtins.eve_agent.corrector import (
+            Correction,
+            CorrectionResult,
+            TranscriptCorrector,
+        )
 
         corrector = TranscriptCorrector()
 

@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import re
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone, timedelta
+import subprocess
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT
+
 NEUT_DIR = REPO_ROOT / ".neut"
 UPDATE_STATE_FILE = NEUT_DIR / "update-state.json"
 RESTART_STATE_FILE = NEUT_DIR / "restart-state.json"
@@ -29,7 +29,7 @@ _CACHE_TTL = timedelta(hours=1)
 class VersionInfo:
     """Result of a version check."""
     current: str
-    available: Optional[str]
+    available: str | None
     is_newer: bool
     checked_at: str
     source: str  # "pypi" or "git"
@@ -38,7 +38,7 @@ class VersionInfo:
 class VersionChecker:
     """Checks current vs. remote NeutronOS version."""
 
-    def __init__(self, repo_root: Optional[Path] = None):
+    def __init__(self, repo_root: Path | None = None):
         self.repo_root = repo_root or REPO_ROOT
 
     def get_current_version(self) -> str:
@@ -68,7 +68,7 @@ class VersionChecker:
             checked_at = cached.get("checked_at", "")
             try:
                 ts = datetime.fromisoformat(checked_at)
-                if datetime.now(timezone.utc) - ts < _CACHE_TTL:
+                if datetime.now(UTC) - ts < _CACHE_TTL:
                     return VersionInfo(
                         current=current,
                         available=cached.get("available"),
@@ -97,7 +97,7 @@ class VersionChecker:
             is_newer = available is not None
         else:
             is_newer = _version_is_newer(current, available) if available else False
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         info = VersionInfo(
             current=current,
@@ -109,7 +109,7 @@ class VersionChecker:
         self._save_cache(info)
         return info
 
-    def _check_pypi_registry(self, timeout: float) -> Optional[str]:
+    def _check_pypi_registry(self, timeout: float) -> str | None:
         """Query GitLab PyPI simple index for latest version."""
         # Get registry URL and token from environment or config
         registry_url = os.environ.get(
@@ -132,8 +132,8 @@ class VersionChecker:
             return None
 
         try:
-            import urllib.request
             import urllib.error
+            import urllib.request
 
             req = urllib.request.Request(registry_url)
             req.add_header("PRIVATE-TOKEN", token)
@@ -158,7 +158,7 @@ class VersionChecker:
         except Exception:
             return None
 
-    def _check_git_remote(self, timeout: float) -> Optional[str]:
+    def _check_git_remote(self, timeout: float) -> str | None:
         """For dev installs: check if git remote has newer commits."""
         try:
             # Check if we're in a git repo
@@ -212,7 +212,7 @@ class VersionChecker:
         except Exception:
             return None
 
-    def _check_github_mirror(self, timeout: float) -> Optional[str]:
+    def _check_github_mirror(self, timeout: float) -> str | None:
         """For end-user installs: compare installed commit vs GitHub HEAD.
 
         Uses git ls-remote (no clone, no auth) to get the latest SHA from the
@@ -244,17 +244,17 @@ class VersionChecker:
         except Exception:
             return None
 
-    def _get_installed_sha(self) -> Optional[str]:
+    def _get_installed_sha(self) -> str | None:
         """Return the git SHA the package was installed from, if recorded."""
         try:
             from importlib.metadata import metadata
             meta = metadata("neutron-os")
             # pip records the VCS commit when installing from git+https://
-            return meta.get("X-VCS-Commit") or meta.get("Vcs-Commit")
+            return meta.get("X-VCS-Commit") or meta.get("Vcs-Commit")  # type: ignore[union-attr]
         except Exception:
             return None
 
-    def _load_cache(self) -> Optional[dict]:
+    def _load_cache(self) -> dict | None:
         """Load cached version check result."""
         try:
             if UPDATE_STATE_FILE.exists():
@@ -283,7 +283,7 @@ class VersionChecker:
 def write_restart_state(
     session_id: str,
     old_version: str,
-    new_version: Optional[str],
+    new_version: str | None,
     reason: str = "update",
 ) -> None:
     """Write restart state so the new process can auto-resume."""
@@ -293,7 +293,7 @@ def write_restart_state(
         "old_version": old_version,
         "new_version": new_version or old_version,
         "reason": reason,
-        "restarted_at": datetime.now(timezone.utc).isoformat(),
+        "restarted_at": datetime.now(UTC).isoformat(),
     }
     RESTART_STATE_FILE.write_text(
         json.dumps(state, indent=2) + "\n",
@@ -301,14 +301,14 @@ def write_restart_state(
     )
 
 
-def read_restart_state(max_age_seconds: float = 60.0) -> Optional[dict]:
+def read_restart_state(max_age_seconds: float = 60.0) -> dict | None:
     """Read restart state if present and recent enough."""
     try:
         if not RESTART_STATE_FILE.exists():
             return None
         state = json.loads(RESTART_STATE_FILE.read_text(encoding="utf-8"))
         restarted_at = datetime.fromisoformat(state["restarted_at"])
-        age = (datetime.now(timezone.utc) - restarted_at).total_seconds()
+        age = (datetime.now(UTC) - restarted_at).total_seconds()
         if age > max_age_seconds:
             clear_restart_state()
             return None
@@ -329,7 +329,7 @@ def clear_restart_state() -> None:
 # Changelog state helpers
 # ---------------------------------------------------------------------------
 
-def read_pending_changelog() -> Optional[dict]:
+def read_pending_changelog() -> dict | None:
     """Read pending changelog if present."""
     try:
         if not CHANGELOG_FILE.exists():

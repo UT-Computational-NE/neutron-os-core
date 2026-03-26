@@ -18,13 +18,13 @@ from __future__ import annotations
 
 import fnmatch
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from neutron_os.infra.state import locked_append_jsonl
-
 
 EventHandler = Callable[[str, dict[str, Any]], None]
 
@@ -40,7 +40,7 @@ class Event:
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -67,7 +67,7 @@ class EventBus:
         log_path: Path to the .jsonl event log. None disables logging.
     """
 
-    def __init__(self, log_path: Optional[Path] = None):
+    def __init__(self, log_path: Path | None = None):
         self._subscriptions: list[tuple[str, EventHandler]] = []
         self._log_path = log_path
         self._history: list[Event] = []

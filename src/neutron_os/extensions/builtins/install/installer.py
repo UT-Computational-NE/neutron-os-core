@@ -24,7 +24,7 @@ import socket
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
@@ -188,7 +188,7 @@ def _as_list(v: Any) -> list[str]:
 # Environment detection
 # ---------------------------------------------------------------------------
 
-def detect_environment(envs: list[Environment], override: str = "") -> Optional[Environment]:
+def detect_environment(envs: list[Environment], override: str = "") -> Environment | None:
     """Return the first environment matching the current host."""
     if override:
         for env in envs:
@@ -350,8 +350,8 @@ def _install_port_forward_service(step: InstallStep) -> bool:
     svc.install()
     svc.start()
 
-    import time
     import socket as _socket
+    import time
     for _ in range(8):
         time.sleep(1)
         try:
@@ -380,13 +380,13 @@ def _start_port_forward_once(step: InstallStep) -> bool:
         f"{step.local_port}:{step.remote_port or step.local_port}",
     ]
     subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    import time
     import socket as _socket
+    import time
     for _ in range(5):
         time.sleep(1)
         try:
             with _socket.create_connection(("localhost", step.local_port), timeout=1):
-                print(f"    ✓ port-forward started (background, not persistent)")
+                print("    ✓ port-forward started (background, not persistent)")
                 return True
         except OSError:
             pass
@@ -401,8 +401,8 @@ def _run_rag_index(step: InstallStep) -> bool:
         print("    ✗ rag.database_url not set — run 'neut connect postgresql' first")
         return False
 
-    from neutron_os.rag.store import RAGStore, CORPUS_INTERNAL, CORPUS_ORG
     from neutron_os.rag.ingest import ingest_path
+    from neutron_os.rag.store import CORPUS_INTERNAL, RAGStore
 
     corpus = step.corpus or CORPUS_INTERNAL
     store = RAGStore(db_url)
@@ -468,6 +468,6 @@ def _run_shell(step: InstallStep) -> bool:
     return result.returncode == 0
 
 
-def _find_kubectl() -> Optional[str]:
+def _find_kubectl() -> str | None:
     import shutil
     return shutil.which("kubectl")

@@ -33,11 +33,11 @@ import os
 import threading
 import traceback as _tb
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from neutron_os.infra.trace import current_trace, current_session
+from neutron_os.infra.trace import current_session, current_trace
 
 # ---------------------------------------------------------------------------
 # Internal logger (used only within this module — avoids recursion)
@@ -73,7 +73,7 @@ class StructuredJsonFormatter(logging.Formatter):
         record.message = record.getMessage()
 
         data: dict[str, Any] = {
-            "ts": datetime.fromtimestamp(record.created, tz=timezone.utc)
+            "ts": datetime.fromtimestamp(record.created, tz=UTC)
                   .isoformat(timespec="milliseconds")
                   .replace("+00:00", "Z"),
             "level": record.levelname,
@@ -141,7 +141,7 @@ class ForensicRingBuffer(logging.Handler):
     def flush_snapshot(self, path: Path, *, reason: str) -> Path:
         """Flush buffer to a timestamped JSONL file. Returns the path written."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         snapshot_path = path.with_suffix(f".{ts}.jsonl")
         with self._lock:
             records = list(self._buf)
@@ -246,6 +246,7 @@ class SignalSink:
         """Dispatch to the signal bus. Replaced in tests; overrideable in prod."""
         try:
             import asyncio
+
             from neutron_os.infra.events import emit as _bus_emit
             loop = asyncio.get_event_loop()
             if loop.is_running():

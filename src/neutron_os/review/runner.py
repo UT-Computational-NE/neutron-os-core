@@ -34,7 +34,6 @@ from neutron_os.review.models import (
     _now_iso,
 )
 
-
 # ── adapter protocol ─────────────────────────────────────────────────
 
 class ReviewAdapter(Protocol):
@@ -343,6 +342,7 @@ class ReviewRunner:
         Returns None if the editor exits non-zero or content is unchanged.
         """
         editor = os.environ.get("EDITOR", "vi")
+        tmp_path: str | None = None
         try:
             with tempfile.NamedTemporaryFile(
                 mode="w", suffix=".md", delete=False
@@ -364,6 +364,7 @@ class ReviewRunner:
             return None
         finally:
             try:
-                os.unlink(tmp_path)
+                if tmp_path:
+                    os.unlink(tmp_path)
             except (OSError, UnboundLocalError):
                 pass

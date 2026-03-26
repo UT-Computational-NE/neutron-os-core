@@ -8,8 +8,8 @@ at which point the wizard may offer chat-assisted mode.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 
 @dataclass
@@ -191,7 +191,7 @@ CREDENTIAL_GUIDES: list[CredentialGuide] = [
 ]
 
 
-def get_guide(env_var: str) -> Optional[CredentialGuide]:
+def get_guide(env_var: str) -> CredentialGuide | None:
     """Look up a credential guide by environment variable name."""
     for guide in CREDENTIAL_GUIDES:
         if guide.env_var == env_var:

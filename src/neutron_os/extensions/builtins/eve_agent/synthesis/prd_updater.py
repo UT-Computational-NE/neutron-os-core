@@ -4,11 +4,11 @@ Generates PRD section updates from signal clusters, with citations
 and confidence scores.
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-import json
 
 
 class PRDSection(Enum):

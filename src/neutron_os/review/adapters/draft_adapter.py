@@ -19,6 +19,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+# ── constants ────────────────────────────────────────────────────────
+from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.review.models import (
     ReviewItem,
     ReviewSession,
@@ -26,11 +28,6 @@ from neutron_os.review.models import (
     _now_iso,
     _source_hash,
 )
-
-
-# ── constants ────────────────────────────────────────────────────────
-
-from neutron_os import REPO_ROOT as _REPO_ROOT
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 _DRAFTS_DIR = _RUNTIME_DIR / "drafts"
@@ -207,7 +204,11 @@ def _register_in_publisher(session: ReviewSession, approved_path: Path) -> None:
     ``neut pub publish`` can pick them up for delivery.
     """
     try:
-        from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord, StateStore
+        from neutron_os.extensions.builtins.prt_agent.state import (
+            DocumentState,
+            PublicationRecord,
+            StateStore,
+        )
 
         state_path = _REPO_ROOT / ".neut" / ".publisher-state.json"
         store = StateStore(state_path)
@@ -294,6 +295,7 @@ class DraftReviewAdapter:
     def _edit_section(item: ReviewItem) -> str | None:
         """Open section in $EDITOR and return 'edited' if changed."""
         editor = os.environ.get("EDITOR", "vi")
+        tmp_path: str | None = None
         try:
             with tempfile.NamedTemporaryFile(
                 mode="w", suffix=".md", delete=False
@@ -321,7 +323,8 @@ class DraftReviewAdapter:
             return None
         finally:
             try:
-                os.unlink(tmp_path)
+                if tmp_path:
+                    os.unlink(tmp_path)
             except (OSError, UnboundLocalError):
                 pass
 

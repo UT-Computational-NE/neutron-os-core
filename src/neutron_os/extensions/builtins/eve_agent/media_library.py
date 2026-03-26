@@ -29,14 +29,15 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import atomic_write
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 MEDIA_INDEX_PATH = _RUNTIME_DIR / "inbox" / "cache" / "media_index.json"
 MEDIA_EMBEDDINGS_PATH = _RUNTIME_DIR / "inbox" / "cache" / "media_embeddings.json"
@@ -113,8 +114,8 @@ class MediaItem:
     path: str
     media_type: MediaType
     title: str
-    transcript_path: Optional[str] = None
-    timestamps_path: Optional[str] = None
+    transcript_path: str | None = None
+    timestamps_path: str | None = None
     duration_sec: float = 0.0
     recorded_at: str = ""
     word_count: int = 0
@@ -126,7 +127,7 @@ class MediaItem:
 
     # For RAG indexing
     full_transcript: str = ""
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -211,8 +212,8 @@ class SearchResult:
     score: float
     match_type: SearchMode
     matched_text: str = ""
-    start_time_sec: Optional[float] = None
-    end_time_sec: Optional[float] = None
+    start_time_sec: float | None = None
+    end_time_sec: float | None = None
 
     def __repr__(self) -> str:
         return f"SearchResult({self.item.title}, score={self.score:.2f}, mode={self.match_type.value})"
@@ -223,8 +224,8 @@ class MediaLibrary:
 
     def __init__(
         self,
-        index_path: Optional[Path] = None,
-        embeddings_path: Optional[Path] = None,
+        index_path: Path | None = None,
+        embeddings_path: Path | None = None,
     ):
         self.index_path = index_path or MEDIA_INDEX_PATH
         self.embeddings_path = embeddings_path or MEDIA_EMBEDDINGS_PATH
@@ -258,7 +259,7 @@ class MediaLibrary:
 
         data = {
             "version": "1.0",
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "item_count": len(self._items),
             "items": [item.to_dict() for item in self._items.values()],
         }
@@ -268,7 +269,7 @@ class MediaLibrary:
     def _get_embedder(self):
         """Get embedding provider (lazy load)."""
         if self._embedder is None:
-            from .signal_rag import OpenAIEmbeddings, LocalEmbeddings, KeywordEmbeddings
+            from .signal_rag import KeywordEmbeddings, LocalEmbeddings, OpenAIEmbeddings
 
             openai = OpenAIEmbeddings()
             if openai.is_available():
@@ -304,7 +305,7 @@ class MediaLibrary:
         except (subprocess.TimeoutExpired, ValueError):
             return 0.0
 
-    def _find_transcript(self, media_path: Path) -> tuple[Optional[Path], Optional[Path]]:
+    def _find_transcript(self, media_path: Path) -> tuple[Path | None, Path | None]:
         """Find transcript and timestamps files for a media file."""
         stem = media_path.stem
 
@@ -439,7 +440,7 @@ class MediaLibrary:
         participants.sort(key=lambda p: -p.mention_count)
         return participants
 
-    def _index_media_file(self, path: Path, media_type: MediaType) -> Optional[MediaItem]:
+    def _index_media_file(self, path: Path, media_type: MediaType) -> MediaItem | None:
         """Index a single media file."""
         if not path.exists():
             return None
@@ -472,7 +473,7 @@ class MediaLibrary:
         # Get recording date from file mtime
         try:
             mtime = path.stat().st_mtime
-            recorded_at = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+            recorded_at = datetime.fromtimestamp(mtime, tz=UTC).isoformat()
         except OSError:
             recorded_at = ""
 
@@ -750,10 +751,10 @@ class MediaLibrary:
         query: str,
         mode: SearchMode = SearchMode.AUTO,
         top_k: int = 10,
-        media_type: Optional[MediaType] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-        accessible_to: Optional[str] = None,
+        media_type: MediaType | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        accessible_to: str | None = None,
     ) -> list[SearchResult]:
         """Search the media library.
 
@@ -835,7 +836,7 @@ class MediaLibrary:
         query: str,
         media_id: str,
         duration_sec: float = 10.0,
-    ) -> Optional[tuple[float, float, str]]:
+    ) -> tuple[float, float, str] | None:
         """Find a specific segment within a recording.
 
         Returns (start_sec, end_sec, matched_text) or None.
@@ -898,8 +899,8 @@ class MediaLibrary:
     def play(
         self,
         media_id: str,
-        start_sec: Optional[float] = None,
-        duration_sec: Optional[float] = None,
+        start_sec: float | None = None,
+        duration_sec: float | None = None,
     ) -> bool:
         """Play a recording or segment.
 
@@ -951,13 +952,13 @@ class MediaLibrary:
             print(f"Failed to open: {e}")
             return False
 
-    def get_item(self, media_id: str) -> Optional[MediaItem]:
+    def get_item(self, media_id: str) -> MediaItem | None:
         """Get a media item by ID."""
         return self._items.get(media_id)
 
     def list_items(
         self,
-        media_type: Optional[MediaType] = None,
+        media_type: MediaType | None = None,
         limit: int = 50,
         sort_by: Literal["date", "duration", "title"] = "date",
     ) -> list[MediaItem]:
@@ -1011,7 +1012,7 @@ class MediaLibrary:
     def find_recordings_with(
         self,
         person_id: str,
-        role: Optional[str] = None,
+        role: str | None = None,
         limit: int = 50,
     ) -> list[MediaItem]:
         """Find all recordings where a person appears.
@@ -1144,7 +1145,7 @@ class MediaLibrary:
             return rag.index_signals(signals)
         return 0
 
-    def discuss(self, result: SearchResult) -> "NeutExplainer":
+    def discuss(self, result: SearchResult) -> NeutExplainer:
         """Start an interactive discussion with Neut about a search result.
 
         Returns a NeutExplainer that can explain content, add context,
@@ -1173,7 +1174,7 @@ class NeutMessage:
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
 
 class NeutExplainer:

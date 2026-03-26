@@ -22,9 +22,11 @@ import shutil
 import socket
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -72,10 +74,10 @@ class ConnectionUsage:
         return self.total_latency_ms / self.requests if self.requests else 0.0
 
     def record(self, latency_ms: float, error: str = "", throttled: bool = False) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
         self.requests += 1
         self.total_latency_ms += latency_ms
-        self.last_used = datetime.now(timezone.utc).isoformat()
+        self.last_used = datetime.now(UTC).isoformat()
         if error:
             self.errors += 1
             self.last_error = error
@@ -198,7 +200,7 @@ class ConnectionRegistry:
     def register(self, conn: Connection) -> None:
         self._connections[conn.name] = conn
 
-    def get(self, name: str) -> Optional[Connection]:
+    def get(self, name: str) -> Connection | None:
         return self._connections.get(name)
 
     def all(self) -> list[Connection]:
@@ -262,9 +264,9 @@ class ConnectionRegistry:
 def get_credential(
     name: str,
     *,
-    registry: Optional[ConnectionRegistry] = None,
-    credentials_dir: Optional[Path] = None,
-) -> Optional[str]:
+    registry: ConnectionRegistry | None = None,
+    credentials_dir: Path | None = None,
+) -> str | None:
     """Resolve a credential for the named connection.
 
     Resolution order: env var → settings → credential file (0600).
@@ -315,8 +317,8 @@ def get_credential(
 def has_credential(
     name: str,
     *,
-    registry: Optional[ConnectionRegistry] = None,
-    credentials_dir: Optional[Path] = None,
+    registry: ConnectionRegistry | None = None,
+    credentials_dir: Path | None = None,
 ) -> bool:
     """Check if a credential is available without retrieving it."""
     return get_credential(name, registry=registry, credentials_dir=credentials_dir) is not None
@@ -330,7 +332,7 @@ def store_credential(
     name: str,
     value: str,
     *,
-    credentials_dir: Optional[Path] = None,
+    credentials_dir: Path | None = None,
 ) -> Path:
     """Store a credential securely. Returns path to the file."""
     cred_dir = credentials_dir or _CREDENTIALS_DIR
@@ -346,7 +348,7 @@ def store_credential(
 def clear_credential(
     name: str,
     *,
-    credentials_dir: Optional[Path] = None,
+    credentials_dir: Path | None = None,
 ) -> None:
     """Remove stored credential for a connection."""
     cred_dir = credentials_dir or _CREDENTIALS_DIR
@@ -362,8 +364,8 @@ def clear_credential(
 def get_cli_tool(
     name: str,
     *,
-    registry: Optional[ConnectionRegistry] = None,
-) -> Optional[CLIToolInfo]:
+    registry: ConnectionRegistry | None = None,
+) -> CLIToolInfo | None:
     """Find a CLI tool on PATH. Returns None if not installed or not a CLI connection."""
     if registry is None:
         registry = _get_global_registry()
@@ -429,7 +431,7 @@ def _emit_connection_event(name: str, status: str, message: str = "") -> None:
 def check_health(
     name: str,
     *,
-    registry: Optional[ConnectionRegistry] = None,
+    registry: ConnectionRegistry | None = None,
 ) -> ConnectionHealth:
     """Run a health check for the named connection.
 
@@ -593,7 +595,7 @@ def _check_http_get(conn: Connection) -> ConnectionHealth:
 # Global registry singleton
 # ---------------------------------------------------------------------------
 
-_global_registry: Optional[ConnectionRegistry] = None
+_global_registry: ConnectionRegistry | None = None
 
 
 def _get_global_registry() -> ConnectionRegistry:
@@ -659,7 +661,7 @@ def reset_usage() -> None:
 def ensure_available(
     name: str,
     *,
-    registry: Optional[ConnectionRegistry] = None,
+    registry: ConnectionRegistry | None = None,
 ) -> bool:
     """Silently ensure a connection's service is running.
 
@@ -711,7 +713,7 @@ def run_post_setup_hook(conn: Connection) -> int:
         return 1
 
 
-def get_install_command(conn: Connection) -> Optional[str]:
+def get_install_command(conn: Connection) -> str | None:
     """Get the platform-appropriate install command from TOML declaration."""
     import platform as _platform
     system = _platform.system().lower()
@@ -738,7 +740,7 @@ _STATUS_SYMBOLS = {
 }
 
 
-def format_status_section(*, registry: Optional[ConnectionRegistry] = None) -> str:
+def format_status_section(*, registry: ConnectionRegistry | None = None) -> str:
     """Format connections for display in neut status."""
     if registry is None:
         registry = _get_global_registry()

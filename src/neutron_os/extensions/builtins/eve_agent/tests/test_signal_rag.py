@@ -3,11 +3,11 @@
 import pytest
 
 from neutron_os.extensions.builtins.eve_agent.signal_rag import (
-    SignalRAG,
-    SignalChunk,
-    VectorStore,
-    RetrievalResult,
     KeywordEmbeddings,
+    RetrievalResult,
+    SignalChunk,
+    SignalRAG,
+    VectorStore,
 )
 
 
@@ -95,8 +95,8 @@ class TestVectorStore:
     @pytest.fixture
     def store(self, tmp_path):
         s = VectorStore()
-        s._test_index_path = tmp_path / "index.json"
-        s._test_embeddings_path = tmp_path / "embeddings.json"
+        s._test_index_path = tmp_path / "index.json"  # type: ignore[attr-defined]
+        s._test_embeddings_path = tmp_path / "embeddings.json"  # type: ignore[attr-defined]
         return s
 
     @pytest.fixture

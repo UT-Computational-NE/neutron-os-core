@@ -14,13 +14,14 @@ Tools:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from ..tools import ToolDef
+from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.orchestrator.actions import ActionCategory
 
-from neutron_os import REPO_ROOT as _REPO_ROOT
+from ..tools import ToolDef
+
 _DRAFTS_DIR = _REPO_ROOT / "runtime" / "drafts" / "approved"
 _CONFIG_DIR = _REPO_ROOT / "runtime" / "config"
 
@@ -129,10 +130,7 @@ def _parse_email_draft(path: Path) -> dict:
         elif stripped.lower().startswith("**cc:**") or stripped.lower().startswith("cc:"):
             val = stripped.split(":**", 1)[-1] if ":**" in stripped else stripped.split(":", 1)[1]
             result["cc"] = val.strip().strip("*").strip()
-        elif stripped == "---":
-            body_start = i + 1
-            break
-        elif stripped == "" and i > 0:
+        elif stripped == "---" or stripped == "" and i > 0:
             body_start = i + 1
             break
 
@@ -203,7 +201,7 @@ def _handle_draft(params: dict) -> dict:
         return {"error": "to, subject, and body are all required."}
 
     # Build the draft file
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    ts = datetime.now(UTC).strftime("%Y-%m-%d")
     filename = params.get("filename")
     if not filename:
         # Derive from recipient
@@ -310,7 +308,9 @@ def _handle_send(params: dict) -> dict:
 
     # Try to load SMTP provider
     try:
-        from neutron_os.extensions.builtins.prt_agent.providers.notification.smtp import SMTPNotificationProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.notification.smtp import (
+            SMTPNotificationProvider,
+        )
         # Try loading config
         config = _load_smtp_config()
         if not config.get("from_address"):
@@ -351,7 +351,7 @@ def _handle_list(params: dict) -> dict:
             "to": parsed.get("to", ""),
             "subject": parsed.get("subject", ""),
             "modified": datetime.fromtimestamp(
-                path.stat().st_mtime, tz=timezone.utc
+                path.stat().st_mtime, tz=UTC
             ).isoformat(),
         })
 

@@ -21,8 +21,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Any
+from typing import Any
 
 
 @dataclass
@@ -33,7 +34,7 @@ class CLICommand:
     name: str               # e.g., "ingest", "status"
     help: str               # e.g., "Run extractors on inbox data"
     arguments: list[dict] = field(default_factory=list)  # Argument definitions
-    handler: Optional[Callable] = None  # Function to call
+    handler: Callable | None = None  # Function to call
 
     @property
     def full_name(self) -> str:
@@ -118,7 +119,7 @@ def _extract_commands_from_parser(
     return commands
 
 
-def _get_parser_for_module(module_path: str) -> Optional[argparse.ArgumentParser]:
+def _get_parser_for_module(module_path: str) -> argparse.ArgumentParser | None:
     """Import a CLI module and extract its parser."""
     try:
         import importlib
@@ -215,13 +216,13 @@ def get_all_commands() -> dict[str, CLINamespace]:
     return _command_cache.copy()
 
 
-def get_namespace(name: str) -> Optional[CLINamespace]:
+def get_namespace(name: str) -> CLINamespace | None:
     """Get a specific namespace."""
     _initialize_registry()
     return _command_cache.get(name)
 
 
-def get_command(namespace: str, command: str) -> Optional[CLICommand]:
+def get_command(namespace: str, command: str) -> CLICommand | None:
     """Get a specific command."""
     ns = get_namespace(namespace)
     if ns:
@@ -286,9 +287,9 @@ def execute_command(
         return {"success": False, "error": f"Unknown namespace: {namespace}"}
 
     try:
+        import contextlib
         import importlib
         from io import StringIO
-        import contextlib
 
         module = importlib.import_module(module_path)
 
@@ -364,6 +365,6 @@ def register_parser(namespace: str, parser: argparse.ArgumentParser) -> None:
     _initialized = False
 
 
-def get_registered_parser(namespace: str) -> Optional[argparse.ArgumentParser]:
+def get_registered_parser(namespace: str) -> argparse.ArgumentParser | None:
     """Get a registered parser by namespace."""
     return _parsers.get(namespace)

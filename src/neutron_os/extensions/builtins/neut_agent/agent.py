@@ -13,8 +13,15 @@ from __future__ import annotations
 import json
 import threading
 import time
-from typing import Any, Callable, Iterator, Optional
+from collections.abc import Callable, Iterator
+from typing import Any
 
+from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.gateway import (
+    CompletionResponse,
+    Gateway,
+    StreamChunk,
+)
 from neutron_os.infra.orchestrator.actions import (
     ActionCategory,
     ActionStatus,
@@ -23,22 +30,16 @@ from neutron_os.infra.orchestrator.actions import (
 from neutron_os.infra.orchestrator.approval import ApprovalGate
 from neutron_os.infra.orchestrator.bus import EventBus
 from neutron_os.infra.orchestrator.session import Session
+from neutron_os.infra.prompt_registry import get_registry as _get_prompt_registry
+from neutron_os.infra.router import QueryRouter
+
+from .providers.base import RenderProvider
 from .tools import (
     execute_tool,
     get_all_tools,
     get_tool_definitions,
 )
-from .providers.base import RenderProvider
-from .usage import UsageTracker, TurnUsage
-from neutron_os.infra.gateway import (
-    Gateway,
-    CompletionResponse,
-    StreamChunk,
-)
-from neutron_os.infra.router import QueryRouter
-
-from neutron_os import REPO_ROOT as _REPO_ROOT
-from neutron_os.infra.prompt_registry import get_registry as _get_prompt_registry
+from .usage import TurnUsage, UsageTracker
 
 MAX_TOOL_ROUNDS = 10
 CONTEXT_TOKEN_BUDGET = 25000
@@ -50,10 +51,10 @@ class ChatAgent:
 
     def __init__(
         self,
-        gateway: Optional[Gateway] = None,
-        bus: Optional[EventBus] = None,
-        session: Optional[Session] = None,
-        render: Optional[RenderProvider] = None,
+        gateway: Gateway | None = None,
+        bus: EventBus | None = None,
+        session: Session | None = None,
+        render: RenderProvider | None = None,
     ):
         self.gateway = gateway or Gateway()
         self.bus = bus or EventBus()
@@ -64,9 +65,9 @@ class ChatAgent:
         self._router = QueryRouter()
         self._session_mode: str = "auto"  # overridden by --mode flag
         # Backward-compat: bare callback for tests
-        self._renderer_callback: Optional[Callable[[Iterator[StreamChunk]], str]] = None
+        self._renderer_callback: Callable[[Iterator[StreamChunk]], str] | None = None
         # RAG store — lazily initialized if rag.database_url is configured
-        self._rag_store: Optional[Any] = None
+        self._rag_store: Any | None = None
         self._rag_init_attempted = False
 
     def set_renderer(self, callback: Callable[[Iterator[StreamChunk]], str]) -> None:
@@ -116,6 +117,7 @@ class ChatAgent:
         messages = self._build_messages()
         tools = get_tool_definitions()
 
+        response = None
         for _round in range(MAX_TOOL_ROUNDS):
             # First round streams to show immediate output.
             # Subsequent rounds (after tool results) use non-streaming to
@@ -191,7 +193,7 @@ class ChatAgent:
             messages = self._trim_messages(messages, system)
 
         # Exceeded max rounds
-        fallback = response.text or "I've reached the maximum number of tool-use rounds."
+        fallback = (response.text if response else None) or "I've reached the maximum number of tool-use rounds."
         self.session.add_message("assistant", fallback)
         self._schedule_session_index()
         return fallback
@@ -466,7 +468,7 @@ class ChatAgent:
 
         return results
 
-    def _get_rag_store(self) -> Optional[Any]:
+    def _get_rag_store(self) -> Any | None:
         """Lazily initialize the RAG store from settings."""
         if self._rag_init_attempted:
             return self._rag_store
@@ -529,8 +531,8 @@ class ChatAgent:
                 session_path = _REPO_ROOT / "runtime" / "sessions" / f"{session_id}.json"
                 if not session_path.exists():
                     return
-                from neutron_os.rag.store import RAGStore, CORPUS_INTERNAL
                 from neutron_os.rag.personal import ingest_session_file
+                from neutron_os.rag.store import CORPUS_INTERNAL, RAGStore
                 store = RAGStore(url)
                 store.connect()
                 ingest_session_file(session_path, store, corpus=CORPUS_INTERNAL)

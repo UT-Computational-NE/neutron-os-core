@@ -6,7 +6,6 @@ Defines input structures (stakeholder responses) and output structures
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List
 from enum import Enum
 
 
@@ -42,60 +41,60 @@ class Scenario(str, Enum):
 @dataclass
 class PhysicsInputs:
     """Section A: MPACT & Physics (from Cole)."""
-    mpact_states_per_run: Optional[int] = None
-    mpact_wall_clock_minutes: Optional[float] = None
-    mpact_compute_location: Optional[str] = None  # "TACC" or "AWS"
-    mpact_archive_size_gb: Optional[float] = None
-    bias_correction_retraining_frequency: Optional[str] = None  # e.g., "monthly", "quarterly"
-    bias_correction_training_data_gb: Optional[float] = None
-    uq_methodology: Optional[str] = None  # "Monte Carlo", "Latin Hypercube", etc.
+    mpact_states_per_run: int | None = None
+    mpact_wall_clock_minutes: float | None = None
+    mpact_compute_location: str | None = None  # "TACC" or "AWS"
+    mpact_archive_size_gb: float | None = None
+    bias_correction_retraining_frequency: str | None = None  # e.g., "monthly", "quarterly"
+    bias_correction_training_data_gb: float | None = None
+    uq_methodology: str | None = None  # "Monte Carlo", "Latin Hypercube", etc.
 
 
 @dataclass
 class OperationsInputs:
     """Section B: Operations & Production (from Nick)."""
-    operating_hours_per_week: Optional[float] = None
-    isotope_types: Optional[List[str]] = None  # e.g., ["Tc-99m", "Mo-99"]
-    production_rate_per_week: Optional[float] = None  # GBq or other units
-    isotope_modeling_approach: Optional[str] = None
-    prediction_validation_frequency: Optional[str] = None  # e.g., "daily", "weekly"
-    prediction_validation_methodology: Optional[str] = None
-    data_volume_150gb_breakdown: Optional[Dict[str, float]] = None  # e.g., {"CSV": 50, "HDF5": 100}
-    will_external_collaborators_access: Optional[bool] = None
+    operating_hours_per_week: float | None = None
+    isotope_types: list[str] | None = None  # e.g., ["Tc-99m", "Mo-99"]
+    production_rate_per_week: float | None = None  # GBq or other units
+    isotope_modeling_approach: str | None = None
+    prediction_validation_frequency: str | None = None  # e.g., "daily", "weekly"
+    prediction_validation_methodology: str | None = None
+    data_volume_150gb_breakdown: dict[str, float] | None = None  # e.g., {"CSV": 50, "HDF5": 100}
+    will_external_collaborators_access: bool | None = None
 
 
 @dataclass
 class PiXieInputs:
     """Section C: PiXie Hardware (from Max)."""
-    phase_1_inclusion: Optional[bool] = None  # BLOCKING GATE
-    current_daily_data_volume_gb: Optional[float] = None
-    data_format: Optional[str] = None  # e.g., "CSV", "NetCDF", "HDF5"
-    operating_schedule_hours_per_day: Optional[float] = None
-    peak_data_rate_mb_per_sec: Optional[float] = None
+    phase_1_inclusion: bool | None = None  # BLOCKING GATE
+    current_daily_data_volume_gb: float | None = None
+    data_format: str | None = None  # e.g., "CSV", "NetCDF", "HDF5"
+    operating_schedule_hours_per_day: float | None = None
+    peak_data_rate_mb_per_sec: float | None = None
 
 
 @dataclass
 class MLInputs:
     """Section D: ML & Data Engineering (from Jay)."""
-    rag_document_count: Optional[int] = None
-    rag_corpus_size_mb: Optional[float] = None
-    embedding_strategy: Optional[str] = None  # "Claude", "OpenAI", "Local Ollama"
-    training_data_volume_gb: Optional[float] = None
-    training_frequency: Optional[str] = None  # e.g., "monthly", "quarterly"
-    expected_claude_queries_per_day: Optional[float] = None
-    shadowcasting_approach: Optional[str] = None
-    debug_logging: Optional[bool] = field(default=False)
+    rag_document_count: int | None = None
+    rag_corpus_size_mb: float | None = None
+    embedding_strategy: str | None = None  # "Claude", "OpenAI", "Local Ollama"
+    training_data_volume_gb: float | None = None
+    training_frequency: str | None = None  # e.g., "monthly", "quarterly"
+    expected_claude_queries_per_day: float | None = None
+    shadowcasting_approach: str | None = None
+    debug_logging: bool | None = field(default=False)
 
 
 @dataclass
 class ComplianceInputs:
     """Section E: Compliance & Approval (from Dr. Clarno)."""
-    regulatory_frameworks: Optional[List[str]] = None  # e.g., ["ITAR", "NRC"]
-    aws_region_requirement: Optional[str] = None  # "standard" or "govcloud"
-    audit_trail_retention_years: Optional[int] = None
-    tacc_allocation_status: Optional[str] = None
-    multi_region_disaster_recovery: Optional[bool] = None
-    aws_support_level: Optional[str] = None  # "developer", "business", "enterprise"
+    regulatory_frameworks: list[str] | None = None  # e.g., ["ITAR", "NRC"]
+    aws_region_requirement: str | None = None  # "standard" or "govcloud"
+    audit_trail_retention_years: int | None = None
+    tacc_allocation_status: str | None = None
+    multi_region_disaster_recovery: bool | None = None
+    aws_support_level: str | None = None  # "developer", "business", "enterprise"
 
 
 @dataclass
@@ -348,7 +347,7 @@ class CostBreakdown:
         """Calculate total cost for Phase 1 (9mo + 12mo)."""
         return self.annual_cost_2026_9mo() + self.annual_cost_2027_12mo()
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary for JSON export."""
         return {
             "scenario_name": self.scenario_name,

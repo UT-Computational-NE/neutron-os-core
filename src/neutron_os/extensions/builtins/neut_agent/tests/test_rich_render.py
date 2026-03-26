@@ -3,9 +3,9 @@
 import pytest
 
 from neutron_os.extensions.builtins.neut_agent.providers.markdown_utils import (
-    terminal_width,
-    is_diff,
     extract_code_blocks,
+    is_diff,
+    terminal_width,
     truncate_result,
 )
 
@@ -72,7 +72,9 @@ class TestRichRenderProvider:
     @pytest.fixture
     def rich_provider(self):
         try:
-            from neutron_os.extensions.builtins.neut_agent.providers.rich_render import RichRenderProvider
+            from neutron_os.extensions.builtins.neut_agent.providers.rich_render import (
+                RichRenderProvider,
+            )
             return RichRenderProvider()
         except ImportError:
             pytest.skip("rich not installed")

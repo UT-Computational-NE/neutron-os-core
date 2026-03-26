@@ -10,7 +10,6 @@ Uses LockedJsonFile for safe concurrent access across agents.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from neutron_os.infra.state import LockedJsonFile
 
@@ -28,6 +27,7 @@ class LinkRegistry:
     def _load(self) -> None:
         if not self.path.exists():
             return
+        data: dict = {}
         try:
             with LockedJsonFile(self.path) as f:
                 data = f.read()
@@ -50,11 +50,11 @@ class LinkRegistry:
         self.entries[entry.source_path] = entry
         self.save()
 
-    def get(self, source_path: str) -> Optional[LinkEntry]:
+    def get(self, source_path: str) -> LinkEntry | None:
         """Look up a document by its source path."""
         return self.entries.get(source_path)
 
-    def get_by_doc_id(self, doc_id: str) -> Optional[LinkEntry]:
+    def get_by_doc_id(self, doc_id: str) -> LinkEntry | None:
         """Look up a document by its doc_id."""
         for entry in self.entries.values():
             if entry.doc_id == doc_id:

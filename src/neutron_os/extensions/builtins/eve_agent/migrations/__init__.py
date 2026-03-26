@@ -28,9 +28,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import create_engine, inspect, text
 
 # Migration directory
 MIGRATIONS_DIR = Path(__file__).parent
@@ -94,7 +93,7 @@ def run_migrations(command: str, revision: str = "head", message: str = "", auto
         return False
 
 
-def get_current_revision() -> Optional[str]:
+def get_current_revision() -> str | None:
     """Get the current database revision.
 
     Returns:

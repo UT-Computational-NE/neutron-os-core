@@ -16,9 +16,8 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -34,7 +33,7 @@ class UpdateResult:
 class Updater:
     """Handles NeutronOS updates."""
 
-    def __init__(self, repo_root: Optional[Path] = None, dry_run: bool = False):
+    def __init__(self, repo_root: Path | None = None, dry_run: bool = False):
         from neutron_os import REPO_ROOT
         self.repo_root = repo_root or REPO_ROOT
         self.dry_run = dry_run
@@ -309,7 +308,10 @@ class Updater:
 
         # Run migrations
         try:
-            from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations, check_migrations
+            from neutron_os.extensions.builtins.eve_agent.migrations import (
+                check_migrations,
+                run_migrations,
+            )
 
             status = check_migrations()
             if status.get("up_to_date"):
@@ -480,7 +482,7 @@ class Updater:
             "new_version": new_version,
             "categories": categorized,
             "commit_count": len(commits),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "shown": False,
         }
         try:
@@ -536,7 +538,7 @@ class Updater:
             [sys.executable, "-m", "tools.neut_cli", "chat", "--resume", session_id],
         )
 
-    def _get_git_head(self) -> Optional[str]:
+    def _get_git_head(self) -> str | None:
         """Return current HEAD commit hash, or None."""
         try:
             result = subprocess.run(

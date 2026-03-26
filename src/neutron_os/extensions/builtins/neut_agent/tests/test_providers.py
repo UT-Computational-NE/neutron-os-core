@@ -1,17 +1,18 @@
 """Tests for chat providers — factory auto-detection, provider fallback."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from neutron_os.setup.renderer import set_color_enabled
-from neutron_os.extensions.builtins.neut_agent.providers.base import RenderProvider, InputProvider
-from neutron_os.extensions.builtins.neut_agent.providers.ansi_render import AnsiRenderProvider
-from neutron_os.extensions.builtins.neut_agent.providers.basic_input import BasicInputProvider
+import pytest
+
 from neutron_os.extensions.builtins.neut_agent.provider_factory import (
-    create_render_provider,
     create_input_provider,
+    create_render_provider,
 )
+from neutron_os.extensions.builtins.neut_agent.providers.ansi_render import AnsiRenderProvider
+from neutron_os.extensions.builtins.neut_agent.providers.base import InputProvider, RenderProvider
+from neutron_os.extensions.builtins.neut_agent.providers.basic_input import BasicInputProvider
 from neutron_os.infra.gateway import StreamChunk
+from neutron_os.setup.renderer import set_color_enabled
 
 
 @pytest.fixture(autouse=True)

@@ -16,11 +16,12 @@ import json
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 _DOCTOR_DIR = _RUNTIME_DIR / "doctor"
 _BACKUPS_DIR = _DOCTOR_DIR / "backups"
@@ -450,7 +451,7 @@ def _exec_edit_file(params: dict[str, Any]) -> dict[str, Any]:
 
     # Create backup
     _BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     backup_name = f"{ts}_{target.name}"
     backup_path = _BACKUPS_DIR / backup_name
     try:

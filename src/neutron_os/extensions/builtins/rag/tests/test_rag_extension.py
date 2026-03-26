@@ -11,7 +11,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Extension manifest
 # ---------------------------------------------------------------------------
@@ -41,7 +40,7 @@ def test_extension_manifest_valid():
 # ---------------------------------------------------------------------------
 
 def test_corpus_constants():
-    from neutron_os.rag.store import CORPUS_COMMUNITY, CORPUS_ORG, CORPUS_INTERNAL, ALL_CORPORA
+    from neutron_os.rag.store import ALL_CORPORA, CORPUS_COMMUNITY, CORPUS_INTERNAL, CORPUS_ORG
 
     assert CORPUS_COMMUNITY == "rag-community"
     assert CORPUS_ORG == "rag-org"

@@ -21,13 +21,12 @@ import sys
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.extensions.builtins.dfib_agent.tools import (
     TOOL_DEFS,
     execute,
     reset_session_edits,
 )
-
-from neutron_os import REPO_ROOT as _REPO_ROOT
 
 
 @dataclass

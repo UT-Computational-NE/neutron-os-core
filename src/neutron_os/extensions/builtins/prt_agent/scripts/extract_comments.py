@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Extract Word document comments from a .docx file."""
+import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
-import sys
+
 
 def extract_comments(docx_path):
     """Extract and display comments from a Word document."""

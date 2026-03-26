@@ -1,6 +1,7 @@
 """Unit tests for PublisherFactory — provider registration and instantiation."""
 
 import pytest
+
 from neutron_os.extensions.builtins.prt_agent.factory import PublisherFactory
 from neutron_os.extensions.builtins.prt_agent.providers.base import StorageProvider
 

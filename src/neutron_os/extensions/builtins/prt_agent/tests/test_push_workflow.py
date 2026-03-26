@@ -15,7 +15,6 @@ from pathlib import Path
 from unittest import mock
 
 
-
 class TestPushParser:
     """Verify the push command accepts all expected arguments."""
 
@@ -65,6 +64,7 @@ class TestGenerateDocx:
         with mock.patch("neutron_os.REPO_ROOT", tmp_path):
             result = _generate_docx(md_file)
 
+        assert result is not None
         assert result.suffix == ".docx"
         assert result.stem == "test-doc"
         # Output goes to .neut/generated/prd/

@@ -9,9 +9,9 @@ Extracts signals from various sources to feed the design loop:
 """
 
 from .calendar import CalendarExtractor
-from .notes import NotesExtractor
-from .feedback import FeedbackExtractor
 from .docflow_review import DocFlowReviewExtractor, DocFormat, register_prd
+from .feedback import FeedbackExtractor
+from .notes import NotesExtractor
 
 __all__ = [
     "CalendarExtractor",

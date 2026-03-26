@@ -6,7 +6,11 @@ ensuring all components work together correctly.
 
 import pytest
 
-from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+from neutron_os.extensions.builtins.prt_agent.config import (
+    GitPolicy,
+    ProviderConfig,
+    PublisherConfig,
+)
 from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 
 
@@ -123,6 +127,7 @@ class TestEngineProviderAgnostic:
     def test_engine_has_no_provider_imports(self):
         """Verify engine.py doesn't import specific providers."""
         import inspect
+
         from neutron_os.extensions.builtins.prt_agent import engine
 
         source = inspect.getsource(engine)

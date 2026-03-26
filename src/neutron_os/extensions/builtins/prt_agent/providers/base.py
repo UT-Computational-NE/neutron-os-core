@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 # ─── Shared data models used by providers ───
 
 
@@ -127,26 +126,30 @@ class StorageProvider(ABC):
 
     @abstractmethod
     def upload(
-        self, local_path: Path, destination: str, metadata: dict
+        self,
+        local_path: Path,
+        destination: str | None = None,
+        metadata: dict | None = None,
     ) -> UploadResult:
         """Upload artifact to storage.
 
         Args:
             local_path: Path to local file
-            destination: Logical destination path (e.g., "drafts/foo-prd")
+            destination: Logical destination path or remote filename
             metadata: Document metadata (version, author, commit SHA, etc.)
+            **kwargs: Provider-specific options (e.g., draft, headed)
         Returns:
             UploadResult with storage_id, canonical_url, version
         """
         ...
 
     @abstractmethod
-    def download(self, storage_id: str, local_path: Path) -> Path:
+    def download(self, storage_id: str, local_path: Path) -> Path | bool:
         """Download artifact from storage."""
         ...
 
     @abstractmethod
-    def move(self, storage_id: str, new_destination: str) -> UploadResult:
+    def move(self, source: str, destination: str) -> UploadResult | bool:
         """Move artifact (e.g., drafts -> published, published -> archive)."""
         ...
 
@@ -156,8 +159,8 @@ class StorageProvider(ABC):
         ...
 
     @abstractmethod
-    def list_artifacts(self, prefix: str) -> list[StorageEntry]:
-        """List artifacts under a logical prefix."""
+    def list_artifacts(self, folder: str = "") -> list[StorageEntry] | list[dict]:
+        """List artifacts under a logical folder or prefix."""
         ...
 
     @abstractmethod

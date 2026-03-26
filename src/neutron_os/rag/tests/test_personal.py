@@ -16,22 +16,20 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
 from neutron_os.rag.personal import (
-    _md5_text,
+    _MIN_SESSION_MESSAGES,
     _extract_session_text,
     _extract_signal_text,
     _flatten_json,
     _git_log_text,
+    _md5_text,
     _upsert,
+    ingest_git_logs,
     ingest_session_file,
     ingest_sessions,
     ingest_signals,
-    ingest_git_logs,
-    _MIN_SESSION_MESSAGES,
 )
 from neutron_os.rag.store import CORPUS_INTERNAL
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -81,7 +79,9 @@ def test_extract_session_text_happy_path(tmp_path):
     messages = [_user_msg("hello"), _assistant_msg("hi"), _user_msg("thanks")]
     p = tmp_path / "session.json"
     p.write_text(json.dumps(_session_json(messages)))
-    title, text = _extract_session_text(p)
+    result = _extract_session_text(p)
+    assert result is not None
+    title, text = result
     assert title == "Test Session"
     assert "**User:** hello" in text
     assert "**Assistant:** hi" in text
@@ -93,7 +93,9 @@ def test_extract_session_text_uses_stem_when_no_title(tmp_path):
     data = {"messages": messages}  # no title key
     p = tmp_path / "abc123.json"
     p.write_text(json.dumps(data))
-    title, _ = _extract_session_text(p)
+    result = _extract_session_text(p)
+    assert result is not None
+    title, _ = result
     assert "abc123" in title
 
 
@@ -133,7 +135,9 @@ def test_extract_session_text_anthropic_content_blocks(tmp_path):
     ]
     p = tmp_path / "blocks.json"
     p.write_text(json.dumps(_session_json(messages)))
-    _, text = _extract_session_text(p)
+    result = _extract_session_text(p)
+    assert result is not None
+    _, text = result
     assert "block one" in text
     assert "block two" in text
 
@@ -147,7 +151,9 @@ def test_extract_session_text_skips_system_messages(tmp_path):
     ]
     p = tmp_path / "sys.json"
     p.write_text(json.dumps(_session_json(messages)))
-    _, text = _extract_session_text(p)
+    result = _extract_session_text(p)
+    assert result is not None
+    _, text = result
     assert "you are helpful" not in text
 
 
@@ -160,7 +166,9 @@ def test_extract_session_text_empty_content_skipped(tmp_path):
     ]
     p = tmp_path / "empty.json"
     p.write_text(json.dumps(_session_json(messages)))
-    _, text = _extract_session_text(p)
+    result = _extract_session_text(p)
+    assert result is not None
+    _, text = result
     # Empty user message should not appear as a labelled entry
     assert text.count("**User:**") == 1  # only the non-empty one
 
@@ -216,7 +224,9 @@ def test_extract_signal_text_simple(tmp_path):
     data = {"topic": "xenon poisoning", "severity": "high"}
     p = tmp_path / "signal.json"
     p.write_text(json.dumps(data))
-    title, text = _extract_signal_text(p)
+    result = _extract_signal_text(p)
+    assert result is not None
+    title, text = result
     assert "signal" in title.lower()
     assert "xenon" in text
 
@@ -237,7 +247,9 @@ def test_extract_signal_text_nested(tmp_path):
     data = {"event": {"type": "alert", "message": "reactor trip"}}
     p = tmp_path / "nested.json"
     p.write_text(json.dumps(data))
-    title, text = _extract_signal_text(p)
+    result = _extract_signal_text(p)
+    assert result is not None
+    title, text = result
     assert "reactor trip" in text
 
 

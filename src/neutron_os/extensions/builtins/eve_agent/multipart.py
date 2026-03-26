@@ -27,8 +27,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-
 
 # Patterns to detect part numbers in filenames
 PART_PATTERNS = [
@@ -59,8 +57,8 @@ class RecordingPart:
     path: Path
     base_name: str  # The common name without part number
     part_number: int
-    timestamp: Optional[datetime] = None
-    duration_seconds: Optional[float] = None
+    timestamp: datetime | None = None
+    duration_seconds: float | None = None
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -114,7 +112,7 @@ class MultipartDetector:
     def __init__(self, inbox_path: Path):
         self.inbox_path = inbox_path
 
-    def _extract_part_info(self, path: Path) -> Optional[tuple[str, int]]:
+    def _extract_part_info(self, path: Path) -> tuple[str, int] | None:
         """Extract base name and part number from a filename.
 
         Returns (base_name, part_number) or None if not a multi-part file.
@@ -131,7 +129,7 @@ class MultipartDetector:
 
         return None
 
-    def find_groups(self, subdir: Optional[str] = None) -> dict[str, RecordingGroup]:
+    def find_groups(self, subdir: str | None = None) -> dict[str, RecordingGroup]:
         """Find all multi-part recording groups in the inbox.
 
         Args:
@@ -283,9 +281,9 @@ def concatenate_audio_files(paths: list[Path], output_path: Path) -> bool:
         shutil.copy(paths[0], output_path)
         return True
 
-    try:
-        import subprocess
+    import subprocess
 
+    try:
         # Create a temporary file list for ffmpeg
         import tempfile
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
@@ -316,7 +314,7 @@ def concatenate_audio_files(paths: list[Path], output_path: Path) -> bool:
         return False
 
 
-def get_multipart_detector(inbox_path: Optional[Path] = None) -> MultipartDetector:
+def get_multipart_detector(inbox_path: Path | None = None) -> MultipartDetector:
     """Get a multipart detector for the inbox."""
     if inbox_path is None:
         from neutron_os import REPO_ROOT as _REPO_ROOT

@@ -14,10 +14,10 @@ regressions in one category don't hide behind passes in others.
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers

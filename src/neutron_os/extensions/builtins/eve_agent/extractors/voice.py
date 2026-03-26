@@ -11,12 +11,12 @@ Gracefully degrades if whisper is not installed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from .base import BaseExtractor
 from ..models import Extraction, Signal
-from ..registry import register_source, SourceType
+from ..registry import SourceType, register_source
+from .base import BaseExtractor
 
 
 @register_source(
@@ -71,7 +71,7 @@ class VoiceExtractor(BaseExtractor):
                 ],
             )
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         signals: list[Signal] = []
         errors: list[str] = []
 
@@ -81,7 +81,7 @@ class VoiceExtractor(BaseExtractor):
             model = whisper.load_model(model_size)
             result = model.transcribe(str(source), word_timestamps=True)
             transcript: str = str(result.get("text", ""))
-            segments = result.get("segments", [])
+            segments: list[dict] = result.get("segments", [])  # type: ignore[assignment]
 
             if not transcript.strip():
                 return Extraction(
@@ -109,8 +109,8 @@ class VoiceExtractor(BaseExtractor):
                 # Try voice identification (maps speakers to known people)
                 try:
                     from ..voice_id import (
-                        VoiceProfileStore,
                         SpeakerIdentifier,
+                        VoiceProfileStore,
                     )
 
                     # Get agents dir (relative to this file)
@@ -166,8 +166,8 @@ class VoiceExtractor(BaseExtractor):
         transcript_content += f"**Model:** whisper-{model_size}\n\n"
         if speakers:
             transcript_content += "## Speakers\n\n"
-            for speaker, segments in speakers.items():
-                transcript_content += f"- {speaker}: {len(segments)} segments\n"
+            for speaker, spk_segments in speakers.items():
+                transcript_content += f"- {speaker}: {len(spk_segments)} segments\n"
             transcript_content += "\n"
         transcript_content += "## Full Transcript\n\n"
         transcript_content += transcript

@@ -43,11 +43,12 @@ from __future__ import annotations
 import importlib
 import json
 import pkgutil
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .extractors.base import BaseExtractor
@@ -118,8 +119,8 @@ class SourceMetadata:
 
     # Runtime state (not persisted)
     status: SourceStatus = SourceStatus.UNCONFIGURED
-    last_fetch: Optional[str] = None
-    last_error: Optional[str] = None
+    last_fetch: str | None = None
+    last_error: str | None = None
     signal_count: int = 0
 
     def __post_init__(self):
@@ -183,8 +184,8 @@ class SubscriberMetadata:
 
     # Runtime
     status: SourceStatus = SourceStatus.UNCONFIGURED
-    last_publish: Optional[str] = None
-    last_error: Optional[str] = None
+    last_publish: str | None = None
+    last_error: str | None = None
     publish_count: int = 0
 
 
@@ -195,10 +196,10 @@ class SubscriberMetadata:
 class SignalRegistry:
     """Central registry for signal sources and subscribers."""
 
-    _instance: Optional[SignalRegistry] = None
+    _instance: SignalRegistry | None = None
 
     def __init__(self):
-        self._sources: dict[str, tuple[SourceMetadata, Type[BaseExtractor]]] = {}
+        self._sources: dict[str, tuple[SourceMetadata, type[BaseExtractor]]] = {}
         self._subscribers: dict[str, tuple[SubscriberMetadata, Callable]] = {}
         self._state_file = STATE_DIR / "registry_state.json"
         self._discovered = False
@@ -217,13 +218,13 @@ class SignalRegistry:
     def register_source(
         self,
         metadata: SourceMetadata,
-        extractor_class: Type[BaseExtractor],
+        extractor_class: type[BaseExtractor],
     ) -> None:
         """Register a signal source."""
         self._sources[metadata.name] = (metadata, extractor_class)
         metadata.ensure_inbox()
 
-    def get_source(self, name: str) -> Optional[tuple[SourceMetadata, Type[BaseExtractor]]]:
+    def get_source(self, name: str) -> tuple[SourceMetadata, type[BaseExtractor]] | None:
         """Get a source by name."""
         self._ensure_discovered()
         return self._sources.get(name)
@@ -234,7 +235,7 @@ class SignalRegistry:
         self._ensure_discovered()
         return [meta for meta, _ in self._sources.values()]
 
-    def get_extractor(self, name: str) -> Optional[BaseExtractor]:
+    def get_extractor(self, name: str) -> BaseExtractor | None:
         """Get an instantiated extractor for a source."""
         source = self.get_source(name)
         if source:
@@ -242,7 +243,7 @@ class SignalRegistry:
             return extractor_class()
         return None
 
-    def get_inbox_path(self, source_name: str) -> Optional[Path]:
+    def get_inbox_path(self, source_name: str) -> Path | None:
         """Get the inbox path for a source."""
         source = self.get_source(source_name)
         if source:
@@ -279,7 +280,7 @@ class SignalRegistry:
         """Register a signal subscriber."""
         self._subscribers[metadata.name] = (metadata, handler)
 
-    def get_subscriber(self, name: str) -> Optional[tuple[SubscriberMetadata, Callable]]:
+    def get_subscriber(self, name: str) -> tuple[SubscriberMetadata, Callable] | None:
         """Get a subscriber by name."""
         self._ensure_discovered()
         return self._subscribers.get(name)
@@ -293,7 +294,7 @@ class SignalRegistry:
     def publish(
         self,
         signals: list[Signal],
-        subscriber_names: Optional[list[str]] = None,
+        subscriber_names: list[str] | None = None,
     ) -> dict[str, bool]:
         """Publish signals to subscribers.
 
@@ -326,7 +327,7 @@ class SignalRegistry:
 
             try:
                 handler(filtered)
-                meta.last_publish = datetime.now(timezone.utc).isoformat()
+                meta.last_publish = datetime.now(UTC).isoformat()
                 meta.publish_count += len(filtered)
                 results[name] = True
             except Exception as e:
@@ -492,7 +493,7 @@ class SignalRegistry:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
 
         state = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "sources": {},
             "subscribers": {},
         }
@@ -570,7 +571,7 @@ def register_source(
         class GitHubExtractor(BaseExtractor):
             ...
     """
-    def decorator(cls: Type[BaseExtractor]) -> Type[BaseExtractor]:
+    def decorator(cls: type[BaseExtractor]) -> type[BaseExtractor]:
         meta = SourceMetadata(
             name=name,
             description=description,
@@ -579,10 +580,10 @@ def register_source(
         )
 
         # Store for auto-discovery
-        module = cls.__module__
-        if not hasattr(importlib.import_module(module), "_REGISTERED_SOURCES"):
-            setattr(importlib.import_module(module), "_REGISTERED_SOURCES", [])
-        importlib.import_module(module)._REGISTERED_SOURCES.append((meta, cls))
+        mod = importlib.import_module(cls.__module__)
+        if not hasattr(mod, "_REGISTERED_SOURCES"):
+            setattr(mod, "_REGISTERED_SOURCES", [])
+        getattr(mod, "_REGISTERED_SOURCES").append((meta, cls))
 
         return cls
 

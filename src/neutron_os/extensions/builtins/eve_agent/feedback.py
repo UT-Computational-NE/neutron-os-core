@@ -38,13 +38,12 @@ from __future__ import annotations
 import json
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
+from neutron_os import REPO_ROOT as _REPO_ROOT
 
 from .models import Signal
 
-
-from neutron_os import REPO_ROOT as _REPO_ROOT
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 FEEDBACK_DIR = _RUNTIME_DIR / "inbox" / "feedback"
 FEEDBACK_LOG = FEEDBACK_DIR / "feedback_log.json"
@@ -86,7 +85,7 @@ class FeedbackRequest:
 
     def __post_init__(self):
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {
@@ -128,7 +127,7 @@ class SignalFeedback:
 
     def __post_init__(self):
         if not self.received_at:
-            self.received_at = datetime.now(timezone.utc).isoformat()
+            self.received_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {
@@ -224,11 +223,11 @@ class FeedbackCollector:
         self._save()
         return request
 
-    def get_request(self, request_id: str) -> Optional[FeedbackRequest]:
+    def get_request(self, request_id: str) -> FeedbackRequest | None:
         """Get a pending feedback request by its token."""
         return self.pending.get(request_id)
 
-    def get_request_by_signal(self, signal_id: str) -> Optional[FeedbackRequest]:
+    def get_request_by_signal(self, signal_id: str) -> FeedbackRequest | None:
         """Get pending request for a specific signal."""
         for req in self.pending.values():
             if req.signal_id == signal_id:
@@ -267,7 +266,7 @@ class FeedbackCollector:
         for f in self.feedback_log:
             if f.signal_id == signal_id and f.feedback_type == feedback_type:
                 f.applied = True
-                f.applied_at = datetime.now(timezone.utc).isoformat()
+                f.applied_at = datetime.now(UTC).isoformat()
                 self._save()
                 return True
         return False

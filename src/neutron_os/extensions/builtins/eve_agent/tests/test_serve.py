@@ -2,12 +2,13 @@
 
 import json
 import threading
-import urllib.request
+import urllib.error
 import urllib.parse
+import urllib.request
 
 import pytest
 
-from neutron_os.extensions.builtins.eve_agent.serve import create_server, ROUTE_MAP
+from neutron_os.extensions.builtins.eve_agent.serve import ROUTE_MAP, create_server
 
 
 @pytest.fixture
@@ -145,7 +146,7 @@ class TestNote:
         )
         try:
             urllib.request.urlopen(req)
-            assert False, "Expected error"
+            raise AssertionError("Expected error")
         except urllib.error.HTTPError as e:
             assert e.code == 400
 

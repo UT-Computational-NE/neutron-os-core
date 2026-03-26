@@ -21,11 +21,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from ..base import StorageProvider, UploadResult, StorageEntry
+from ..base import StorageEntry, StorageProvider, UploadResult
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ class OneDriveGraphStorageProvider(StorageProvider):
         self.target_folder = config.get("folder", "NeutronOS")
         self.client_id = config.get("client_id", _PUBLIC_CLIENT_ID)
 
-        self._access_token: Optional[str] = None
-        self._token_expiry: Optional[datetime] = None
+        self._access_token: str = ""
+        self._token_expiry: datetime | None = None
 
     def is_available(self) -> bool:
         return True  # No extra dependencies needed
@@ -63,8 +63,8 @@ class OneDriveGraphStorageProvider(StorageProvider):
     def _get_token(self) -> str:
         """Get a valid access token, refreshing if needed."""
         # Check in-memory cache
-        if self._access_token and self._token_expiry:
-            if datetime.now(timezone.utc) < self._token_expiry:
+        if self._access_token != "" and self._token_expiry:
+            if datetime.now(UTC) < self._token_expiry:
                 return self._access_token
 
         # Try loading from file
@@ -73,7 +73,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
             try:
                 data = json.loads(token_file.read_text())
                 expiry = datetime.fromisoformat(data["expires_at"])
-                if datetime.now(timezone.utc) < expiry:
+                if datetime.now(UTC) < expiry:
                     self._access_token = data["access_token"]
                     self._token_expiry = expiry
                     return self._access_token
@@ -137,7 +137,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
 
                 self._access_token = token_resp["access_token"]
                 expires_in_secs = token_resp.get("expires_in", 3600)
-                self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in_secs - 60)
+                self._token_expiry = datetime.now(UTC) + timedelta(seconds=expires_in_secs - 60)
 
                 # Save token
                 self.token_dir.mkdir(parents=True, exist_ok=True)
@@ -194,7 +194,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
 
             self._access_token = token_resp["access_token"]
             expires_in = token_resp.get("expires_in", 3600)
-            self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+            self._token_expiry = datetime.now(UTC) + timedelta(seconds=expires_in - 60)
 
             # Save updated token
             token_data = {
@@ -268,7 +268,8 @@ class OneDriveGraphStorageProvider(StorageProvider):
     def upload(
         self,
         local_path: Path,
-        remote_name: str | None = None,
+        destination: str | None = None,
+        metadata: dict | None = None,
         *,
         draft: bool = False,
         headed: bool = False,
@@ -276,7 +277,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
         if not local_path.exists():
             return UploadResult(success=False, url="", error=f"File not found: {local_path}")
 
-        remote_name = remote_name or local_path.name
+        remote_name = destination or local_path.name
         folder_path = self.target_folder
 
         try:
@@ -446,16 +447,16 @@ class OneDriveGraphStorageProvider(StorageProvider):
     def list_files(self, folder: str = "") -> list[StorageEntry]:
         return []
 
-    def list_artifacts(self, folder: str = "") -> list[dict]:
+    def list_artifacts(self, folder: str = "") -> list[StorageEntry] | list[dict]:
         return []
 
-    def download(self, remote_path: str, local_path: Path) -> bool:
+    def download(self, storage_id: str, local_path: Path) -> Path | bool:
         return False
 
-    def delete(self, remote_path: str) -> bool:
+    def delete(self, storage_id: str) -> bool:
         return False
 
-    def move(self, source: str, destination: str) -> bool:
+    def move(self, source: str, destination: str) -> UploadResult | bool:
         return False
 
     def get_canonical_url(self, storage_id: str) -> str:

@@ -33,12 +33,10 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
-from neutron_os.infra.state import locked_append_jsonl, LockedJsonFile
 
 from .models import Signal
 
@@ -144,7 +142,7 @@ class EchoSuppressor:
     # How long to check against published content
     DEFAULT_LOOKBACK_DAYS = 14
 
-    def __init__(self, index_dir: Optional[Path] = None):
+    def __init__(self, index_dir: Path | None = None):
         self.index_dir = index_dir or ECHO_INDEX_DIR
         self.index_dir.mkdir(parents=True, exist_ok=True)
 
@@ -183,13 +181,13 @@ class EchoSuppressor:
         expires_at = ""
         if expires_days > 0:
             expires_at = (
-                datetime.now(timezone.utc) + timedelta(days=expires_days)
+                datetime.now(UTC) + timedelta(days=expires_days)
             ).isoformat()
 
         published = PublishedContent(
             id=content_id,
             content_type=content_type,
-            published_at=datetime.now(timezone.utc).isoformat(),
+            published_at=datetime.now(UTC).isoformat(),
             content_text=output_text,
             content_hash=content_hash,
             source_signal_ids=[s.signal_id for s in signals],
@@ -214,14 +212,14 @@ class EchoSuppressor:
     # Detection: Check if a signal is an echo
     # ---------------------------------------------------------------------------
 
-    def is_echo(self, signal: Signal, lookback_days: Optional[int] = None) -> bool:
+    def is_echo(self, signal: Signal, lookback_days: int | None = None) -> bool:
         """Check if a signal is an echo of previously published content."""
         return self.detect_echo(signal, lookback_days).is_echo
 
     def detect_echo(
         self,
         signal: Signal,
-        lookback_days: Optional[int] = None,
+        lookback_days: int | None = None,
     ) -> EchoMatch:
         """Detect if a signal is an echo, with detailed match info.
 
@@ -233,7 +231,7 @@ class EchoSuppressor:
             EchoMatch with detection results
         """
         lookback = lookback_days or self.DEFAULT_LOOKBACK_DAYS
-        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback)
+        cutoff = datetime.now(UTC) - timedelta(days=lookback)
 
         # Get text to check
         text = signal.raw_text + " " + signal.detail
@@ -325,7 +323,7 @@ class EchoSuppressor:
             explanation="No echo detected",
         )
 
-    def get_echo_source(self, signal: Signal) -> Optional[str]:
+    def get_echo_source(self, signal: Signal) -> str | None:
         """Get the ID of the published content this signal echoes."""
         match = self.detect_echo(signal)
         return match.matched_content_id if match.is_echo else None
@@ -335,7 +333,7 @@ class EchoSuppressor:
         # Check expiry
         if content.expires_at:
             expires = datetime.fromisoformat(content.expires_at.replace("Z", "+00:00"))
-            if expires < datetime.now(timezone.utc):
+            if expires < datetime.now(UTC):
                 return False
 
         # Check lookback
@@ -382,7 +380,7 @@ class EchoSuppressor:
 
     def get_echo_stats(self) -> dict:
         """Get statistics about echo suppression."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=self.DEFAULT_LOOKBACK_DAYS)
 
         active = 0
@@ -430,7 +428,8 @@ class EchoSuppressor:
 
     def _save_index(self) -> None:
         """Save index to disk (atomic full-file rewrite, multi-process safe)."""
-        import os, tempfile
+        import os
+        import tempfile
         index_file = self.index_dir / "published_content.jsonl"
         index_file.parent.mkdir(parents=True, exist_ok=True)
         lines = "\n".join(
@@ -453,7 +452,7 @@ class EchoSuppressor:
 
     def cleanup_expired(self) -> int:
         """Remove expired content from index."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=self.DEFAULT_LOOKBACK_DAYS)
 
         expired_ids = [
@@ -486,7 +485,7 @@ class EchoSuppressor:
 # Convenience functions
 # ---------------------------------------------------------------------------
 
-_suppressor: Optional[EchoSuppressor] = None
+_suppressor: EchoSuppressor | None = None
 
 
 def get_suppressor() -> EchoSuppressor:

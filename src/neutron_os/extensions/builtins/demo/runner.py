@@ -12,8 +12,8 @@ Reuses tools/agents/setup/renderer.py for consistent visual language
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from neutron_os.setup import renderer
 

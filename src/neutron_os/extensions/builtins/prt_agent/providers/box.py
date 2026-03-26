@@ -52,7 +52,6 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 try:
     from boxsdk import Client, OAuth2
@@ -85,10 +84,10 @@ def _load_config() -> dict:
 class BoxProvider:
     """Provider for Box.com file storage and collaboration."""
 
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None
-    enterprise_id: Optional[str] = None
-    access_token: Optional[str] = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    enterprise_id: str | None = None
+    access_token: str | None = None
 
     def __post_init__(self):
         """Initialize Box client."""
@@ -111,6 +110,7 @@ class BoxProvider:
         # OAuth2 setup (could be user-initiated or service account)
         # For now, this is a placeholder; actual implementation depends on
         # whether using 3-legged (user) or 2-legged (service account) OAuth
+        assert OAuth2 is not None  # guarded by Client check above
         self.oauth2 = OAuth2(
             client_id=self.client_id,
             client_secret=self.client_secret,
@@ -118,7 +118,7 @@ class BoxProvider:
 
         # Note: Actual token acquisition would happen in a method
         # (either interactive login or using cached token)
-        self.client: Optional[Client] = None
+        self.client: Client | None = None  # type: ignore[valid-type]
 
     def _authenticate(self) -> None:
         """Authenticate with Box API.
@@ -130,6 +130,7 @@ class BoxProvider:
         - Cached token refresh
         """
         if self.client is None and self.access_token:
+            assert Client is not None  # guarded in __post_init__
             self.client = Client(self.oauth2)
         elif self.client is None:
             raise RuntimeError(

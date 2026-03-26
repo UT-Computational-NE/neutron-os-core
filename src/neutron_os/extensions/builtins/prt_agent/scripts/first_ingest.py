@@ -24,14 +24,15 @@ from __future__ import annotations
 
 import argparse
 import shutil
-from pathlib import Path
 
 # Add parent to path for imports
 import sys
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from ..cleanup import apply_cleanup
-from ..converters.pandoc import PandocConverter, ConversionOptions
+from ..converters.pandoc import ConversionOptions, PandocConverter
 from ..validation import DocumentValidator
 
 
@@ -65,10 +66,10 @@ def main():
     # Step 1: Get source .docx
     print("1️⃣  Acquiring source .docx")
 
-    source_docx: Path | None = None
+    source_docx: Path | None = None  # assigned below in both branches
 
     if args.local_docx:
-        source_docx = args.local_docx.resolve()
+        source_docx = Path(args.local_docx).resolve()
         if not source_docx.exists():
             print(f"❌ Local .docx not found: {source_docx}")
             return 1
@@ -123,6 +124,7 @@ def main():
         )
 
         markdown_path.parent.mkdir(parents=True, exist_ok=True)
+        assert source_docx is not None, "source_docx must be set by this point"
         result = converter.convert(
             source_docx,
             markdown_path,
@@ -187,6 +189,7 @@ def main():
     source_dir.mkdir(parents=True, exist_ok=True)
     archived_docx = source_dir / f"{args.doc_id}.docx"
 
+    assert source_docx is not None
     shutil.copy2(source_docx, archived_docx)
     print(f"   ✓ Archived to {archived_docx}")
 

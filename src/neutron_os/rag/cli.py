@@ -73,6 +73,7 @@ def _get_store():
 def cmd_index(args: argparse.Namespace) -> None:
     """Index one or more paths (or the default repo paths)."""
     from neutron_os import REPO_ROOT
+
     from .ingest import ingest_file, ingest_repo
     from .store import CORPUS_INTERNAL
 
@@ -80,8 +81,8 @@ def cmd_index(args: argparse.Namespace) -> None:
     store = _get_store()
     try:
         if args.paths:
-            from .ingest import IngestStats, ingest_file
             from .extract import SUPPORTED_EXTENSIONS
+            from .ingest import IngestStats, ingest_file
             total = IngestStats()
             for raw in args.paths:
                 p = Path(raw).resolve()
@@ -225,6 +226,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
 def cmd_watch(args: argparse.Namespace) -> None:
     """Watch workspace directories and re-index changed files automatically."""
     from neutron_os import REPO_ROOT
+
     from .store import CORPUS_INTERNAL
     from .watcher import watch
 
@@ -239,6 +241,7 @@ def cmd_watch(args: argparse.Namespace) -> None:
 def cmd_reindex(args: argparse.Namespace) -> None:
     """Force re-index by clearing checksums and re-running index."""
     from neutron_os import REPO_ROOT
+
     from .ingest import ingest_repo
     from .store import CORPUS_INTERNAL
 

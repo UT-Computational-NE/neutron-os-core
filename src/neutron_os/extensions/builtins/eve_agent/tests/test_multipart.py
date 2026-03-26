@@ -1,13 +1,14 @@
 """Unit tests for multi-part recording detection."""
 
-import pytest
 from datetime import datetime
 
+import pytest
+
 from neutron_os.extensions.builtins.eve_agent.multipart import (
-    MultipartDetector,
-    RecordingPart,
-    RecordingGroup,
     PART_PATTERNS,
+    MultipartDetector,
+    RecordingGroup,
+    RecordingPart,
 )
 
 

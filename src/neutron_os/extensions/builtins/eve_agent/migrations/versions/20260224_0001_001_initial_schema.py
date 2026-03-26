@@ -12,16 +12,15 @@ This migration creates the complete initial schema for Neut Sense:
 - people: Person registry with aliases
 - HNSW indexes for fast vector search
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision: str = '001'
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # Embedding dimension (OpenAI text-embedding-3-small)
 EMBEDDING_DIM = 1536

@@ -18,7 +18,6 @@ from dataclasses import dataclass
 
 from neutron_os.setup.renderer import _use_color
 
-
 # ---------------------------------------------------------------------------
 # Frame definitions
 # ---------------------------------------------------------------------------

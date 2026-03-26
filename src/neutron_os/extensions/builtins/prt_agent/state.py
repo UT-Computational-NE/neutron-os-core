@@ -8,13 +8,11 @@ Uses LockedJsonFile for safe concurrent access across agents.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
-
-from neutron_os.infra.state import LockedJsonFile
-
 # Import directly from the models.py file (avoid models/ package conflict)
 from dataclasses import dataclass, field
+from pathlib import Path
+
+from neutron_os.infra.state import LockedJsonFile
 
 
 # Copy the necessary classes from models.py to avoid circular imports
@@ -200,6 +198,7 @@ class StateStore:
     def _load(self) -> None:
         if not self.path.exists():
             return
+        data: dict = {}
         try:
             with LockedJsonFile(self.path) as f:
                 data = f.read()
@@ -217,11 +216,11 @@ class StateStore:
         with LockedJsonFile(self.path, exclusive=True) as f:
             f.write(data)
 
-    def get(self, doc_id: str) -> Optional[DocumentState]:
+    def get(self, doc_id: str) -> DocumentState | None:
         """Get document state by ID."""
         return self.documents.get(doc_id)
 
-    def get_by_path(self, source_path: str) -> Optional[DocumentState]:
+    def get_by_path(self, source_path: str) -> DocumentState | None:
         """Get document state by source path."""
         for doc in self.documents.values():
             if doc.source_path == source_path:

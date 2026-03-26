@@ -16,7 +16,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 def _find_project_root() -> Path:
@@ -333,7 +333,7 @@ def _probe_network(result: ProbeResult) -> None:
 # Public API
 # ---------------------------------------------------------------------------
 
-def run_probe(root: Optional[Path] = None) -> ProbeResult:
+def run_probe(root: Path | None = None) -> ProbeResult:
     """Run all probes and return a complete ProbeResult."""
     if root is None:
         root = _find_project_root()

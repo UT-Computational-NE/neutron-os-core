@@ -3,10 +3,15 @@
 Tests the reverse flow: external storage → local .md updates.
 """
 
-import pytest
 from unittest.mock import patch
 
-from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+import pytest
+
+from neutron_os.extensions.builtins.prt_agent.config import (
+    GitPolicy,
+    ProviderConfig,
+    PublisherConfig,
+)
 from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
 

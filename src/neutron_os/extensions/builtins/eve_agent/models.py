@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 # Standard date formats for consistency across the pipeline
 DATE_FORMAT_ISO = "%Y-%m-%d"  # User-facing filenames: changelog_2026-02-24.md
@@ -82,7 +81,7 @@ class Extraction:
     signals: list[Signal] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     extracted_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
     def to_dict(self) -> dict:
@@ -115,7 +114,7 @@ class Changelog:
     entries: list[ChangelogEntry] = field(default_factory=list)
     summary: str = ""
     generated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
 
@@ -136,7 +135,7 @@ class SignalManifest:
     Persists to signal_manifest.json in the processed directory.
     """
 
-    def __init__(self, manifest_path: "Path | None" = None):
+    def __init__(self, manifest_path: Path | None = None):
         from neutron_os import REPO_ROOT as _REPO_ROOT
         self.manifest_path = manifest_path or (_REPO_ROOT / "runtime" / "inbox" / "processed" / "signal_manifest.json")
         self._reported: dict[str, ReportedSignal] = {}
@@ -172,7 +171,7 @@ class SignalManifest:
                 }
                 for sig_id, r in self._reported.items()
             },
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         }
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         self.manifest_path.write_text(json.dumps(data, indent=2))
@@ -185,7 +184,7 @@ class SignalManifest:
         """Mark a signal as reported in the given changelog."""
         self._reported[signal.signal_id] = ReportedSignal(
             signal_id=signal.signal_id,
-            reported_at=datetime.now(timezone.utc).isoformat(),
+            reported_at=datetime.now(UTC).isoformat(),
             changelog_date=changelog_date,
             initiative=signal.initiatives[0] if signal.initiatives else "",
             detail_preview=signal.detail[:100],

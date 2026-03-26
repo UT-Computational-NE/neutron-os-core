@@ -30,11 +30,11 @@ import json
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CONFIG_DIR = _RUNTIME_DIR / "config"
 CALENDAR_CACHE = _RUNTIME_DIR / "inbox" / "cache" / "calendar_events.json"
@@ -133,7 +133,7 @@ class CalendarProvider(ABC):
         self,
         start: datetime,
         end: datetime,
-        calendar_id: Optional[str] = None,
+        calendar_id: str | None = None,
     ) -> list[CalendarEvent]:
         """Fetch events in the given time range."""
         pass
@@ -147,7 +147,7 @@ class CalendarProvider(ABC):
 class ICalFileProvider(CalendarProvider):
     """Load events from local .ics files (for testing or exported calendars)."""
 
-    def __init__(self, ics_path: Optional[Path] = None):
+    def __init__(self, ics_path: Path | None = None):
         self.ics_path = ics_path or (CONFIG_DIR / "calendar.ics")
 
     def is_available(self) -> bool:
@@ -157,7 +157,7 @@ class ICalFileProvider(CalendarProvider):
         self,
         start: datetime,
         end: datetime,
-        calendar_id: Optional[str] = None,
+        calendar_id: str | None = None,
     ) -> list[CalendarEvent]:
         if not self.is_available():
             return []
@@ -182,11 +182,11 @@ class ICalFileProvider(CalendarProvider):
                 event_start = dtstart.dt
                 if isinstance(event_start, datetime):
                     if event_start.tzinfo is None:
-                        event_start = event_start.replace(tzinfo=timezone.utc)
+                        event_start = event_start.replace(tzinfo=UTC)
                 else:
                     # Date only, convert to datetime
                     event_start = datetime.combine(
-                        event_start, datetime.min.time(), tzinfo=timezone.utc
+                        event_start, datetime.min.time(), tzinfo=UTC
                     )
 
                 event_end = event_start + timedelta(hours=1)  # Default 1 hour
@@ -194,7 +194,7 @@ class ICalFileProvider(CalendarProvider):
                     end_dt = dtend.dt
                     if isinstance(end_dt, datetime):
                         if end_dt.tzinfo is None:
-                            end_dt = end_dt.replace(tzinfo=timezone.utc)
+                            end_dt = end_dt.replace(tzinfo=UTC)
                         event_end = end_dt
 
                 # Filter by time range
@@ -267,15 +267,15 @@ class ICalFileProvider(CalendarProvider):
                             if dtstart.endswith("Z"):
                                 event_start = datetime.strptime(
                                     dtstart, "%Y%m%dT%H%M%SZ"
-                                ).replace(tzinfo=timezone.utc)
+                                ).replace(tzinfo=UTC)
                             else:
                                 event_start = datetime.strptime(
                                     dtstart[:15], "%Y%m%dT%H%M%S"
-                                ).replace(tzinfo=timezone.utc)
+                                ).replace(tzinfo=UTC)
                         else:
                             event_start = datetime.strptime(
                                 dtstart[:8], "%Y%m%d"
-                            ).replace(tzinfo=timezone.utc)
+                            ).replace(tzinfo=UTC)
 
                         event_end = event_start + timedelta(hours=1)
 
@@ -360,7 +360,7 @@ class GoogleCalendarProvider(CalendarProvider):
         self,
         start: datetime,
         end: datetime,
-        calendar_id: Optional[str] = None,
+        calendar_id: str | None = None,
     ) -> list[CalendarEvent]:
         service = self._get_service()
         if not service:
@@ -460,8 +460,8 @@ class OutlookCalendarProvider(CalendarProvider):
     def __init__(self):
         self.credentials_path = CONFIG_DIR / "microsoft_calendar_credentials.json"
         self.token_path = CONFIG_DIR / "microsoft_calendar_token.json"
-        self._access_token: Optional[str] = None
-        self._token_expiry: Optional[datetime] = None
+        self._access_token: str | None = None
+        self._token_expiry: datetime | None = None
 
     def is_available(self) -> bool:
         # Check for credentials file or environment variables
@@ -494,7 +494,7 @@ class OutlookCalendarProvider(CalendarProvider):
         """Get or refresh access token."""
         # Check if we have a valid cached token
         if self._access_token is not None and self._token_expiry is not None:
-            if datetime.now(timezone.utc) < self._token_expiry:
+            if datetime.now(UTC) < self._token_expiry:
                 return self._access_token  # str is guaranteed here
 
         # Try to load from token file
@@ -502,7 +502,7 @@ class OutlookCalendarProvider(CalendarProvider):
             try:
                 token_data = json.loads(self.token_path.read_text())
                 expiry = datetime.fromisoformat(token_data["expires_at"])
-                if datetime.now(timezone.utc) < expiry:
+                if datetime.now(UTC) < expiry:
                     self._access_token = token_data["access_token"]
                     self._token_expiry = expiry
                     assert self._access_token is not None
@@ -519,8 +519,8 @@ class OutlookCalendarProvider(CalendarProvider):
 
     def _refresh_token(self, refresh_token: str) -> str:
         """Refresh the access token."""
-        import urllib.request
         import urllib.parse
+        import urllib.request
 
         client_id, client_secret = self._get_credentials()
 
@@ -544,7 +544,7 @@ class OutlookCalendarProvider(CalendarProvider):
 
                 self._access_token = result["access_token"]
                 expires_in = result.get("expires_in", 3600)
-                self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+                self._token_expiry = datetime.now(UTC) + timedelta(seconds=expires_in - 60)
 
                 # Save token
                 token_data = {
@@ -563,9 +563,9 @@ class OutlookCalendarProvider(CalendarProvider):
     def _interactive_auth(self) -> str:
         """Perform interactive OAuth2 authentication."""
         # For now, use device code flow (works without redirect URI)
-        import urllib.request
-        import urllib.parse
         import urllib.error
+        import urllib.parse
+        import urllib.request
 
         client_id, _ = self._get_credentials()
 
@@ -619,7 +619,7 @@ class OutlookCalendarProvider(CalendarProvider):
 
                     self._access_token = token_result["access_token"]
                     expires_in = token_result.get("expires_in", 3600)
-                    self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+                    self._token_expiry = datetime.now(UTC) + timedelta(seconds=expires_in - 60)
 
                     # Save token
                     token_data = {
@@ -650,15 +650,15 @@ class OutlookCalendarProvider(CalendarProvider):
         self,
         start: datetime,
         end: datetime,
-        calendar_id: Optional[str] = None,
+        calendar_id: str | None = None,
     ) -> list[CalendarEvent]:
         """Fetch events from Microsoft Graph API."""
         if not self.is_available():
             return []
 
         try:
-            import urllib.request
             import urllib.parse
+            import urllib.request
 
             access_token = self._get_access_token()
 
@@ -701,15 +701,15 @@ class OutlookCalendarProvider(CalendarProvider):
                 try:
                     event_start = datetime.fromisoformat(start_str.replace("Z", ""))
                     if tz == "UTC":
-                        event_start = event_start.replace(tzinfo=timezone.utc)
+                        event_start = event_start.replace(tzinfo=UTC)
                     else:
-                        event_start = event_start.replace(tzinfo=timezone.utc)  # Simplified
+                        event_start = event_start.replace(tzinfo=UTC)  # Simplified
 
                     event_end = datetime.fromisoformat(end_str.replace("Z", "")) if end_str else event_start + timedelta(hours=1)
                     if tz == "UTC":
-                        event_end = event_end.replace(tzinfo=timezone.utc)
+                        event_end = event_end.replace(tzinfo=UTC)
                     else:
-                        event_end = event_end.replace(tzinfo=timezone.utc)
+                        event_end = event_end.replace(tzinfo=UTC)
                 except ValueError:
                     continue
 
@@ -808,7 +808,7 @@ class CalendarContext:
         self,
         timestamp: str | datetime,
         window_minutes: int = 15,
-    ) -> Optional[CalendarEvent]:
+    ) -> CalendarEvent | None:
         """Find a calendar event that overlaps with the given timestamp.
 
         Args:
@@ -828,7 +828,7 @@ class CalendarContext:
             dt = timestamp
 
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
 
         # Search window: 2 hours before to window_minutes after
         search_start = dt - timedelta(hours=2)
@@ -863,7 +863,7 @@ class CalendarContext:
     def get_attendees_for_signal(
         self,
         timestamp: str | datetime,
-        exclude_originator: Optional[str] = None,
+        exclude_originator: str | None = None,
     ) -> list[str]:
         """Get meeting attendees who might want to see this signal.
 
@@ -918,7 +918,7 @@ class CalendarContext:
     def suggest_fyi_recipients(
         self,
         signal,
-        exclude: Optional[list[str]] = None,
+        exclude: list[str] | None = None,
     ) -> list[dict]:
         """Suggest people who should be notified about this signal.
 

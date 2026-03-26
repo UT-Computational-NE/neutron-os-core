@@ -21,7 +21,6 @@ import logging
 import os
 import time
 import urllib.request
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ _openai_quota_blocked = False
 def embed_texts(
     texts: list[str],
     model: str = "text-embedding-3-small",
-) -> Optional[list[list[float]]]:
+) -> list[list[float]] | None:
     """Embed texts using the best available provider.
 
     Priority: remote NEUT_EMBED_URL → OpenAI → local Ollama → None.
@@ -74,7 +73,7 @@ def embed_texts(
     return None
 
 
-def _embed_remote(texts: list[str]) -> Optional[list[list[float]]]:
+def _embed_remote(texts: list[str]) -> list[list[float]] | None:
     """Embed via a configurable remote OpenAI-compatible endpoint.
 
     Reads:
@@ -132,7 +131,7 @@ def _embed_remote(texts: list[str]) -> Optional[list[list[float]]]:
     return all_embeddings if all_embeddings else None
 
 
-def _embed_openai(texts: list[str], model: str) -> Optional[list[list[float]]]:
+def _embed_openai(texts: list[str], model: str) -> list[list[float]] | None:
     """Embed via OpenAI API. Returns None if unavailable or quota-blocked."""
     global _openai_quota_blocked
 
@@ -195,7 +194,7 @@ def _embed_openai(texts: list[str], model: str) -> Optional[list[list[float]]]:
     return all_embeddings
 
 
-def _embed_ollama(texts: list[str]) -> Optional[list[list[float]]]:
+def _embed_ollama(texts: list[str]) -> list[list[float]] | None:
     """Embed via local Ollama. Returns None if Ollama is not available."""
     # Ensure Ollama is running
     try:

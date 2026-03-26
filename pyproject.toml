@@ -75,3 +75,31 @@ filterwarnings = [
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501",   # line length handled by formatter
+    "SIM108", # ternary — readability preference
+    "SIM105", # contextlib.suppress — try/except pass is fine
+    "SIM102", # collapsible if — readability preference
+    "SIM117", # combine with statements — readability preference
+    "SIM115", # open context manager — not always applicable
+    "UP042",  # __future__ annotations — keep explicit
+    "B904",   # raise from — too noisy for existing code
+    "B027",   # empty method body — abstract stubs are fine
+    "B007",   # unused loop variable — underscore convention not enforced
+    "B905",   # zip strict — too noisy for existing code
+    "B023",   # function binding loop var — intentional in callbacks
+    "SIM103", # return condition directly — multi-branch readability
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["neutron_os"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "standard"
+reportMissingImports = "warning"
+reportMissingModuleSource = false

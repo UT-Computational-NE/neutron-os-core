@@ -6,18 +6,18 @@ Each method calculates costs for one service category based on stakeholder input
 """
 
 from .data_models import (
-    StakeholderResponses,
-    ComputeCosts,
-    StorageCosts,
-    DatabaseCosts,
     AnalyticsCosts,
+    ComputeCosts,
+    CostBreakdown,
+    DatabaseCosts,
+    DeveloperToolsCosts,
+    ExternalServicesCosts,
+    ManagementCosts,
+    MonitoringCosts,
     NetworkingCosts,
     SecurityCosts,
-    MonitoringCosts,
-    DeveloperToolsCosts,
-    ManagementCosts,
-    ExternalServicesCosts,
-    CostBreakdown,
+    StakeholderResponses,
+    StorageCosts,
 )
 
 

@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 # Config directory: tools/agents/config/ (gitignored, real data)
 # Falls back to tools/agents/config.example/ if config/ doesn't exist
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CONFIG_DIR = _RUNTIME_DIR / "config"
 CONFIG_EXAMPLE_DIR = _RUNTIME_DIR / "config.example"
@@ -92,7 +92,7 @@ class Initiative:
 class Correlator:
     """Loads people and initiatives from config, provides fuzzy matching."""
 
-    def __init__(self, config_dir: Optional[Path] = None):
+    def __init__(self, config_dir: Path | None = None):
         if config_dir is None:
             config_dir = CONFIG_DIR if CONFIG_DIR.exists() else CONFIG_EXAMPLE_DIR
         self.config_dir = config_dir
@@ -290,7 +290,7 @@ class Correlator:
             ))
         return initiatives
 
-    def match_person(self, mention: str) -> Optional[Person]:
+    def match_person(self, mention: str) -> Person | None:
         """Fuzzy-match a text mention to a known person.
 
         Handles partial names like "Cole" → "Cole Gentry",
@@ -313,7 +313,7 @@ class Correlator:
 
         return None
 
-    def match_initiative(self, mention: str) -> Optional[Initiative]:
+    def match_initiative(self, mention: str) -> Initiative | None:
         """Fuzzy-match a topic mention to a known initiative.
 
         Matching order (first match wins):
@@ -352,7 +352,7 @@ class Correlator:
 
         # 5. Multi-word alias contained in mention (reverse substring)
         # Only for aliases with 2+ words to avoid false positives on short words
-        best_match: Optional[Initiative] = None
+        best_match: Initiative | None = None
         best_len = 0
         for init in self.initiatives:
             for alias in init.aliases:

@@ -37,7 +37,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
@@ -147,7 +147,7 @@ class TemplateRegistry:
     def resolve(
         self,
         template_id: str,
-        variables: Optional[dict[str, str]] = None,
+        variables: dict[str, str] | None = None,
     ) -> ComposedPrompt:
         """Resolve a template by id, substituting variables.
 
@@ -187,7 +187,7 @@ class TemplateRegistry:
         parent_content = self._compose_content(parent)
         return f"{parent_content}\n\n{entry.content}"
 
-    def get(self, template_id: str) -> Optional[_TemplateEntry]:
+    def get(self, template_id: str) -> _TemplateEntry | None:
         self._ensure_loaded()
         return self._templates.get(template_id)
 
@@ -200,7 +200,7 @@ def _substitute(content: str, variables: dict[str, str]) -> str:
     """Substitute {variable_name} slots. Unknown variables are left as-is."""
     def replace(m: re.Match) -> str:
         key = m.group(1)
-        return variables.get(key, m.group(0))
+        return variables.get(key) or m.group(0)
     return re.sub(r"\{(\w+)\}", replace, content)
 
 
@@ -258,7 +258,7 @@ NON-NEGOTIABLE SECURITY POLICY (export-controlled session):
 ]
 
 # Module-level singleton
-_registry: Optional[TemplateRegistry] = None
+_registry: TemplateRegistry | None = None
 
 
 def get_registry() -> TemplateRegistry:

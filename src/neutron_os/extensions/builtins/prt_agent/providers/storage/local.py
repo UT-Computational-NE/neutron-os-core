@@ -7,15 +7,15 @@ No authentication required.
 from __future__ import annotations
 
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ...factory import PublisherFactory
 from ..base import (
+    StorageEntry,
     StorageProvider,
     UploadResult,
-    StorageEntry,
 )
 
 
@@ -29,10 +29,12 @@ class LocalStorageProvider(StorageProvider):
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def upload(
-        self, local_path: Path, destination: str, metadata: dict
+        self, local_path: Path, destination: str | None = None, metadata: dict | None = None,
     ) -> UploadResult:
         """Copy file to the output directory."""
-        dest_path = self.base_dir / destination
+        dest_name = destination or local_path.name
+        metadata = metadata or {}
+        dest_path = self.base_dir / dest_name
         dest_path.parent.mkdir(parents=True, exist_ok=True)
 
         shutil.copy2(str(local_path), str(dest_path))
@@ -57,15 +59,15 @@ class LocalStorageProvider(StorageProvider):
         shutil.copy2(str(source), str(local_path))
         return local_path
 
-    def move(self, storage_id: str, new_destination: str) -> UploadResult:
+    def move(self, source: str, destination: str) -> UploadResult:
         """Move file to a new location in the output directory."""
-        source = self.base_dir / storage_id
-        if not source.exists():
-            raise FileNotFoundError(f"Artifact not found: {storage_id}")
+        source_path = self.base_dir / source
+        if not source_path.exists():
+            raise FileNotFoundError(f"Artifact not found: {source}")
 
-        dest = self.base_dir / new_destination
+        dest = self.base_dir / destination
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source), str(dest))
+        shutil.move(str(source_path), str(dest))
 
         new_id = str(dest.relative_to(self.base_dir))
         return UploadResult(
@@ -78,9 +80,9 @@ class LocalStorageProvider(StorageProvider):
         path = self.base_dir / storage_id
         return path.resolve().as_uri()
 
-    def list_artifacts(self, prefix: str) -> list[StorageEntry]:
-        """List files under a prefix in the output directory."""
-        prefix_path = self.base_dir / prefix if prefix else self.base_dir
+    def list_artifacts(self, folder: str = "") -> list[StorageEntry]:
+        """List files under a folder in the output directory."""
+        prefix_path = self.base_dir / folder if folder else self.base_dir
         entries = []
 
         if not prefix_path.exists():
@@ -98,7 +100,7 @@ class LocalStorageProvider(StorageProvider):
                     name=path.name,
                     size_bytes=stat.st_size,
                     last_modified=datetime.fromtimestamp(
-                        stat.st_mtime, tz=timezone.utc
+                        stat.st_mtime, tz=UTC
                     ).isoformat(),
                     url=path.resolve().as_uri(),
                 ))

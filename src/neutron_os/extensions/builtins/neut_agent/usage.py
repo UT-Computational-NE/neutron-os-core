@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
 # Per-1M token pricing (input, output) — update as pricing changes
 _COST_TABLE: dict[str, tuple[float, float]] = {
     # Anthropic

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
@@ -47,7 +47,7 @@ def log_routing_decision(
         pass
 
     entry: dict[str, Any] = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "session_id": session_id,
         "query_hash": query_hash,
         "tier": tier,

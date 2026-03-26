@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+from datetime import UTC
 from difflib import get_close_matches
 from pathlib import Path
 
@@ -39,7 +40,7 @@ class SuggestingArgumentParser(argparse.ArgumentParser):
         else:
             super().print_help(file)
 
-    def error(self, message: str) -> None:
+    def error(self, message: str) -> None:  # type: ignore[override]
         # Check if this is an "invalid choice" error for a subcommand
         match = re.search(r"invalid choice: '([^']+)'", message)
         if match and self._valid_subcommands:
@@ -88,6 +89,7 @@ class SuggestingArgumentParser(argparse.ArgumentParser):
 
 # Resolve paths relative to tools/agents/
 from neutron_os import REPO_ROOT as _REPO_ROOT  # noqa: E402
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INBOX_RAW = _RUNTIME_DIR / "inbox" / "raw"
 INBOX_PROCESSED = _RUNTIME_DIR / "inbox" / "processed"
@@ -196,10 +198,12 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 def cmd_ingest(args: argparse.Namespace) -> None:
     """Run extractors on inbox data."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     from pathlib import Path
-    from .correlator import Correlator
+
     from neutron_os.infra.gateway import Gateway
+
+    from .correlator import Correlator
     from .models import Signal
 
     correlator = Correlator()
@@ -221,10 +225,10 @@ def cmd_ingest(args: argparse.Namespace) -> None:
     reprocess_from = None
     if hasattr(args, 'reprocess_from') and args.reprocess_from and not single_file:
         if args.reprocess_from.lower() == 'today':
-            reprocess_from = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            reprocess_from = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         else:
             try:
-                reprocess_from = datetime.strptime(args.reprocess_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                reprocess_from = datetime.strptime(args.reprocess_from, "%Y-%m-%d").replace(tzinfo=UTC)
             except ValueError:
                 print(f"Invalid date format: {args.reprocess_from}. Use YYYY-MM-DD or 'today'")
                 return
@@ -263,9 +267,9 @@ def cmd_ingest(args: argparse.Namespace) -> None:
     # Save extracted signals
     if all_signals:
         INBOX_PROCESSED.mkdir(parents=True, exist_ok=True)
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")
         output = INBOX_PROCESSED / f"signals_{ts}.json"
         data = [s.to_dict() for s in all_signals]
         output.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -327,7 +331,8 @@ def _ingest_voice(gateway, correlator, reprocess_from=None, single_file=None) ->
         reprocess_from: Optional datetime - only process files modified since this date
         single_file: Optional Path - process only this specific file
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from .extractors.voice import VoiceExtractor
 
     print("\nVoice extractor")
@@ -368,7 +373,7 @@ def _ingest_voice(gateway, correlator, reprocess_from=None, single_file=None) ->
         if extractor.can_handle(audio_file):
             # Check modification time if reprocessing with date filter
             if reprocess_from:
-                mtime = datetime.fromtimestamp(audio_file.stat().st_mtime, tz=timezone.utc)
+                mtime = datetime.fromtimestamp(audio_file.stat().st_mtime, tz=UTC)
                 if mtime < reprocess_from:
                     skipped += 1
                     continue
@@ -959,7 +964,8 @@ def cmd_suggest(args: argparse.Namespace) -> None:
 
 def cmd_brief(args: argparse.Namespace) -> None:
     """Generate executive briefing on recent signals."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
+
     from .briefing import BriefingService
 
     briefer = BriefingService()
@@ -1042,7 +1048,7 @@ def cmd_brief(args: argparse.Namespace) -> None:
     if args.since:
         since = args.since
     elif args.hours:
-        since = datetime.now(timezone.utc) - timedelta(hours=args.hours)
+        since = datetime.now(UTC) - timedelta(hours=args.hours)
 
     # Get topic (positional or flag)
     topic = args.topic if hasattr(args, 'topic') and args.topic else None
@@ -1123,8 +1129,8 @@ def cmd_brief(args: argparse.Namespace) -> None:
 
             if prompt_yn("Enter chat?", default=True):
                 from neutron_os.extensions.builtins.neut_agent.entry import (
-                    enter_chat,
                     _format_briefing_context,
+                    enter_chat,
                 )
 
                 topic_label = brief.topic if brief.topic != "general" else "executive"
@@ -1672,8 +1678,9 @@ def main():
         _dispatch(args)
     except (ValueError, TypeError, AttributeError) as e:
         import traceback
-        from neutron_os.infra.self_heal import attempt_recovery, emit_cli_error
+
         from neutron_os.infra.orchestrator.bus import EventBus
+        from neutron_os.infra.self_heal import attempt_recovery, emit_cli_error
 
         # Capture the full traceback while we're still in the except block
         tb_str = traceback.format_exc()
@@ -1682,7 +1689,9 @@ def main():
 
         # Doctor agent as primary error handler (soft — no-ops if unavailable)
         try:
-            from neutron_os.extensions.builtins.dfib_agent.subscriber import register as register_doctor
+            from neutron_os.extensions.builtins.dfib_agent.subscriber import (
+                register as register_doctor,
+            )
             register_doctor(bus)
         except ImportError:
             pass
@@ -1713,8 +1722,8 @@ def main():
 
 def _play_audio_clip(clip_path: str) -> bool:
     """Play audio clip using system audio player (macOS: afplay)."""
-    import subprocess
     import shutil
+    import subprocess
     from pathlib import Path
 
     if not Path(clip_path).exists():
@@ -1782,8 +1791,8 @@ def _play_audio_segment(source_path: str, start_sec: float, duration_sec: float 
     Uses ffplay (from ffmpeg) to play directly from the source file.
     Falls back to extracting a temp clip if ffplay isn't available.
     """
-    import subprocess
     import shutil
+    import subprocess
     import tempfile
     from pathlib import Path
 
@@ -1833,7 +1842,7 @@ def _play_audio_segment(source_path: str, start_sec: float, duration_sec: float 
     return False
 
 
-def _tag_speaker_voice(audio_path: str, start_time: float, end_time: float, agents_dir: "Path") -> None:
+def _tag_speaker_voice(audio_path: str, start_time: float, end_time: float, agents_dir: Path) -> None:
     """Tag the speaker in an audio segment, enrolling their voice.
 
     Interactive flow:
@@ -1844,7 +1853,7 @@ def _tag_speaker_voice(audio_path: str, start_time: float, end_time: float, agen
     """
 
     try:
-        from .voice_id import VoiceProfileStore, SpeakerIdentifier
+        from .voice_id import SpeakerIdentifier, VoiceProfileStore
     except ImportError:
         print("  ⚠️ Voice ID not available (install: pip install pyannote.audio torch)")
         return
@@ -1945,7 +1954,7 @@ def _tag_speaker_voice(audio_path: str, start_time: float, end_time: float, agen
         print(f"  ❌ Enrollment failed: {e}")
 
 
-def _get_audio_timing_for_correction(corr, agents_dir: "Path") -> dict | None:
+def _get_audio_timing_for_correction(corr, agents_dir: Path) -> dict | None:
     """Get audio source and timing for a correction using Whisper timestamps.
 
     Uses multiple strategies to find accurate timing:
@@ -1956,8 +1965,8 @@ def _get_audio_timing_for_correction(corr, agents_dir: "Path") -> dict | None:
     Returns dict with source_audio, start_sec, duration_sec or None if not found.
     """
     import json
-    from pathlib import Path
     from difflib import SequenceMatcher
+    from pathlib import Path
 
     # transcript_path is like: .../inbox/processed/Recording_transcript.md
     # timestamps are at:       .../inbox/processed/Recording_timestamps.json
@@ -2542,9 +2551,9 @@ def cmd_corrections(args):
     """Non-blocking correction feedback system."""
     from .correction_review import (
         CorrectionReviewSystem,
-        print_unfeedback_corrections,
         print_recent_errors,
         print_training_stats,
+        print_unfeedback_corrections,
     )
     from .correction_review_guided import GuidedCorrectionReview
 
@@ -2712,8 +2721,8 @@ def cmd_sources(args):
     """Manage signal sources (extractors)."""
     from .registry import (
         get_registry,
-        print_sources_table,
         print_inbox_status,
+        print_sources_table,
     )
 
     registry = get_registry()
@@ -2906,13 +2915,14 @@ def cmd_providers(args):
 def cmd_db(args):
     """Manage vector database (PostgreSQL + pgvector via K3D)."""
     import os
+
     from .pgvector_store import (
-        VectorDB,
         DEFAULT_LOCAL_URL,
-        k3d_up,
-        k3d_down,
+        VectorDB,
         k3d_delete,
+        k3d_down,
         k3d_status,
+        k3d_up,
     )
 
     action = args.db_action
@@ -2945,7 +2955,7 @@ def cmd_db(args):
         print("📦 Importing from file-based index to PostgreSQL...\n")
 
         # Load existing file-based data
-        from .signal_rag import SignalRAG, INDEX_PATH, EMBEDDINGS_PATH
+        from .signal_rag import EMBEDDINGS_PATH, INDEX_PATH, SignalRAG
 
         if not INDEX_PATH.exists():
             print("No existing signal index found.")
@@ -2993,10 +3003,10 @@ def cmd_db(args):
     elif action == "migrate":
         # Alembic schema migrations
         from .migrations import (
-            run_migrations,
             check_migrations,
-            verify_schema,
             ensure_pgvector_extension,
+            run_migrations,
+            verify_schema,
         )
 
         cmd = getattr(args, 'migrate_command', 'check') or 'check'
@@ -3443,23 +3453,23 @@ def cmd_timestamps(args):
         print(f"\n[{i}/{len(to_process)}] Processing: {audio_path.name}")
 
         try:
-            result = model.transcribe(str(audio_path), word_timestamps=True)
-            segments = result.get("segments", [])
+            result = model.transcribe(str(audio_path), word_timestamps=True)  # type: ignore[union-attr]
+            segments = result.get("segments", [])  # type: ignore[union-attr]
 
             word_timestamps = []
             for seg in segments:
-                for word_info in seg.get("words", []):
+                for word_info in seg.get("words", []):  # type: ignore[union-attr]
                     word_timestamps.append({
                         "word": word_info.get("word", ""),
                         "start": word_info.get("start", 0),
                         "end": word_info.get("end", 0),
                     })
 
-            from datetime import datetime, timezone
+            from datetime import datetime
             timestamps_data = {
                 "source_audio": str(audio_path),
                 "transcript_path": str(transcript),
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "word_count": len(word_timestamps),
                 "words": word_timestamps,
             }
@@ -3497,6 +3507,7 @@ def cmd_voice(args):
     # Load team roster for comparison
     people_file = _RUNTIME_DIR / "config" / "people.md"
     team_size = 0
+    content = ""
     if people_file.exists():
         content = people_file.read_text()
         # Count table rows (skip header row)

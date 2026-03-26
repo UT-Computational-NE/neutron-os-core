@@ -7,15 +7,16 @@ the LLM gateway if available, falls back to keyword matching.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
+from neutron_os.infra.gateway import Gateway
+
+from ..correlator import Correlator
+from ..models import Extraction, Signal
+from ..registry import SourceType, register_source
 from .base import BaseExtractor
 from .freetext import FreetextExtractor
-from ..models import Extraction, Signal
-from neutron_os.infra.gateway import Gateway
-from ..correlator import Correlator
-from ..registry import register_source, SourceType
 
 
 @register_source(
@@ -111,7 +112,7 @@ class TranscriptExtractor(BaseExtractor):
                 errors=[f"Failed to read transcript: {e}"],
             )
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         signals: list[Signal] = []
         errors: list[str] = []
 

@@ -8,10 +8,10 @@ Formats CostBreakdown objects as:
 - Plain text summaries
 """
 
-import json
 import csv
+import json
 from io import StringIO
-from typing import List
+
 from .data_models import CostBreakdown
 
 
@@ -19,7 +19,7 @@ class CostReporter:
     """Generates reports from cost breakdowns."""
 
     @staticmethod
-    def to_markdown_table(breakdowns: List[CostBreakdown]) -> str:
+    def to_markdown_table(breakdowns: list[CostBreakdown]) -> str:
         """
         Format cost breakdowns as markdown table.
 
@@ -337,7 +337,7 @@ class CostReporter:
         return "\n".join(lines)
 
     @staticmethod
-    def to_json(breakdowns: List[CostBreakdown]) -> str:
+    def to_json(breakdowns: list[CostBreakdown]) -> str:
         """Export cost breakdowns as JSON."""
         data = {
             "scenarios": [b.to_dict() for b in breakdowns],
@@ -350,7 +350,7 @@ class CostReporter:
         return json.dumps(data, indent=2)
 
     @staticmethod
-    def to_csv(breakdowns: List[CostBreakdown]) -> str:
+    def to_csv(breakdowns: list[CostBreakdown]) -> str:
         """Export cost breakdowns as CSV."""
         output = StringIO()
         writer = csv.writer(output)

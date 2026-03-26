@@ -2,16 +2,16 @@
 
 import pytest
 
-from neutron_os.setup.renderer import set_color_enabled
 from neutron_os.extensions.builtins.neut_agent.renderer import (
-    format_markdown_line,
-    stream_text,
-    render_message,
-    render_welcome,
-    render_session_list,
     _format_params,
+    format_markdown_line,
+    render_message,
+    render_session_list,
+    render_welcome,
+    stream_text,
 )
 from neutron_os.infra.gateway import StreamChunk
+from neutron_os.setup.renderer import set_color_enabled
 
 
 @pytest.fixture(autouse=True)

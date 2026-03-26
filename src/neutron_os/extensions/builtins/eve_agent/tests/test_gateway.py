@@ -4,14 +4,14 @@ import json
 from unittest.mock import MagicMock
 
 from neutron_os.infra.gateway import (
+    CompletionResponse,
     Gateway,
     GatewayResponse,
     LLMProvider,
     StreamChunk,
     ToolUseBlock,
-    CompletionResponse,
-    _tools_to_anthropic_format,
     _parse_sse_line,
+    _tools_to_anthropic_format,
 )
 
 

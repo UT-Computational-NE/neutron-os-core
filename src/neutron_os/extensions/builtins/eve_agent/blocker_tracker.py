@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
-from .models import Signal, DATE_FORMAT_ISO
-
-
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
+from .models import DATE_FORMAT_ISO, Signal
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 DEFAULT_STATE_PATH = _RUNTIME_DIR / "inbox" / "state" / "blocker_state.json"
@@ -77,7 +76,7 @@ class BlockerTracker:
             "blockers": {
                 bid: b.to_dict() for bid, b in self._blockers.items()
             },
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         }
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self.state_path.write_text(json.dumps(data, indent=2))
@@ -91,7 +90,7 @@ class BlockerTracker:
 
         After processing all signals, detect cross-cutting blockers.
         """
-        today = datetime.now(timezone.utc).strftime(DATE_FORMAT_ISO)
+        today = datetime.now(UTC).strftime(DATE_FORMAT_ISO)
 
         for signal in blocker_signals:
             if signal.signal_type != "blocker":

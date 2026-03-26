@@ -26,10 +26,9 @@ import hashlib
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from ..models import Signal
 
@@ -156,7 +155,7 @@ class LocalDocxProvider(DocProvider):
 class MSGraphProvider(DocProvider):
     """Provider for MS 365 documents via Graph API."""
 
-    def __init__(self, access_token: Optional[str] = None):
+    def __init__(self, access_token: str | None = None):
         self._token = access_token
         self._base_url = "https://graph.microsoft.com/v1.0"
 
@@ -211,6 +210,7 @@ class MSGraphProvider(DocProvider):
     def _download_and_parse(self, item_id: str, headers: dict) -> str:
         """Download .docx and extract plain text."""
         import io
+
         import requests
 
         try:
@@ -260,7 +260,7 @@ class DocFlowReviewExtractor:
 
     def __init__(
         self,
-        registry_path: Optional[Path] = None,
+        registry_path: Path | None = None,
         llm_gateway = None,
     ):
         from neutron_os import REPO_ROOT as _REPO_ROOT
@@ -293,7 +293,7 @@ class DocFlowReviewExtractor:
             self._provider_registry = None
             self._sync_all_folders = None
 
-    def _get_ms_token(self) -> Optional[str]:
+    def _get_ms_token(self) -> str | None:
         """Get MS Graph access token from environment or token cache."""
         import os
         return os.environ.get("MS_GRAPH_TOKEN")
@@ -404,7 +404,7 @@ class DocFlowReviewExtractor:
                 change_type=ChangeType.CONTENT_DRIFT,
                 section="[multiple]",
                 author="external_doc",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 original_text=md_content[:500] + "..." if len(md_content) > 500 else md_content,
                 new_text=external_content[:500] + "..." if len(external_content) > 500 else external_content,
                 context=diff_text[:1000],
@@ -513,7 +513,7 @@ Return ONLY the merged markdown content, no explanations.
                 for change in report.changes:
                     signal = Signal(
                         source="docflow_review",
-                        timestamp=change.timestamp or datetime.now(timezone.utc).isoformat(),
+                        timestamp=change.timestamp or datetime.now(UTC).isoformat(),
                         raw_text=change.comment_text or change.new_text,
                         people=[change.author] if change.author else [],
                         initiatives=[prd_id],
@@ -533,7 +533,7 @@ Return ONLY the merged markdown content, no explanations.
                 if report.requires_merge:
                     signals.append(Signal(
                         source="docflow_review",
-                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        timestamp=datetime.now(UTC).isoformat(),
                         raw_text="Divergence detected: both .md and external doc changed since last sync",
                         initiatives=[prd_id],
                         signal_type="action_item",
@@ -551,7 +551,7 @@ Return ONLY the merged markdown content, no explanations.
                 # Log error but continue with other PRDs
                 signals.append(Signal(
                     source="docflow_review",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     raw_text=f"Failed to analyze {prd_id}: {str(e)}",
                     initiatives=[prd_id],
                     signal_type="blocker",
@@ -624,7 +624,7 @@ Return ONLY the merged markdown content, no explanations.
                     elif change.change_type.value == "file_deleted":
                         result.signals.append(Signal(
                             source="docflow_folder_sync",
-                            timestamp=datetime.now(timezone.utc).isoformat(),
+                            timestamp=datetime.now(UTC).isoformat(),
                             raw_text=f"File removed: {change.path}",
                             signal_type="progress",
                             detail=f"Remote file deleted: {change.metadata.get('remote_path', change.path)}",
@@ -671,7 +671,7 @@ Return ONLY the merged markdown content, no explanations.
                         if change.change_type == ChangeType.COMMENT:
                             signal = Signal(
                                 source="docflow_local",
-                                timestamp=change.timestamp or datetime.now(timezone.utc).isoformat(),
+                                timestamp=change.timestamp or datetime.now(UTC).isoformat(),
                                 raw_text=change.comment_text or "",
                                 people=[change.author] if change.author else [],
                                 initiatives=[],  # Could use correlator to match
@@ -688,7 +688,7 @@ Return ONLY the merged markdown content, no explanations.
                         elif change.change_type == ChangeType.TRACKED_CHANGE:
                             signal = Signal(
                                 source="docflow_local",
-                                timestamp=change.timestamp or datetime.now(timezone.utc).isoformat(),
+                                timestamp=change.timestamp or datetime.now(UTC).isoformat(),
                                 raw_text=f"{change.original_text or ''} → {change.new_text or ''}",
                                 people=[change.author] if change.author else [],
                                 initiatives=[],
@@ -707,7 +707,7 @@ Return ONLY the merged markdown content, no explanations.
                     if not changes and content:
                         signals.append(Signal(
                             source="docflow_local",
-                            timestamp=datetime.now(timezone.utc).isoformat(),
+                            timestamp=datetime.now(UTC).isoformat(),
                             raw_text=content[:500] + ("..." if len(content) > 500 else ""),
                             signal_type="raw",
                             detail=f"Document content from {doc_path.name}",
@@ -718,7 +718,7 @@ Return ONLY the merged markdown content, no explanations.
                 except Exception as e:
                     signals.append(Signal(
                         source="docflow_local",
-                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        timestamp=datetime.now(UTC).isoformat(),
                         raw_text=f"Error processing {doc_path.name}: {e}",
                         signal_type="blocker",
                         detail=f"Failed to extract from {doc_path.name}",
@@ -731,7 +731,7 @@ Return ONLY the merged markdown content, no explanations.
             # For now, just note the file presence
             signals.append(Signal(
                 source="docflow_local",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 raw_text=f"Excel file detected: {doc_path.name}",
                 signal_type="raw",
                 detail=f"Excel document {doc_path.name} ready for processing",
@@ -743,7 +743,7 @@ Return ONLY the merged markdown content, no explanations.
             # PowerPoint: extract speaker notes and comments
             signals.append(Signal(
                 source="docflow_local",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 raw_text=f"PowerPoint file detected: {doc_path.name}",
                 signal_type="raw",
                 detail=f"PowerPoint document {doc_path.name} ready for processing",
@@ -782,7 +782,7 @@ def register_prd(
         "md_path": md_path,
         "external_uri": external_uri,
         "format": doc_format,
-        "registered_at": datetime.now(timezone.utc).isoformat(),
+        "registered_at": datetime.now(UTC).isoformat(),
     }
 
     # Save

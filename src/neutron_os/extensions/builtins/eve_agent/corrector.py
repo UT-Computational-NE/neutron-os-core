@@ -15,9 +15,8 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 try:
     import langextract as lx
@@ -113,7 +112,7 @@ class TranscriptCorrector:
     _RUNTIME_DIR = _REPO_ROOT / "runtime"
     USER_GLOSSARY_PATH = _RUNTIME_DIR / "inbox" / "corrections" / "user_glossary.json"
 
-    def __init__(self, config_dir: Optional[Path] = None):
+    def __init__(self, config_dir: Path | None = None):
         """Initialize with config directory for people/initiatives."""
         self.correlator = Correlator(config_dir)
         self._glossary = self._build_glossary()
@@ -124,6 +123,7 @@ class TranscriptCorrector:
 
         # Load user-defined glossary (highest priority)
         if self.USER_GLOSSARY_PATH.exists():
+            user_data: dict = {}
             try:
                 with LockedJsonFile(self.USER_GLOSSARY_PATH) as f:
                     user_data = f.read()
@@ -399,7 +399,7 @@ class TranscriptCorrector:
             corrections=corrections,
             glossary_size=len(self._glossary),
             model_used=model_id,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
     def _correct_with_anthropic(self, transcript: str) -> CorrectionResult:
@@ -476,7 +476,7 @@ Return ONLY the JSON array, no other text."""
             corrections=corrections,
             glossary_size=len(self._glossary),
             model_used=provider.model if provider else "unknown",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
     def _get_context(self, transcript: str, text: str, context_chars: int = 100) -> str:
@@ -609,7 +609,7 @@ Return ONLY the JSON array, no other text."""
     def save_corrections(
         self,
         result: CorrectionResult,
-        output_path: Optional[Path] = None,
+        output_path: Path | None = None,
         add_to_review: bool = True,
     ) -> Path:
         """Save correction results to JSON and optionally queue for review.
@@ -658,6 +658,7 @@ Return ONLY the JSON array, no other text."""
         """
         try:
             import hashlib
+
             from .correction_review import CorrectionReviewSystem
             review_system = CorrectionReviewSystem()
 

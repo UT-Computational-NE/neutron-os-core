@@ -14,14 +14,13 @@ Real-world example from 2026-02-24:
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..correction_review import (
     AppliedCorrection,
     CorrectionReviewSystem,
     TrainingExample,
 )
-
 
 # The actual error case from the transcript
 JET_DESIGN_ERROR = {
@@ -124,7 +123,7 @@ class TestDownstreamErrorFlagging:
         # JEDI owner sees wrong signal, clicks "flag error"
         correction.feedback = "flagged"
         correction.feedback_by = "kevin@neutronos.dev"
-        correction.feedback_at = datetime.now(timezone.utc).isoformat()
+        correction.feedback_at = datetime.now(UTC).isoformat()
         correction.feedback_note = "This should be 'legit', not JEDI - context is about patents"
         correction.correct_value = "legit"
 
@@ -165,7 +164,7 @@ class TestDownstreamErrorFlagging:
             "correct_value": "legit",
             "context": JET_DESIGN_ERROR["context"],
             "flagged_by": "kevin@neutronos.dev",
-            "flagged_at": datetime.now(timezone.utc).isoformat(),
+            "flagged_at": datetime.now(UTC).isoformat(),
             "note": "This should be 'legit', not JEDI",
         }
 
@@ -247,7 +246,7 @@ class TestLearningFromErrors:
             reason="'jet design' is a mishearing of 'legit' - common Whisper error",
             source_transcript="/test/transcript.md",
             approved_by="kevin@neutronos.dev",
-            approved_at=datetime.now(timezone.utc).isoformat(),
+            approved_at=datetime.now(UTC).isoformat(),
             was_edited=True,  # Human corrected the LLM's mistake
         )
 

@@ -107,7 +107,9 @@ class TestGuidedCorrectionReview:
 
     def test_extract_audio_clip_no_ffmpeg(self, temp_dirs):
         """Test clip extraction falls back when ffmpeg unavailable."""
-        from neutron_os.extensions.builtins.eve_agent.correction_review_guided import GuidedCorrectionReview
+        from neutron_os.extensions.builtins.eve_agent.correction_review_guided import (
+            GuidedCorrectionReview,
+        )
 
         # Create a real instance for this test
         with patch("neutron_os.extensions.builtins.eve_agent.correction_review_guided.CLIPS_DIR", temp_dirs["clips_dir"]):
@@ -291,12 +293,12 @@ class TestDownstreamUpdates:
 
     def test_notification_logged(self, tmp_path):
         """Test notifications are written to log."""
+        import neutron_os.extensions.builtins.eve_agent.correction_propagation as prop_module
         from neutron_os.extensions.builtins.eve_agent.correction_propagation import (
             CorrectionPropagator,
             PropagationJob,
             PropagationType,
         )
-        import neutron_os.extensions.builtins.eve_agent.correction_propagation as prop_module
 
         # Create inbox dir
         inbox_dir = tmp_path / "inbox"
@@ -330,7 +332,9 @@ class TestPatternMatching:
     @pytest.fixture
     def system_with_patterns(self, tmp_path):
         """Create CorrectionReviewSystem with test corrections."""
-        from neutron_os.extensions.builtins.eve_agent.correction_review import CorrectionReviewSystem
+        from neutron_os.extensions.builtins.eve_agent.correction_review import (
+            CorrectionReviewSystem,
+        )
 
         # Create isolated corrections dir
         corrections_dir = tmp_path / "corrections"

@@ -2,8 +2,8 @@
 
 import pytest
 
-from neutron_os.extensions.builtins.prt_agent.state import LinkEntry
 from neutron_os.extensions.builtins.prt_agent.registry import LinkRegistry
+from neutron_os.extensions.builtins.prt_agent.state import LinkEntry
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from neutron_os.extensions.builtins.demo.runner import DemoRunner
-from neutron_os.extensions.builtins.demo.scenarios.collaborator import build_scenario, FIXTURES_DIR
+from neutron_os.extensions.builtins.demo.scenarios.collaborator import FIXTURES_DIR, build_scenario
 
 
 class TestCollaboratorScenario:
@@ -158,6 +158,7 @@ class TestDemoCLI:
     def test_collaborator_and_scenario_are_mutually_exclusive(self):
         """--collaborator and --scenario cannot be used together."""
         import pytest
+
         from neutron_os.extensions.builtins.demo.cli import get_parser
 
         parser = get_parser()

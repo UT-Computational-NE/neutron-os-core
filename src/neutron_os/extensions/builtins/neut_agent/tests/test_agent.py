@@ -1,17 +1,18 @@
 """Tests for the chat agent — native tool-use loop."""
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
+
 from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
-from neutron_os.infra.orchestrator.bus import EventBus
-from neutron_os.infra.orchestrator.session import Session
 from neutron_os.infra.gateway import (
+    CompletionResponse,
     Gateway,
     GatewayResponse,
-    CompletionResponse,
     ToolUseBlock,
 )
+from neutron_os.infra.orchestrator.bus import EventBus
+from neutron_os.infra.orchestrator.session import Session
 
 
 class TestChatAgent:

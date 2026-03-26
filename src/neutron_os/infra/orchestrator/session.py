@@ -19,9 +19,9 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -31,7 +31,7 @@ class Message:
     role: str  # "user", "assistant", "system"
     content: str
     timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
 
@@ -64,7 +64,7 @@ class Session:
     messages: list[Message] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     updated_at: str = ""
     usage: dict[str, Any] = field(default_factory=dict)
@@ -78,7 +78,7 @@ class Session:
         """Add a message to the session."""
         msg = Message(role=role, content=content, tool_calls=tool_calls or [])
         self.messages.append(msg)
-        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.updated_at = datetime.now(UTC).isoformat()
         # Auto-title from first user message if untitled
         if not self.title and role == "user" and content.strip():
             self.title = content.strip()[:60]
@@ -113,7 +113,7 @@ class Session:
 class SessionStore:
     """Manages chat session persistence as JSON files."""
 
-    def __init__(self, sessions_dir: Optional[Path] = None):
+    def __init__(self, sessions_dir: Path | None = None):
         if sessions_dir is None:
             from neutron_os import REPO_ROOT
             sessions_dir = REPO_ROOT / "runtime" / "sessions"
@@ -137,7 +137,7 @@ class SessionStore:
         )
         return path
 
-    def load(self, session_id: str) -> Optional[Session]:
+    def load(self, session_id: str) -> Session | None:
         """Load a session from disk (checks archive if not in main dir)."""
         for search_dir in [self._dir, self._dir / "archive"]:
             path = search_dir / f"{session_id}.json"
@@ -211,7 +211,7 @@ class SessionStore:
         archive_dir = self._dir / "archive"
         if not archive_dir.exists():
             return 0
-        cutoff = datetime.now(timezone.utc).timestamp() - (max_age_days * 86400)
+        cutoff = datetime.now(UTC).timestamp() - (max_age_days * 86400)
         deleted = 0
         for path in archive_dir.glob("*.json"):
             if path.stat().st_mtime < cutoff:

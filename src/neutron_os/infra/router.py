@@ -41,7 +41,6 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
@@ -98,7 +97,7 @@ class RoutingDecision:
     classifier: str = "keyword"  # "session" | "keyword" | "ollama" | "fallback"
     tags: set[str] = field(default_factory=set)
     routing_event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    keyword_term: Optional[str] = None  # first matched term (for audit)
+    keyword_term: str | None = None  # first matched term (for audit)
     """Facility-policy tags carried forward to gateway._select_provider.
 
     The router sets tier for legal/compliance (export-control law).
@@ -167,7 +166,7 @@ class OllamaClassifier:
         self._base = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout
-        self._available: Optional[bool] = None  # None = not yet checked
+        self._available: bool | None = None  # None = not yet checked
 
     def _check_available(self) -> bool:
         """Check that Ollama is running, auto-starting if needed."""
@@ -190,7 +189,7 @@ class OllamaClassifier:
             self._available = False
         return self._available
 
-    def classify(self, text: str) -> Optional[RoutingTier | str]:
+    def classify(self, text: str) -> RoutingTier | str | None:
         """Ask the SLM to classify text.
 
         Returns:
@@ -247,7 +246,7 @@ class QueryRouter:
         decision = router.classify(user_input, sensitivity="strict")
     """
 
-    def __init__(self, ollama: Optional[OllamaClassifier] = None) -> None:
+    def __init__(self, ollama: OllamaClassifier | None = None) -> None:
         self._terms: list[str] | None = None
         self._allowlist: set[str] | None = None
         self._ollama = ollama or self._default_ollama()
@@ -293,7 +292,7 @@ class QueryRouter:
         return [t for t in matched if t.lower() not in allowlist]
 
     def _build_window(
-        self, current_message: str, context: Optional[list]
+        self, current_message: str, context: list | None
     ) -> str:
         """Concatenate recent conversation user turns + current message."""
         if not context:
@@ -306,7 +305,7 @@ class QueryRouter:
             return f"{prior} {current_message}"
         return current_message
 
-    def _resolve_sensitivity(self, sensitivity: Optional[str]) -> str:
+    def _resolve_sensitivity(self, sensitivity: str | None) -> str:
         """Return sensitivity, falling back to settings then default."""
         if sensitivity is not None:
             return sensitivity if sensitivity in _VALID_SENSITIVITIES else SENSITIVITY_BALANCED
@@ -321,8 +320,8 @@ class QueryRouter:
         self,
         text: str,
         session_mode: str = "auto",
-        context: Optional[list] = None,
-        sensitivity: Optional[str] = None,
+        context: list | None = None,
+        sensitivity: str | None = None,
     ) -> RoutingDecision:
         """Classify a query using the full pipeline.
 
@@ -341,6 +340,7 @@ class QueryRouter:
         sens = self._resolve_sensitivity(sensitivity)
 
         # ── 1. Session mode override (fastest) ──────────────────────────────
+        decision: RoutingDecision | None = None
         if session_mode == "export_controlled":
             decision = RoutingDecision(
                 tier=RoutingTier.EXPORT_CONTROLLED,
@@ -409,10 +409,12 @@ class QueryRouter:
                         )
 
         # ── Audit: write_classification for every decision ──────────────────
+        assert decision is not None, "routing must always produce a decision"
         is_ec = decision.tier == RoutingTier.EXPORT_CONTROLLED
         try:
-            from neutron_os.infra.audit_log import AuditLog
             import hashlib as _hashlib
+
+            from neutron_os.infra.audit_log import AuditLog
             prompt_hash = _hashlib.sha256(text.encode()).hexdigest()
             AuditLog.get().write_classification(
                 routing_event_id=decision.routing_event_id,

@@ -16,7 +16,6 @@ Usage:
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass
 import hashlib
 import json
 import logging
@@ -27,6 +26,7 @@ import tempfile
 import urllib.error
 import urllib.request
 import zlib
+from dataclasses import dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -160,11 +160,7 @@ class MermaidResult:
     total: int = 0  # Total mermaid blocks found
     rendered: int = 0  # Successfully rendered
     failed: int = 0  # Failed to render
-    failures: list = None  # List of (index, first_line, error) tuples
-
-    def __post_init__(self):
-        if self.failures is None:
-            self.failures = []
+    failures: list = field(default_factory=list)  # List of (index, first_line, error) tuples
 
     @property
     def all_succeeded(self) -> bool:
@@ -193,7 +189,9 @@ def render_mermaid_blocks(md_content: str, output_dir: Path) -> MermaidResult:
 
     failures = []
 
-    def replace_block(match, _counter=[0]):
+    def replace_block(match, _counter=None):  # noqa: B006
+        if _counter is None:
+            _counter = [0]
         code = match.group(1).strip()
         _counter[0] += 1
         idx = _counter[0]

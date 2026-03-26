@@ -117,8 +117,8 @@ def watch(
     Raises ``ImportError`` if ``watchdog`` is not installed.
     """
     try:
-        from watchdog.observers import Observer
         from watchdog.events import FileSystemEventHandler
+        from watchdog.observers import Observer
     except ImportError:
         raise ImportError(
             "watchdog is required for 'neut rag watch'.\n"

@@ -30,7 +30,6 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class TestType(Enum):
@@ -91,7 +90,7 @@ PROFILES = {
 class TestRunner:
     """Orchestrates test execution."""
 
-    def __init__(self, config: TestConfig, repo_root: Optional[Path] = None):
+    def __init__(self, config: TestConfig, repo_root: Path | None = None):
         self.config = config
         from neutron_os import REPO_ROOT
         self.repo_root = repo_root or REPO_ROOT
@@ -146,8 +145,8 @@ class TestRunner:
         self,
         cmd: list[str],
         test_type: TestType,
-        env: Optional[dict] = None,
-        check_prereqs: Optional[callable] = None,
+        env: dict | None = None,
+        check_prereqs: callable | None = None,  # type: ignore[arg-type]
     ) -> TestResult:
         """Run a command and return result."""
         # Check prerequisites

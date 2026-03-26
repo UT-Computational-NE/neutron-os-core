@@ -23,9 +23,10 @@ These tests ensure:
 """
 
 import json
+
 import pytest
 
-from ..corrector import TranscriptCorrector, Correction
+from ..corrector import Correction, TranscriptCorrector
 
 
 class TestContextExtraction:

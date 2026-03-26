@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import psycopg2
 import psycopg2.extras
@@ -95,7 +94,7 @@ class RAGStore:
 
     def __init__(self, database_url: str) -> None:
         self._dsn = database_url
-        self._conn: Optional[psycopg2.extensions.connection] = None
+        self._conn: psycopg2.extensions.connection | None = None
 
     # -- connection management ------------------------------------------------
 
@@ -113,6 +112,7 @@ class RAGStore:
         """Return a cursor, reconnecting if needed."""
         if self._conn is None or self._conn.closed:
             self.connect()
+        assert self._conn is not None
         return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     def close(self) -> None:
@@ -124,10 +124,10 @@ class RAGStore:
     def upsert_chunks(
         self,
         chunks: list[Chunk],
-        embeddings: Optional[list[list[float]]] = None,
+        embeddings: list[list[float]] | None = None,
         checksum: str = "",
         corpus: str = CORPUS_INTERNAL,
-        owner: Optional[str] = None,
+        owner: str | None = None,
     ) -> None:
         """Insert or replace all chunks for a document within a corpus.
 
@@ -140,7 +140,7 @@ class RAGStore:
             return
 
         source_path = chunks[0].source_path
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         with self._cur() as cur:
             # Delete old chunks for this path+corpus
@@ -221,7 +221,9 @@ class RAGStore:
             cur.execute(
                 "SELECT count(*) AS n FROM chunks WHERE corpus = %s", (corpus,)
             )
-            n = cur.fetchone()["n"]
+            row = cur.fetchone()
+            assert row is not None
+            n = row["n"]
             cur.execute("DELETE FROM chunks WHERE corpus = %s", (corpus,))
             cur.execute("DELETE FROM documents WHERE corpus = %s", (corpus,))
         log.info("Deleted corpus %s (%d chunks)", corpus, n)
@@ -229,7 +231,7 @@ class RAGStore:
 
     # -- read operations ------------------------------------------------------
 
-    def get_document(self, path: str, corpus: str = CORPUS_INTERNAL) -> Optional[dict]:
+    def get_document(self, path: str, corpus: str = CORPUS_INTERNAL) -> dict | None:
         """Return document metadata or ``None`` if not indexed."""
         with self._cur() as cur:
             cur.execute(
@@ -242,9 +244,9 @@ class RAGStore:
 
     def search(
         self,
-        query_embedding: Optional[list[float]] = None,
+        query_embedding: list[float] | None = None,
         query_text: str = "",
-        corpora: Optional[list[str]] = None,
+        corpora: list[str] | None = None,
         limit: int = 5,
     ) -> list[SearchResult]:
         """Hybrid vector + full-text search across one or more corpora.
@@ -331,9 +333,9 @@ class RAGStore:
         for r in rows:
             chunk_text = r["chunk_text"]
             try:
-                from neutron_os.rag.sanitizer import get_sanitizer
                 from neutron_os.infra.security_log import SecurityLog
                 from neutron_os.infra.trace import current_session
+                from neutron_os.rag.sanitizer import get_sanitizer
                 clean_text, hits = get_sanitizer().sanitize(chunk_text)
                 if hits:
                     SecurityLog.get().chunk_injection(
@@ -361,10 +363,14 @@ class RAGStore:
         """Return index statistics including per-corpus breakdown."""
         with self._cur() as cur:
             cur.execute("SELECT count(*) AS n FROM documents")
-            total_docs = cur.fetchone()["n"]
+            row = cur.fetchone()
+            assert row is not None
+            total_docs = row["n"]
 
             cur.execute("SELECT count(*) AS n FROM chunks")
-            total_chunks = cur.fetchone()["n"]
+            row = cur.fetchone()
+            assert row is not None
+            total_chunks = row["n"]
 
             cur.execute(
                 "SELECT corpus, count(*) AS n FROM chunks GROUP BY corpus ORDER BY corpus"

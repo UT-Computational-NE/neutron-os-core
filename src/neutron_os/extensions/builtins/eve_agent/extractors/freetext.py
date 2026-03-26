@@ -7,13 +7,14 @@ the full text.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from .base import BaseExtractor
-from ..models import Extraction, Signal
 from neutron_os.infra.gateway import Gateway
+
 from ..correlator import Correlator
+from ..models import Extraction, Signal
+from .base import BaseExtractor
 
 
 class FreetextExtractor(BaseExtractor):
@@ -39,7 +40,7 @@ class FreetextExtractor(BaseExtractor):
                 errors=[f"Failed to read file: {e}"],
             )
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         signals: list[Signal] = []
 
         if gateway and gateway.available:

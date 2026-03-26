@@ -33,9 +33,9 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
 
 
 class BootstrapStep(Enum):
@@ -98,7 +98,7 @@ class BootstrapError(Exception):
 class Bootstrap:
     """Handles complete Neut Sense infrastructure bootstrap."""
 
-    def __init__(self, config: Optional[BootstrapConfig] = None):
+    def __init__(self, config: BootstrapConfig | None = None):
         self.config = config or BootstrapConfig()
         self.results: list[StepResult] = []
 
@@ -113,7 +113,7 @@ class Bootstrap:
         cmd: list[str],
         check: bool = True,
         capture: bool = True,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ) -> subprocess.CompletedProcess:
         """Run a shell command."""
         self._log(f"  Running: {' '.join(cmd)}", verbose_only=True)
@@ -199,7 +199,7 @@ class Bootstrap:
         # Check Python packages
         try:
             import psycopg2
-            details["psycopg2"] = psycopg2.__version__
+            details["psycopg2"] = psycopg2.__version__  # type: ignore[attr-defined]
         except ImportError:
             missing.append("psycopg2-binary")
 
@@ -543,8 +543,8 @@ spec:
         """Run Alembic migrations."""
         try:
             from .migrations import (
-                run_migrations,
                 check_migrations,
+                run_migrations,
             )
 
             # Set database URL
@@ -594,9 +594,10 @@ spec:
     def verify_installation(self) -> StepResult:
         """Verify the complete installation."""
         try:
-            from .migrations import verify_schema
-            from .db_models import get_engine
             from sqlalchemy import text
+
+            from .db_models import get_engine
+            from .migrations import verify_schema
 
             os.environ["NEUT_DB_URL"] = self.config.db_url
 
@@ -646,7 +647,7 @@ spec:
 
     def run(
         self,
-        steps: Optional[list[BootstrapStep]] = None,
+        steps: list[BootstrapStep] | None = None,
     ) -> list[StepResult]:
         """Run the bootstrap process.
 

@@ -18,12 +18,12 @@ from pathlib import Path
 
 import pytest
 
-
 try:
     import yaml
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
+    yaml = None  # type: ignore[assignment]
 
 from neutron_os.extensions.builtins.mo_agent.retention import (
     RetentionAction,
@@ -34,13 +34,13 @@ from neutron_os.extensions.builtins.mo_agent.retention import (
     scan_retention,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 def _write_retention_yaml(config_dir: Path, overrides: dict | None = None):
     """Write a minimal retention.yaml for testing."""
+    assert yaml is not None, "PyYAML required for retention tests"
     cfg = {
         "retention": {
             "raw_voice": {"days": 7, "after": "processed"},

@@ -23,7 +23,6 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import requests
 
@@ -32,6 +31,7 @@ try:
     from msal import SerializableTokenCache
 except Exception:  # pragma: no cover - handled at runtime
     msal = None
+    SerializableTokenCache = None  # type: ignore[assignment,misc]
 
 
 CONFIG_PATH = Path('.neut/docflow/config.json')
@@ -59,8 +59,8 @@ def _load_config():
 
 @dataclass
 class SharePointProvider:
-    client_id: Optional[str] = None
-    tenant_id: Optional[str] = None
+    client_id: str | None = None
+    tenant_id: str | None = None
 
     def __post_init__(self):
         cfg = _load_config()
@@ -70,7 +70,9 @@ class SharePointProvider:
             raise RuntimeError('msal package not installed. Run: pip install msal')
         if not self.client_id or not self.tenant_id:
             raise RuntimeError('Missing DOCFLOW_CLIENT_ID or DOCFLOW_TENANT_ID. Add to .neut/docflow/config.json or env vars.')
+        assert msal is not None  # guarded above
         self.app = msal.PublicClientApplication(self.client_id, authority=f'https://login.microsoftonline.com/{self.tenant_id}')
+        assert SerializableTokenCache is not None  # guarded by msal import
         self.token_cache = SerializableTokenCache()
         if TOKEN_CACHE_PATH.exists():
             try:

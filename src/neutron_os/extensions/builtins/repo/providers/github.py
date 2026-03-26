@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from neutron_os.extensions.builtins.repo.base import (
     RepoActivity,
@@ -105,7 +105,7 @@ class GitHubProvider(RepoSourceProvider):
     def get_activity(self, repo: RepoInfo, days: int) -> RepoActivity:
         """Fetch commits, PRs, issues for a single GitHub repo."""
         client = self._ensure_client()
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
 
         try:
             gh_repo = client.get_repo(repo.full_path)
@@ -211,7 +211,7 @@ class GitHubProvider(RepoSourceProvider):
                     date_str = commit.commit.author.date.isoformat()
                     dt = commit.commit.author.date
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                     if dt >= since:
                         activity.branches.append({
                             "name": branch.name,

@@ -12,9 +12,6 @@ Key behaviors tested:
 """
 
 import hashlib
-from pathlib import Path
-
-import pytest
 
 
 class TestNeedsRegeneration:
@@ -80,7 +77,7 @@ class TestNeedsRegeneration:
 
     def test_no_regen_when_cancelled_but_hash_written(self, tmp_path):
         """This tests the fix: hash should NOT be written until upload succeeds.
-        
+
         If hash exists, it means upload succeeded, so we trust it.
         """
         from neutron_os.extensions.builtins.prt_agent.cli import _needs_regeneration
@@ -104,8 +101,8 @@ class TestDocxOutputPath:
 
     def test_output_path_mirrors_source_structure(self, tmp_path, monkeypatch):
         """Output path mirrors source directory structure."""
-        from neutron_os.extensions.builtins.prt_agent.cli import _docx_output_path
         import neutron_os
+        from neutron_os.extensions.builtins.prt_agent.cli import _docx_output_path
 
         # Patch REPO_ROOT to tmp_path
         monkeypatch.setattr(neutron_os, "REPO_ROOT", tmp_path)
@@ -128,11 +125,11 @@ class TestPushFiltering:
 
     def test_unchanged_files_excluded_from_push(self, tmp_path, monkeypatch):
         """Files with matching hashes are not included in push list."""
-        from neutron_os.extensions.builtins.prt_agent.cli import (
-            _needs_regeneration,
-            _docx_output_path,
-        )
         import neutron_os
+        from neutron_os.extensions.builtins.prt_agent.cli import (
+            _docx_output_path,
+            _needs_regeneration,
+        )
 
         monkeypatch.setattr(neutron_os, "REPO_ROOT", tmp_path)
 
@@ -178,11 +175,11 @@ class TestPushFiltering:
 
     def test_force_includes_all_files(self, tmp_path, monkeypatch):
         """With --force, all files are included regardless of hash."""
-        from neutron_os.extensions.builtins.prt_agent.cli import (
-            _needs_regeneration,
-            _docx_output_path,
-        )
         import neutron_os
+        from neutron_os.extensions.builtins.prt_agent.cli import (
+            _docx_output_path,
+            _needs_regeneration,
+        )
 
         monkeypatch.setattr(neutron_os, "REPO_ROOT", tmp_path)
 

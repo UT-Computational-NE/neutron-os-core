@@ -14,7 +14,7 @@ import atexit
 import os
 import shutil
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -204,7 +204,7 @@ class MoManager:
         expired = 0
         orphaned = 0
         errors = 0
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for entry in list(self._manifest.all_entries()):
             should_remove = False

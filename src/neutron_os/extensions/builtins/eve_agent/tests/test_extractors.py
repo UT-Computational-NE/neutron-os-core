@@ -1,14 +1,15 @@
 """Unit and integration tests for signal extractors."""
 
 import json
-import pytest
 from pathlib import Path
 
-from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
-from neutron_os.extensions.builtins.eve_agent.extractors.freetext import FreetextExtractor
-from neutron_os.extensions.builtins.eve_agent.extractors.voice import VoiceExtractor
-from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
+import pytest
+
 from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
+from neutron_os.extensions.builtins.eve_agent.extractors.freetext import FreetextExtractor
+from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
+from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
+from neutron_os.extensions.builtins.eve_agent.extractors.voice import VoiceExtractor
 
 
 def _make_export(

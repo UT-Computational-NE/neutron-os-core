@@ -38,7 +38,7 @@ import logging
 import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -161,7 +161,7 @@ class AuditLog:
     # ------------------------------------------------------------------
 
     @classmethod
-    def get(cls) -> "AuditLog":
+    def get(cls) -> AuditLog:
         global _instance
         if _instance is None:
             hmac_key = os.environ.get("NEUT_AUDIT_HMAC_KEY")
@@ -371,7 +371,7 @@ class AuditLog:
 # ---------------------------------------------------------------------------
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # ---------------------------------------------------------------------------

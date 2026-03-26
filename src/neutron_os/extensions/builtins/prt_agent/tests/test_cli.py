@@ -5,8 +5,9 @@ Tests CLI argument parsing and command dispatch without hitting real storage.
 
 import argparse
 from pathlib import Path
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from neutron_os.extensions.builtins.prt_agent import cli
 

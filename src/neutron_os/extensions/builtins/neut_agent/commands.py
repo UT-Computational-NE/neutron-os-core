@@ -6,13 +6,14 @@ Commands return a string to display, or None for no output.
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from neutron_os.setup.renderer import _c, _Colors
 
 if TYPE_CHECKING:
-    from .agent import ChatAgent
     from neutron_os.infra.orchestrator.session import SessionStore
+
+    from .agent import ChatAgent
 
 
 def cmd_help() -> str:
@@ -338,7 +339,7 @@ def get_slash_commands() -> dict[str, str]:
     return commands
 
 
-def find_close_command(cmd: str) -> Optional[str]:
+def find_close_command(cmd: str) -> str | None:
     """Return the closest matching slash command, or None.
 
     Uses difflib fuzzy matching on the first word of each command.

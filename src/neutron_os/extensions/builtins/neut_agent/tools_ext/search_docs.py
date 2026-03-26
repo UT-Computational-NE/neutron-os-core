@@ -16,9 +16,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..tools import ToolDef
-from neutron_os.infra.orchestrator.actions import ActionCategory
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.orchestrator.actions import ActionCategory
+
+from ..tools import ToolDef
 
 TOOLS = [
     ToolDef(
@@ -55,9 +56,7 @@ TOOLS = [
 CHUNK_SIZE = 800  # chars per chunk
 CHUNK_OVERLAP = 200
 _STOP_WORDS = frozenset(
-    "a an and are as at be but by for from has have he her his how i in is it "
-    "its me my no not of on or our she so that the their them then there these "
-    "they this to up was we what when where which who will with you your".split()
+    ["a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from", "has", "have", "he", "her", "his", "how", "i", "in", "is", "it", "its", "me", "my", "no", "not", "of", "on", "or", "our", "she", "so", "that", "the", "their", "them", "then", "there", "these", "they", "this", "to", "up", "was", "we", "what", "when", "where", "which", "who", "will", "with", "you", "your"]
 )
 
 
@@ -230,8 +229,8 @@ def _search_pgvector(query: str, max_results: int = 5) -> list[dict[str, Any]] |
         return None
 
     try:
-        from neutron_os.rag.store import RAGStore
         from neutron_os.rag.embeddings import embed_texts
+        from neutron_os.rag.store import RAGStore
     except ImportError:
         return None
 

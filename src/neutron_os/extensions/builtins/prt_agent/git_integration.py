@@ -11,7 +11,6 @@ import subprocess
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class SyncStatus(Enum):
@@ -32,7 +31,7 @@ class GitContext:
     ahead_count: int = 0
     behind_count: int = 0
     git_available: bool = True
-    remote_url: Optional[str] = None
+    remote_url: str | None = None
 
     @property
     def sync_status(self) -> SyncStatus:
@@ -158,8 +157,8 @@ def _run_git(repo_root: Path, *args: str) -> str:
 
 
 def remote_url_to_web_url(
-    remote_url: Optional[str], file_path: Path, commit_sha: str
-) -> Optional[str]:
+    remote_url: str | None, file_path: Path, commit_sha: str
+) -> str | None:
     """Convert git remote URL + file path to web URL (GitHub, GitLab, etc).
 
     Handles:

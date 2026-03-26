@@ -8,10 +8,9 @@ Integrated into M-O's periodic sweep cycle.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -89,16 +88,16 @@ def _get_file_age_reference(path: Path, after: str) -> datetime:
     """Determine the reference timestamp for retention calculation."""
     stat = path.stat()
     if after == "last_accessed":
-        return datetime.fromtimestamp(stat.st_atime, tz=timezone.utc)
+        return datetime.fromtimestamp(stat.st_atime, tz=UTC)
     # "processed", "ingested" use mtime; "created" uses ctime
     if after == "created":
         # On macOS st_birthtime is real creation; elsewhere ctime is close enough
         birth = getattr(stat, "st_birthtime", None)
         if birth is not None:
-            return datetime.fromtimestamp(birth, tz=timezone.utc)
-        return datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc)
+            return datetime.fromtimestamp(birth, tz=UTC)
+        return datetime.fromtimestamp(stat.st_ctime, tz=UTC)
     # Default: mtime (processed, ingested)
-    return datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+    return datetime.fromtimestamp(stat.st_mtime, tz=UTC)
 
 
 def scan_retention(
@@ -110,7 +109,7 @@ def scan_retention(
 
     Returns a list of RetentionAction describing what should (or would) happen.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     actions: list[RetentionAction] = []
     policy_map = {p.key: p for p in policies}
 
@@ -174,7 +173,7 @@ def execute_retention(
 
     for action in actions:
         entry: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "action": "dry_run" if dry_run else action.action,
             "path": str(action.path),
             "reason": action.reason,

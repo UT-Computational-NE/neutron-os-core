@@ -13,9 +13,11 @@ import importlib
 import logging
 import pkgutil
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from neutron_os.infra.orchestrator.actions import ActionCategory
 
@@ -33,7 +35,7 @@ class ToolDef:
     description: str
     category: ActionCategory
     parameters: dict[str, Any] = field(default_factory=dict)
-    handler: Optional[Callable[..., dict[str, Any]]] = field(default=None, repr=False)
+    handler: Callable[..., dict[str, Any]] | None = field(default=None, repr=False)
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +332,11 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
         }
 
     elif name == "signal_status":
-        from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW, INBOX_PROCESSED, DRAFTS_DIR
+        from neutron_os.extensions.builtins.eve_agent.cli import (
+            DRAFTS_DIR,
+            INBOX_PROCESSED,
+            INBOX_RAW,
+        )
         counts: dict[str, int] = {}
         if INBOX_RAW.exists():
             for child in INBOX_RAW.iterdir():
@@ -385,6 +391,7 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
 
     elif name == "signal_ingest":
         import argparse as _argparse
+
         from neutron_os.extensions.builtins.eve_agent.cli import cmd_ingest
         source = params.get("source", "all")
         ingest_args = _argparse.Namespace(source=source, file=None, reprocess_from=None, correct=False)
@@ -395,9 +402,10 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
             return {"error": f"Ingestion failed: {e}", "source": source}
 
     elif name == "write_inbox_note":
+        from datetime import datetime
+
         from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW
-        from datetime import datetime, timezone
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")
         INBOX_RAW.mkdir(parents=True, exist_ok=True)
         dest = INBOX_RAW / f"note_{ts}.md"
         dest.write_text(f"# Note — {ts}\n\n{params['text']}\n", encoding="utf-8")

@@ -1,6 +1,11 @@
 """Unit tests for neut signal data models."""
 
-from neutron_os.extensions.builtins.eve_agent.models import Signal, Extraction, ChangelogEntry, Changelog
+from neutron_os.extensions.builtins.eve_agent.models import (
+    Changelog,
+    ChangelogEntry,
+    Extraction,
+    Signal,
+)
 
 
 class TestSignal:

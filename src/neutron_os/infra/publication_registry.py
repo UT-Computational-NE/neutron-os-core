@@ -33,9 +33,9 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import LockedJsonFile
@@ -82,6 +82,7 @@ class PublicationRegistry:
     def _load(self) -> None:
         if not self._path.exists():
             return
+        data: dict = {}
         try:
             with LockedJsonFile(self._path) as f:
                 data = f.read()
@@ -94,7 +95,7 @@ class PublicationRegistry:
     def _save(self) -> None:
         data = {
             "version": "1.0",
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "publications": [r.to_dict() for r in self._records.values()],
         }
         with LockedJsonFile(self._path, exclusive=True) as f:
@@ -145,7 +146,7 @@ class PublicationRegistry:
             source_hash=source_hash,
             published_name=published_name,
             published_hash=published_hash,
-            published_at=datetime.now(timezone.utc).isoformat(),
+            published_at=datetime.now(UTC).isoformat(),
             endpoint=endpoint,
             endpoint_folder=endpoint_folder,
             endpoint_modified=endpoint_modified,
@@ -158,10 +159,10 @@ class PublicationRegistry:
         self._save()
         return record
 
-    def get(self, doc_id: str) -> Optional[PublicationRecord]:
+    def get(self, doc_id: str) -> PublicationRecord | None:
         return self._records.get(doc_id)
 
-    def get_by_name(self, published_name: str) -> Optional[PublicationRecord]:
+    def get_by_name(self, published_name: str) -> PublicationRecord | None:
         for rec in self._records.values():
             if rec.published_name == published_name:
                 return rec

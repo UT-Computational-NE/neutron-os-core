@@ -26,10 +26,9 @@ import os
 import threading
 import time
 import traceback
-from datetime import datetime, timezone
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 from neutron_os.infra.state import locked_append_jsonl
@@ -39,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Lazy-loaded to avoid import overhead at module level
 _agent = None
 _agent_lock = threading.Lock()
-_chat_log_path: Optional[Path] = None
+_chat_log_path: Path | None = None
 _chat_log_lock = threading.Lock()
 
 
@@ -48,7 +47,7 @@ def _log_chat(user: str, message: str, response: str, elapsed_ms: int):
     if not _chat_log_path:
         return
     entry = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "user": user,
         "prompt": message,
         "response": response,
@@ -144,9 +143,9 @@ class NeutAPIHandler(BaseHTTPRequestHandler):
 
     # Set by the server
     allowed_origins: list[str] = ["http://localhost:*"]
-    api_key: Optional[str] = None
+    api_key: str | None = None
     read_only: bool = True
-    static_dir: Optional[str] = None  # Path to serve static files from
+    static_dir: str | None = None  # Path to serve static files from
 
     def log_message(self, format, *args):
         logger.info(format, *args)
@@ -220,6 +219,7 @@ class NeutAPIHandler(BaseHTTPRequestHandler):
             req_path = "/index.html"
 
         # Resolve and prevent directory traversal
+        assert self.static_dir is not None
         static_root = Path(self.static_dir).resolve()
         file_path = (static_root / req_path.lstrip("/")).resolve()
         if not str(file_path).startswith(str(static_root)):
@@ -311,10 +311,10 @@ class NeutAPIServer:
         self,
         host: str = "0.0.0.0",
         port: int = 8766,
-        origins: Optional[list[str]] = None,
-        api_key: Optional[str] = None,
+        origins: list[str] | None = None,
+        api_key: str | None = None,
         read_only: bool = True,
-        static_dir: Optional[str] = None,
+        static_dir: str | None = None,
     ):
         self.host = host
         self.port = port

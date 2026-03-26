@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -80,7 +80,7 @@ class VoiceProfile:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "VoiceProfile":
+    def from_dict(cls, data: dict) -> VoiceProfile:
         return cls(
             person_name=data["person_name"],
             embeddings=data.get("embeddings", []),
@@ -129,6 +129,7 @@ class VoiceProfileStore:
         if self._embedding_model is None:
             try:
                 import os
+
                 from pyannote.audio import Model
 
                 from neutron_os.infra.connections import get_credential
@@ -219,7 +220,7 @@ class VoiceProfileStore:
             Updated VoiceProfile
         """
         audio_path = Path(audio_path)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Extract embedding
         print(f"Extracting voice embedding for {person_name}...", flush=True)
@@ -298,6 +299,7 @@ class SpeakerIdentifier:
         """Lazy-load diarization pipeline."""
         if self._diarization_pipeline is None:
             import os
+
             from pyannote.audio import Pipeline
 
             from neutron_os.infra.connections import get_credential

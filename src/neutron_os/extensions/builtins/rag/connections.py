@@ -52,7 +52,7 @@ def setup_postgresql() -> int:
 
     if not value and current_url:
         value = current_url
-        print(f"  Keeping current URL")
+        print("  Keeping current URL")
 
     if not value:
         print("  No URL provided — RAG remains disabled")
@@ -66,6 +66,8 @@ def setup_postgresql() -> int:
         return 1
 
     # TCP reachability check
+    host = "localhost"
+    port = 5432
     try:
         from urllib.parse import urlparse
         parsed = urlparse(value)
@@ -97,8 +99,9 @@ def setup_pack_server() -> int:
     so a user can register multiple pack servers. The server name is stored as
     rag.pack_server_url.<name> / rag.pack_server_key.<name>.
     """
-    import urllib.request
     import json
+    import urllib.request
+
     from neutron_os.extensions.builtins.settings.store import SettingsStore
 
     settings = SettingsStore()
@@ -111,8 +114,8 @@ def setup_pack_server() -> int:
 
     try:
         name = input("  Server name (e.g. 'rascal', 'tacc') [rascal]: ").strip() or "rascal"
-        url = input(f"  Pack server URL: ").strip().rstrip("/")
-        key = input(f"  API key (Enter to skip): ").strip()
+        url = input("  Pack server URL: ").strip().rstrip("/")
+        key = input("  API key (Enter to skip): ").strip()
     except (EOFError, KeyboardInterrupt):
         print("\n  Skipped")
         return 0
@@ -163,7 +166,7 @@ def ensure_postgresql_running() -> bool:
 
     # Try to start the K3D cluster
     try:
-        from neutron_os.setup.infra import check_docker, check_k3d, start_cluster, InfraStatus
+        from neutron_os.setup.infra import InfraStatus, check_docker, check_k3d, start_cluster
 
         docker = check_docker()
         if docker.status != InfraStatus.READY:

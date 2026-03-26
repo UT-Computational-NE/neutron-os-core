@@ -19,22 +19,23 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Optional
 
 try:
     import yaml
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
-
-from .models import Signal
-
+    yaml = None  # type: ignore[assignment]
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import atomic_write
+
+from .models import Signal
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CONFIG_DIR = _RUNTIME_DIR / "config"
 TRANSIT_LOG = _RUNTIME_DIR / "inbox" / "processed" / "transit_log.json"
@@ -105,9 +106,9 @@ class TransitRecord:
     signal_id: str
     endpoint_id: str
     queued_at: str
-    delivered_at: Optional[str] = None
+    delivered_at: str | None = None
     status: str = "queued"  # queued | delivered | failed | skipped
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -120,14 +121,14 @@ class TransitRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "TransitRecord":
+    def from_dict(cls, data: dict) -> TransitRecord:
         return cls(**data)
 
 
 class Router:
     """Routes signals to interested endpoints."""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or (CONFIG_DIR / "endpoints.yaml")
         self.endpoints: dict[str, Endpoint] = {}
         self.transit: list[TransitRecord] = []
@@ -146,6 +147,7 @@ class Router:
         if not self.config_path.exists():
             return
 
+        assert yaml is not None  # guarded by YAML_AVAILABLE check above
         with open(self.config_path) as f:
             config = yaml.safe_load(f) or {}
 
@@ -187,7 +189,7 @@ class Router:
         """Persist transit log to disk."""
         TRANSIT_LOG.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
             "records": [r.to_dict() for r in self.transit[-1000:]],  # Keep last 1000
         }
         atomic_write(TRANSIT_LOG, data)
@@ -207,7 +209,7 @@ class Router:
         Returns:
             Dict mapping endpoint_id to list of matched signals.
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         routed: dict[str, list[Signal]] = {}
 
         for signal in signals:
@@ -229,8 +231,8 @@ class Router:
 
     def deliver(
         self,
-        endpoint_ids: Optional[list[str]] = None,
-        frequency: Optional[str] = None,
+        endpoint_ids: list[str] | None = None,
+        frequency: str | None = None,
     ) -> dict[str, int]:
         """Deliver queued signals to endpoints.
 
@@ -242,7 +244,7 @@ class Router:
             Dict mapping endpoint_id to count of delivered signals.
         """
         delivered: dict[str, int] = {}
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Group queued records by endpoint
         queued_by_endpoint: dict[str, list[TransitRecord]] = {}
@@ -300,7 +302,7 @@ class Router:
         lines = [
             f"# {endpoint.name}",
             "",
-            f"*Updated: {datetime.now(timezone.utc).isoformat()}*",
+            f"*Updated: {datetime.now(UTC).isoformat()}*",
             "",
             f"{len(records)} signal(s) routed to this endpoint.",
             "",
@@ -362,7 +364,7 @@ class Router:
             "by_endpoint": by_endpoint,
         }
 
-    def get_pending(self, endpoint_id: Optional[str] = None) -> list[TransitRecord]:
+    def get_pending(self, endpoint_id: str | None = None) -> list[TransitRecord]:
         """Get all queued (pending) records."""
         records = [r for r in self.transit if r.status == "queued"]
         if endpoint_id:
@@ -372,7 +374,7 @@ class Router:
     def clear_delivered(self, older_than_days: int = 7) -> int:
         """Clear old delivered records from transit log."""
         from datetime import timedelta
-        cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+        cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
         cutoff_str = cutoff.isoformat()
 
         original = len(self.transit)

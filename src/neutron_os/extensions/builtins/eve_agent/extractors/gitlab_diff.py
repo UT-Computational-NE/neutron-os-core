@@ -12,13 +12,12 @@ Usage:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
-from .base import BaseExtractor
 from ..models import Extraction, Signal
-from ..registry import register_source, SourceType
+from ..registry import SourceType, register_source
+from .base import BaseExtractor
 
 
 @register_source(
@@ -50,7 +49,7 @@ class GitLabDiffExtractor(BaseExtractor):
             previous: Path to the previous (older) export JSON (keyword arg).
                       If not provided, generates signals from current only.
         """
-        previous_path: Optional[Path] = kwargs.get("previous")
+        previous_path: Path | None = kwargs.get("previous")
 
         try:
             current = self._load_export(source)
@@ -73,7 +72,7 @@ class GitLabDiffExtractor(BaseExtractor):
         else:
             previous = None
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         signals: list[Signal] = []
         errors: list[str] = []
 
@@ -94,7 +93,7 @@ class GitLabDiffExtractor(BaseExtractor):
 
     @staticmethod
     def _load_export(path: Path) -> dict:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
 
     def _diff_exports(

@@ -27,12 +27,12 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import atomic_write
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INDEX_PATH = _RUNTIME_DIR / "inbox" / "cache" / "signal_index.json"
 EMBEDDINGS_PATH = _RUNTIME_DIR / "inbox" / "cache" / "signal_embeddings.json"
@@ -50,7 +50,7 @@ class SignalChunk:
     initiative: str
     source: str
     metadata: dict = field(default_factory=dict)
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -233,7 +233,9 @@ class LocalEmbeddings(EmbeddingProvider):
 
     def is_available(self) -> bool:
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]  # noqa: F401
+            from sentence_transformers import (
+                SentenceTransformer,  # type: ignore[import-untyped]  # noqa: F401
+            )
             return True
         except ImportError:
             return False
@@ -386,9 +388,9 @@ class SignalRAG:
 
     def __init__(
         self,
-        index_path: Optional[Path] = None,
-        embeddings_path: Optional[Path] = None,
-        use_pgvector: Optional[bool] = None,
+        index_path: Path | None = None,
+        embeddings_path: Path | None = None,
+        use_pgvector: bool | None = None,
     ):
         self.index_path = index_path or INDEX_PATH
         self.embeddings_path = embeddings_path or EMBEDDINGS_PATH
@@ -513,8 +515,8 @@ class SignalRAG:
         query: str,
         top_k: int = 10,
         min_relevance: float = 0.3,
-        time_filter: Optional[tuple[datetime, datetime]] = None,
-        category_filter: Optional[str] = None,
+        time_filter: tuple[datetime, datetime] | None = None,
+        category_filter: str | None = None,
     ) -> list[RetrievalResult]:
         """Query the signal index.
 
@@ -573,7 +575,7 @@ class SignalRAG:
         self,
         query: str,
         top_k: int,
-        category_filter: Optional[str],
+        category_filter: str | None,
     ) -> list[RetrievalResult]:
         """Fallback keyword-based search."""
         query_lower = query.lower()
@@ -642,7 +644,7 @@ class SignalRAG:
             query = topic
 
         # Time filter
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start = now - timedelta(days=time_window_days)
 
         return self.query(
@@ -728,8 +730,8 @@ class SignalRAG:
             top_k=20,
             min_relevance=0.2,
             time_filter=(
-                datetime.now(timezone.utc) - timedelta(days=days),
-                datetime.now(timezone.utc),
+                datetime.now(UTC) - timedelta(days=days),
+                datetime.now(UTC),
             ),
         )
 

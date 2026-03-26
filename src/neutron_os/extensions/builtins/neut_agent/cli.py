@@ -19,29 +19,29 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional
+
+from neutron_os.infra.gateway import Gateway
+from neutron_os.infra.orchestrator.bus import EventBus
+from neutron_os.infra.orchestrator.session import Session, SessionStore
+from neutron_os.setup.renderer import _c, _Colors
 
 from .agent import ChatAgent
 from .commands import (
-    cmd_help,
-    cmd_status,
-    cmd_signal,
+    cmd_archive,
     cmd_doc,
-    cmd_sessions,
-    cmd_resume,
+    cmd_help,
     cmd_new,
     cmd_rename,
-    cmd_archive,
+    cmd_resume,
+    cmd_sessions,
+    cmd_signal,
+    cmd_status,
     cmd_usage,
     find_close_command,
     get_slash_commands,
 )
-from .provider_factory import create_render_provider, create_input_provider
-from .providers.base import RenderProvider, InputProvider
-from neutron_os.infra.orchestrator.bus import EventBus
-from neutron_os.infra.orchestrator.session import Session, SessionStore
-from neutron_os.infra.gateway import Gateway
-from neutron_os.setup.renderer import _c, _Colors
+from .provider_factory import create_input_provider, create_render_provider
+from .providers.base import InputProvider, RenderProvider
 
 
 def _input_border() -> str:
@@ -161,7 +161,7 @@ def run_repl(
 
 def _handle_slash_command(
     command: str, agent: ChatAgent, store: SessionStore,
-) -> Optional[str]:
+) -> str | None:
     """Dispatch a slash command. Returns output text or 'exit'.
 
     Handles both chat meta commands and CLI commands (auto-synced from registry).
@@ -347,7 +347,7 @@ def _is_fullscreen_available() -> bool:
         return False
 
 
-def _check_restart_state() -> Optional[dict]:
+def _check_restart_state() -> dict | None:
     """Check for restart state from a recent /update restart."""
     try:
         from neutron_os.extensions.builtins.update.version_check import read_restart_state
@@ -412,7 +412,7 @@ def main():
     args = parser.parse_args()
 
     # Auto-resume from restart state (e.g. after /update)
-    restart_ctx: Optional[dict] = None
+    restart_ctx: dict | None = None
     if not args.resume:
         restart_state = _check_restart_state()
         if restart_state:
@@ -441,7 +441,7 @@ def main():
         pass
 
     # Resume or create session
-    session: Optional[Session] = None
+    session: Session | None = None
     if args.resume:
         session = store.load(args.resume)
         if session is None:

@@ -17,10 +17,10 @@ import argparse
 import json
 from pathlib import Path
 
-from .data_models import StakeholderResponses, CostBreakdown
 from .cost_calculator import CostCalculator
-from .scenarios import get_scenario
+from .data_models import CostBreakdown, StakeholderResponses
 from .reporter import CostReporter
+from .scenarios import get_scenario
 
 
 def load_stakeholder_responses(filepath: str) -> StakeholderResponses:
@@ -34,14 +34,14 @@ def load_stakeholder_responses(filepath: str) -> StakeholderResponses:
         ...
     }
     """
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         data = json.load(f)
 
     # Deserialize into StakeholderResponses
     responses = StakeholderResponses()
 
     if "physics" in data:
-        responses.physics = StakeholderResponses(**data["physics"]).__dict__
+        responses.physics = StakeholderResponses(**data["physics"]).__dict__  # type: ignore[assignment]
     # ... (would need more sophisticated deserialization for production)
 
     return responses

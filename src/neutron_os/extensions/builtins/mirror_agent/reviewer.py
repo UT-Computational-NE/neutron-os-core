@@ -13,8 +13,6 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-
 
 SENSITIVITY_PROMPT = """\
 You are a security reviewer for an open-source nuclear facility software project.
@@ -81,7 +79,7 @@ def review_mirror_content(
     public_paths: list[str],
     exclude_paths: list[str],
     gateway,
-    since_ref: Optional[str] = None,
+    since_ref: str | None = None,
     max_files: int = 50,
 ) -> MirrorReview:
     """Review files that would be published to the public mirror.
@@ -111,7 +109,7 @@ def _collect_files(
     repo_root: Path,
     public_paths: list[str],
     exclude_paths: list[str],
-    since_ref: Optional[str],
+    since_ref: str | None,
     max_files: int,
 ) -> list[Path]:
     """Get the set of files to review."""

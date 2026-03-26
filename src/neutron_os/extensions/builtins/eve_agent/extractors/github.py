@@ -25,13 +25,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
+from ..models import Extraction, Signal
+from ..registry import SourceType, register_source
 from .base import BaseExtractor
-from ..models import Signal, Extraction
-from ..registry import register_source, SourceType
 
 
 @dataclass
@@ -90,7 +89,7 @@ class GitHubExtractor(BaseExtractor):
     def name(self) -> str:
         return "github"
 
-    def __init__(self, token: Optional[str] = None):
+    def __init__(self, token: str | None = None):
         if token is None:
             from neutron_os.infra.connections import get_credential
             token = get_credential("github")
@@ -120,7 +119,7 @@ class GitHubExtractor(BaseExtractor):
         except ImportError:
             return False
 
-    def can_handle(self, source_path: Path) -> bool:
+    def can_handle(self, source_path: Path) -> bool:  # type: ignore[override]
         """Handle github export JSON files."""
         name = source_path.name.lower()
         return name.startswith("github_") and name.endswith(".json")
@@ -129,7 +128,7 @@ class GitHubExtractor(BaseExtractor):
         self,
         repo_full_name: str,
         days: int = 30,
-        output_path: Optional[Path] = None,
+        output_path: Path | None = None,
     ) -> GitHubActivity:
         """Fetch recent activity from a GitHub repository.
 
@@ -166,7 +165,7 @@ class GitHubExtractor(BaseExtractor):
         activity = GitHubActivity(
             repo=repo_name,
             owner=owner,
-            exported_at=datetime.now(timezone.utc).isoformat(),
+            exported_at=datetime.now(UTC).isoformat(),
             time_window_days=days,
             commits=[
                 {
@@ -216,7 +215,7 @@ class GitHubExtractor(BaseExtractor):
 
         return activity
 
-    def extract(self, source_path: Path) -> Extraction:
+    def extract(self, source_path: Path, **kwargs) -> Extraction:  # type: ignore[override]
         """Extract signals from a GitHub activity JSON export."""
         if not source_path.exists():
             return Extraction(
@@ -241,7 +240,7 @@ class GitHubExtractor(BaseExtractor):
         for commit in activity.commits:
             sig = Signal(
                 source="github_commit",
-                timestamp=commit.get("date", datetime.now(timezone.utc).isoformat()),
+                timestamp=commit.get("date", datetime.now(UTC).isoformat()),
                 raw_text=commit.get("message", ""),
                 people=[commit.get("author", "")] if commit.get("author") else [],
                 signal_type=self._classify_commit(commit.get("message", "")),
@@ -270,7 +269,7 @@ class GitHubExtractor(BaseExtractor):
 
             sig = Signal(
                 source="github_pr",
-                timestamp=pr.get("updated_at", datetime.now(timezone.utc).isoformat()),
+                timestamp=pr.get("updated_at", datetime.now(UTC).isoformat()),
                 raw_text=f"{pr.get('title', '')}\n\n{pr.get('body', '')}",
                 people=[pr.get("author", "")] if pr.get("author") else [],
                 signal_type=signal_type,
@@ -297,7 +296,7 @@ class GitHubExtractor(BaseExtractor):
 
             sig = Signal(
                 source="github_issue",
-                timestamp=issue.get("updated_at", datetime.now(timezone.utc).isoformat()),
+                timestamp=issue.get("updated_at", datetime.now(UTC).isoformat()),
                 raw_text=f"{issue.get('title', '')}\n\n{issue.get('body', '')}",
                 people=[issue.get("author", "")] if issue.get("author") else [],
                 signal_type=signal_type,
@@ -341,7 +340,7 @@ class GitHubExtractor(BaseExtractor):
 def export_github_activity(
     repos: list[str],
     days: int = 30,
-    output_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
 ) -> list[Path]:
     """Export activity from multiple GitHub repos.
 

@@ -20,8 +20,6 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Optional
-
 from neutron_os.infra.orchestrator.actions import (
     Action,
     ActionCategory,
@@ -55,14 +53,14 @@ class ApprovalGate:
 
         return action
 
-    def approve(self, action_id: str) -> Optional[Action]:
+    def approve(self, action_id: str) -> Action | None:
         """Approve a pending action."""
         action = self._actions.get(action_id)
         if action and action.status == ActionStatus.PENDING:
             action.approve()
         return action
 
-    def reject(self, action_id: str, reason: str = "") -> Optional[Action]:
+    def reject(self, action_id: str, reason: str = "") -> Action | None:
         """Reject a pending action."""
         action = self._actions.get(action_id)
         if action and action.status == ActionStatus.PENDING:
@@ -76,7 +74,7 @@ class ApprovalGate:
             if a.status == ActionStatus.PENDING
         ]
 
-    def get(self, action_id: str) -> Optional[Action]:
+    def get(self, action_id: str) -> Action | None:
         """Look up an action by ID."""
         return self._actions.get(action_id)
 

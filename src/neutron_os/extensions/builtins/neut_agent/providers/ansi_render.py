@@ -7,14 +7,16 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import Any, Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any
 
-from .base import RenderProvider
 from neutron_os.setup.renderer import _c, _Colors, _use_color
 
+from .base import RenderProvider
+
 if TYPE_CHECKING:
-    from neutron_os.infra.orchestrator.actions import Action
     from neutron_os.infra.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
 
 
 # Markdown regexes (duplicated from renderer.py to keep this self-contained)

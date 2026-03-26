@@ -21,10 +21,8 @@ Usage:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
-
 
 _DEFAULT_PATH = Path.home() / ".neut" / "nudges.json"
 
@@ -36,7 +34,7 @@ class Nudge:
         message: str,
         hint: str = "",
         created_at: str = "",
-        snoozed_until: Optional[str] = None,
+        snoozed_until: str | None = None,
         dismissed: bool = False,
     ):
         self.id = id
@@ -52,7 +50,7 @@ class Nudge:
         if self.snoozed_until:
             try:
                 until = datetime.fromisoformat(self.snoozed_until)
-                if until > datetime.now(timezone.utc):
+                if until > datetime.now(UTC):
                     return False
             except ValueError:
                 pass
@@ -69,7 +67,7 @@ class Nudge:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Nudge":
+    def from_dict(cls, d: dict) -> Nudge:
         return cls(
             id=d["id"],
             message=d.get("message", ""),
@@ -117,7 +115,7 @@ class NudgeStore:
         nudges = self._load()
         for n in nudges:
             if n.id == id:
-                until = datetime.now(timezone.utc) + timedelta(days=days)
+                until = datetime.now(UTC) + timedelta(days=days)
                 n.snoozed_until = until.isoformat()
                 self._save(nudges)
                 return True
@@ -133,9 +131,9 @@ class NudgeStore:
                 return True
         return False
 
-    def get(self, id: str) -> Optional[Nudge]:
+    def get(self, id: str) -> Nudge | None:
         return next((n for n in self._load() if n.id == id), None)
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

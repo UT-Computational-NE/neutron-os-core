@@ -29,20 +29,19 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Optional
-import urllib.request
-import urllib.parse
 import urllib.error
-
-from .base import BaseExtractor
-from ..models import Signal, Extraction
-from ..registry import register_source, SourceType
-
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
+from ..models import Extraction, Signal
+from ..registry import SourceType, register_source
+from .base import BaseExtractor
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 TOKEN_PATH = _RUNTIME_DIR / "inbox" / "state" / "teams_chat_token.json"
 
@@ -64,7 +63,7 @@ class TeamsChatMessage:
     reactions: list[str] = field(default_factory=list)
     importance: str = "normal"
     has_attachments: bool = False
-    reply_to_id: Optional[str] = None
+    reply_to_id: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -158,10 +157,10 @@ class TeamsChatExtractor(BaseExtractor):
 
     def __init__(
         self,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-        token_path: Optional[Path] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        tenant_id: str | None = None,
+        token_path: Path | None = None,
     ):
         from neutron_os.infra.connections import get_credential
         self.client_id = client_id or get_credential("ms_graph") or os.environ.get("MS_GRAPH_CLIENT_ID")
@@ -169,14 +168,14 @@ class TeamsChatExtractor(BaseExtractor):
         self.tenant_id = tenant_id or os.environ.get("MS_GRAPH_TENANT_ID", "common")
         self.token_path = token_path or TOKEN_PATH
 
-        self._access_token: Optional[str] = None
-        self._token_expiry: Optional[datetime] = None
+        self._access_token: str | None = None
+        self._token_expiry: datetime | None = None
 
     def is_available(self) -> bool:
         """Check if Teams access is configured."""
         return bool(self.client_id and self.client_secret)
 
-    def can_handle(self, source_path: Path) -> bool:
+    def can_handle(self, source_path: Path) -> bool:  # type: ignore[override]
         """Handle teams_chat export JSON files."""
         name = source_path.name.lower()
         return name.startswith("teams_chat") and name.endswith(".json")
@@ -185,7 +184,7 @@ class TeamsChatExtractor(BaseExtractor):
         """Get a valid access token, refreshing if needed."""
         # Check cached token
         if self._access_token and self._token_expiry:
-            if datetime.now(timezone.utc) < self._token_expiry:
+            if datetime.now(UTC) < self._token_expiry:
                 return self._access_token
 
         # Try to load from file
@@ -193,7 +192,7 @@ class TeamsChatExtractor(BaseExtractor):
             try:
                 token_data = json.loads(self.token_path.read_text())
                 expiry = datetime.fromisoformat(token_data["expires_at"])
-                if datetime.now(timezone.utc) < expiry:
+                if datetime.now(UTC) < expiry:
                     self._access_token = token_data["access_token"]
                     self._token_expiry = expiry
                     assert self._access_token is not None
@@ -250,7 +249,7 @@ class TeamsChatExtractor(BaseExtractor):
 
                     self._access_token = token_response["access_token"]
                     expires_in = token_response.get("expires_in", 3600)
-                    self._token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
+                    self._token_expiry = datetime.now(UTC) + timedelta(seconds=expires_in - 60)
 
                     # Save token
                     token_data = {
@@ -317,7 +316,7 @@ class TeamsChatExtractor(BaseExtractor):
         result = self._graph_request(endpoint)
 
         messages = []
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
 
         for msg in result.get("value", []):
             created = msg.get("createdDateTime", "")
@@ -364,7 +363,7 @@ class TeamsChatExtractor(BaseExtractor):
         chats = result.get("value", [])
 
         messages = []
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
 
         for chat in chats:
             chat_id = chat.get("id")
@@ -406,7 +405,7 @@ class TeamsChatExtractor(BaseExtractor):
     def fetch_all_messages(
         self,
         days: int = 7,
-        output_path: Optional[Path] = None,
+        output_path: Path | None = None,
     ) -> TeamsChatExport:
         """Fetch all accessible Teams messages.
 
@@ -418,7 +417,7 @@ class TeamsChatExtractor(BaseExtractor):
             TeamsChatExport with all messages
         """
         export = TeamsChatExport(
-            exported_at=datetime.now(timezone.utc).isoformat(),
+            exported_at=datetime.now(UTC).isoformat(),
             time_window_days=days,
         )
 
@@ -483,7 +482,7 @@ class TeamsChatExtractor(BaseExtractor):
         text = text.replace('&gt;', '>')
         return text.strip()
 
-    def extract(self, source_path: Path) -> Extraction:
+    def extract(self, source_path: Path, **kwargs) -> Extraction:  # type: ignore[override]
         """Extract signals from a Teams chat export JSON."""
         if not source_path.exists():
             return Extraction(
@@ -584,7 +583,7 @@ class TeamsChatExtractor(BaseExtractor):
 # Convenience function for CLI
 def export_teams_chat(
     days: int = 7,
-    output_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
 ) -> Path:
     """Export Teams chat messages.
 

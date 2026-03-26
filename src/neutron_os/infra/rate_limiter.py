@@ -25,7 +25,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ class AdaptiveRateLimiter:
                     )
 
     @staticmethod
-    def _parse_int_header(headers: Any, keys: list[str]) -> Optional[int]:
+    def _parse_int_header(headers: Any, keys: list[str]) -> int | None:
         """Try multiple header names, return first parseable int."""
         for key in keys:
             val = headers.get(key)
@@ -191,7 +191,7 @@ class AdaptiveRateLimiter:
         return None
 
     @staticmethod
-    def _parse_reset_header(headers: Any, keys: list[str]) -> Optional[float]:
+    def _parse_reset_header(headers: Any, keys: list[str]) -> float | None:
         """Parse reset header — could be seconds, unix timestamp, or duration string."""
         for key in keys:
             val = headers.get(key)
@@ -222,7 +222,7 @@ class AdaptiveRateLimiter:
             return 2.0  # Default if unparseable
 
 
-def _parse_duration_string(s: str) -> Optional[float]:
+def _parse_duration_string(s: str) -> float | None:
     """Parse Go-style duration: '6m0s', '200ms', '1s', '1m30s'."""
     import re
     total = 0.0

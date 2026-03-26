@@ -205,6 +205,7 @@ class MoAgent:
         sweep_result = self._mgr.sweep()
 
         # Check again after sweep
+        usage = None
         try:
             usage = shutil.disk_usage(self._mgr.base_dir)
             if usage.free >= requested_bytes:
@@ -221,6 +222,7 @@ class MoAgent:
         # If LLM available, use it to reason about what else to release
         if self.gateway and self.gateway.available:
             set_context(self._mgr, self._monitor, self.bus)
+            available_str = self._fmt(usage.free) if usage else "unknown"
             system = _MO_SYSTEM_PROMPT.format(
                 context=f"Procurement request: {requester} needs {self._fmt(requested_bytes)}"
             )
@@ -228,7 +230,7 @@ class MoAgent:
                 "role": "user",
                 "content": (
                     f"Requester '{requester}' needs {self._fmt(requested_bytes)} of scratch space "
-                    f"but only {self._fmt(usage.free)} is available after sweep. "
+                    f"but only {available_str} is available after sweep. "
                     f"Use list_entries and release_entries to free up space. "
                     f"Prioritize expired and low-value entries. "
                     f"If you cannot free enough, escalate."

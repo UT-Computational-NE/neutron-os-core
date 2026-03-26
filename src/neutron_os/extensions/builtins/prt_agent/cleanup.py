@@ -18,7 +18,6 @@ import re
 from pathlib import Path
 
 
-
 class MarkdownCleanup:
     """Cleans up markdown files with pandoc conversion artifacts.
 
@@ -229,7 +228,7 @@ class MarkdownCleanup:
         # Pattern for SharePoint URLs (can be very long)
         sharepoint_pattern = r'\[([^\]]+)\]\(https://[a-zA-Z0-9\-\.]*sharepoint\.com/[^\)]+\)'
 
-        def replace_url(match: str) -> str:
+        def replace_url(match: re.Match[str]) -> str:
             link_text = match.group(1)
             # Convert to plain text reference
             return f"{link_text} (Published in SharePoint)"
@@ -319,7 +318,7 @@ class MarkdownCleanup:
         # Match diagram rendering failure notices
         fail_pattern = r'⚠️\s*Diagram rendering failed[^\n]*'
 
-        def replace_diagram(match: str) -> str:
+        def replace_diagram(match: re.Match[str]) -> str:
             # Extract any nearby diagram title
             return """```mermaid
 graph TD
@@ -345,7 +344,7 @@ graph TD
         # Pattern: image markdown without alt text
         image_pattern = r'!\[\]\(([^)]+)\)'
 
-        def add_alt(match: str) -> str:
+        def add_alt(match: re.Match[str]) -> str:
             image_path = match.group(1)
             # Generate alt text from filename (before extension)
             filename = Path(image_path).stem

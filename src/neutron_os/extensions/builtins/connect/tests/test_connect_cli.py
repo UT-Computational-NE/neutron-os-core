@@ -7,7 +7,6 @@ import os
 from unittest import mock
 
 
-
 class TestConnectList:
     """neut connect (no args) lists all connections."""
 
@@ -70,8 +69,11 @@ class TestConnectStatusIntegration:
 
     def test_status_section_exists(self):
         """neut status should include a Connections section."""
-        from neutron_os.infra.connections import format_status_section
-        from neutron_os.infra.connections import Connection, ConnectionRegistry
+        from neutron_os.infra.connections import (
+            Connection,
+            ConnectionRegistry,
+            format_status_section,
+        )
 
         registry = ConnectionRegistry()
         registry.register(Connection(

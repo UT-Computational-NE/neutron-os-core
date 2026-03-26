@@ -46,10 +46,10 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 # Re-export core types for provider implementations
 from ...models import Signal as Signal
@@ -70,15 +70,15 @@ class ProviderCapability(Enum):
 @dataclass
 class ProviderCredentials:
     """Standard credential container for providers."""
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None
-    api_key: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    access_token: str | None = None
+    refresh_token: str | None = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    api_key: str | None = None
+    expires_at: datetime | None = None
 
     @classmethod
-    def from_env(cls, provider_slug: str) -> "ProviderCredentials":
+    def from_env(cls, provider_slug: str) -> ProviderCredentials:
         """Load credentials from environment variables.
 
         Looks for: DOCFLOW_{SLUG}_TOKEN, DOCFLOW_{SLUG}_REFRESH, etc.
@@ -102,7 +102,7 @@ class ProviderCredentials:
         """Check if token refresh is needed."""
         if not self.expires_at:
             return False
-        return datetime.now(timezone.utc) >= self.expires_at
+        return datetime.now(UTC) >= self.expires_at
 
 
 class ChangeType(Enum):
@@ -155,7 +155,7 @@ class DocProvider(ABC):
     display_name: str = "Base Provider"
     capabilities: set[ProviderCapability] = set()
 
-    def __init__(self, credentials: Optional[ProviderCredentials] = None):
+    def __init__(self, credentials: ProviderCredentials | None = None):
         self._credentials = credentials or ProviderCredentials.from_env(self.slug)
 
     @property
@@ -210,8 +210,8 @@ class FolderSyncProvider(ABC):
 
     def __init__(
         self,
-        credentials: Optional[ProviderCredentials] = None,
-        local_root: Optional[Path] = None,
+        credentials: ProviderCredentials | None = None,
+        local_root: Path | None = None,
     ):
         self._credentials = credentials or ProviderCredentials.from_env(self.slug)
         # Local cache: inbox/raw/docflow/{slug}/
@@ -226,7 +226,7 @@ class FolderSyncProvider(ABC):
         return self._credentials.is_configured
 
     @abstractmethod
-    def list_remote_files(self, folder_id: Optional[str] = None) -> list[SyncedFile]:
+    def list_remote_files(self, folder_id: str | None = None) -> list[SyncedFile]:
         """List files in remote folder.
 
         Args:
@@ -250,7 +250,7 @@ class FolderSyncProvider(ABC):
         """
         pass
 
-    def sync_folder(self, folder_id: Optional[str] = None) -> list[ExternalChange]:
+    def sync_folder(self, folder_id: str | None = None) -> list[ExternalChange]:
         """Perform incremental sync of folder.
 
         Returns:
@@ -296,7 +296,7 @@ class FolderSyncProvider(ABC):
                     prev_state[remote_file.remote_id] = {
                         "hash": remote_file.content_hash,
                         "local_path": str(local_path),
-                        "synced_at": datetime.now(timezone.utc).isoformat(),
+                        "synced_at": datetime.now(UTC).isoformat(),
                     }
 
         # Detect deletions
@@ -365,8 +365,8 @@ class ProviderRegistry:
     def get_doc_provider(
         cls,
         slug: str,
-        credentials: Optional[ProviderCredentials] = None,
-    ) -> Optional[DocProvider]:
+        credentials: ProviderCredentials | None = None,
+    ) -> DocProvider | None:
         """Get a document provider instance."""
         if slug not in cls._doc_providers:
             return None
@@ -379,8 +379,8 @@ class ProviderRegistry:
     def get_folder_provider(
         cls,
         slug: str,
-        credentials: Optional[ProviderCredentials] = None,
-    ) -> Optional[FolderSyncProvider]:
+        credentials: ProviderCredentials | None = None,
+    ) -> FolderSyncProvider | None:
         """Get a folder provider instance."""
         if slug not in cls._folder_providers:
             return None
@@ -476,7 +476,7 @@ class GoogleDocsProvider(DocProvider):
         ProviderCapability.REVISION_HISTORY,
     }
 
-    def __init__(self, credentials: Optional[ProviderCredentials] = None):
+    def __init__(self, credentials: ProviderCredentials | None = None):
         super().__init__(credentials)
         self._base_url = "https://www.googleapis.com"
 
@@ -568,13 +568,13 @@ class GoogleDriveProvider(FolderSyncProvider):
 
     def __init__(
         self,
-        credentials: Optional[ProviderCredentials] = None,
-        local_root: Optional[Path] = None,
+        credentials: ProviderCredentials | None = None,
+        local_root: Path | None = None,
     ):
         super().__init__(credentials, local_root)
         self._base_url = "https://www.googleapis.com/drive/v3"
 
-    def list_remote_files(self, folder_id: Optional[str] = None) -> list[SyncedFile]:
+    def list_remote_files(self, folder_id: str | None = None) -> list[SyncedFile]:
         """List files in Google Drive folder."""
         if not self.is_available:
             return []
@@ -674,7 +674,7 @@ class BoxProvider(DocProvider):
         ProviderCapability.REVISION_HISTORY,
     }
 
-    def __init__(self, credentials: Optional[ProviderCredentials] = None):
+    def __init__(self, credentials: ProviderCredentials | None = None):
         super().__init__(credentials)
         self._base_url = "https://api.box.com/2.0"
 
@@ -684,6 +684,7 @@ class BoxProvider(DocProvider):
             raise ValueError("Box credentials not configured")
 
         import io
+
         import requests
 
         file_id = self._extract_file_id(uri)
@@ -785,14 +786,14 @@ class DropboxProvider(FolderSyncProvider):
 
     def __init__(
         self,
-        credentials: Optional[ProviderCredentials] = None,
-        local_root: Optional[Path] = None,
+        credentials: ProviderCredentials | None = None,
+        local_root: Path | None = None,
     ):
         super().__init__(credentials, local_root)
         self._base_url = "https://api.dropboxapi.com/2"
         self._content_url = "https://content.dropboxapi.com/2"
 
-    def list_remote_files(self, folder_id: Optional[str] = None) -> list[SyncedFile]:
+    def list_remote_files(self, folder_id: str | None = None) -> list[SyncedFile]:
         """List files in Dropbox folder."""
         if not self.is_available:
             return []
@@ -837,6 +838,7 @@ class DropboxProvider(FolderSyncProvider):
             return False
 
         import json
+
         import requests
 
         headers = {

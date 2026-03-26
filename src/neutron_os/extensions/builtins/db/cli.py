@@ -18,7 +18,6 @@ import os
 import re
 import sys
 
-
 # Default connection for local K3D cluster
 DEFAULT_LOCAL_URL = "postgresql://neut:neut@localhost:5432/neut_db"
 
@@ -71,7 +70,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     """Show cluster and database status."""
-    from neutron_os.extensions.builtins.eve_agent.pgvector_store import k3d_status, VectorDB
+    from neutron_os.extensions.builtins.eve_agent.pgvector_store import VectorDB, k3d_status
 
     db_url = os.environ.get("NEUT_DB_URL", DEFAULT_LOCAL_URL)
     masked_url = _mask_url(db_url)
@@ -136,10 +135,10 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_migrate(args: argparse.Namespace) -> int:
     """Run Alembic database schema migrations."""
     from neutron_os.extensions.builtins.eve_agent.migrations import (
-        run_migrations,
         check_migrations,
-        verify_schema,
         ensure_pgvector_extension,
+        run_migrations,
+        verify_schema,
     )
 
     cmd = getattr(args, 'migrate_command', 'check') or 'check'
@@ -263,7 +262,11 @@ def _print_migrate_help():
 
 def cmd_bootstrap(args: argparse.Namespace) -> int:
     """Full database setup from scratch."""
-    from neutron_os.extensions.builtins.eve_agent.bootstrap import Bootstrap, BootstrapConfig, BootstrapStep
+    from neutron_os.extensions.builtins.eve_agent.bootstrap import (
+        Bootstrap,
+        BootstrapConfig,
+        BootstrapStep,
+    )
 
     config = BootstrapConfig(
         non_interactive=args.non_interactive,

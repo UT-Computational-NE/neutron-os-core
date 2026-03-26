@@ -11,9 +11,7 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-
+from datetime import UTC, datetime, timedelta
 
 # ---------------------------------------------------------------------------
 # Source-agnostic data models
@@ -85,7 +83,7 @@ MAX_DESCRIPTION_LENGTH = 200
 MAX_COMMIT_MESSAGE_LENGTH = 200
 
 
-def truncate(text: Optional[str], max_length: int) -> Optional[str]:
+def truncate(text: str | None, max_length: int) -> str | None:
     """Truncate *text* to *max_length*, adding ellipsis if needed."""
     if text is None:
         return None
@@ -95,7 +93,7 @@ def truncate(text: Optional[str], max_length: int) -> Optional[str]:
     return text[: max_length - 3] + "..."
 
 
-def parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
+def parse_datetime(dt_str: str | None) -> datetime | None:
     """Parse an ISO-8601 datetime string to a *datetime* object."""
     if not dt_str:
         return None
@@ -106,14 +104,14 @@ def parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def is_within_days(dt_str: Optional[str], days: int) -> bool:
+def is_within_days(dt_str: str | None, days: int) -> bool:
     """Return True if *dt_str* falls within the last *days* days."""
     dt = parse_datetime(dt_str)
     if not dt:
         return False
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt >= cutoff
 
 

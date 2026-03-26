@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from neutron_os.infra.orchestrator.actions import Action, ActionStatus
 from neutron_os.setup.renderer import _c, _Colors, _use_color

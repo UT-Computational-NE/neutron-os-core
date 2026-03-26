@@ -22,17 +22,18 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from .models import Signal, Changelog, ChangelogEntry, SignalManifest, DATE_FORMAT_ISO
+from .models import DATE_FORMAT_ISO, Changelog, ChangelogEntry, Signal, SignalManifest
 
 if TYPE_CHECKING:
     from .correlator import Correlator
 
 # Drafts directory: tools/agents/drafts/
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 DRAFTS_DIR = _RUNTIME_DIR / "drafts"
 
@@ -245,7 +246,7 @@ class Synthesizer:
             Changelog with filtered entries.
         """
         if date is None:
-            date = datetime.now(timezone.utc).strftime(DATE_FORMAT_ISO)
+            date = datetime.now(UTC).strftime(DATE_FORMAT_ISO)
 
         # Filter out already-reported signals unless include_all is True
         total_signals = len(signals)
@@ -386,7 +387,7 @@ class Synthesizer:
         self,
         changelog: Changelog,
         correlator: Correlator | None = None,
-        blocker_tracker: object | None = None,
+        blocker_tracker: Any | None = None,
     ) -> Path:
         """Write a prose weekly summary to drafts/.
 

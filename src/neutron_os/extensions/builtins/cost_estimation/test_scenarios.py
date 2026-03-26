@@ -6,8 +6,8 @@ Verifies that the three pre-defined scenarios produce costs matching
 the comprehensive utility analysis document.
 """
 
-from .scenarios import scenario_minimal, scenario_recommended, scenario_full_cloud
 from .reporter import CostReporter
+from .scenarios import scenario_full_cloud, scenario_minimal, scenario_recommended
 
 
 def test_scenario_minimal():

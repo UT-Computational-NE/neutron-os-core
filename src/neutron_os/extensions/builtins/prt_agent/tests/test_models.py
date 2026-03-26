@@ -2,9 +2,9 @@
 
 from neutron_os.extensions.builtins.prt_agent.state import (
     Comment,
+    DocumentState,
     LinkEntry,
     PublicationRecord,
-    DocumentState,
 )
 
 
@@ -133,7 +133,7 @@ class TestDocumentState:
             published=pub,
             last_commit="abc",
             last_branch="main",
-            pending_comments=[comment],
+            pending_comments=[comment.to_dict()],
             stakeholders=["alice", "bob"],
         )
 
@@ -141,6 +141,7 @@ class TestDocumentState:
         restored = DocumentState.from_dict(d)
 
         assert restored.status == "published"
+        assert restored.published is not None
         assert restored.published.url == "https://example.com/test.docx"
         assert len(restored.pending_comments) == 1
         assert restored.stakeholders == ["alice", "bob"]

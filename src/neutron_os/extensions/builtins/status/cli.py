@@ -18,10 +18,9 @@ import socket
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class HealthStatus(Enum):
@@ -38,13 +37,13 @@ class ServiceHealth:
     name: str
     status: HealthStatus
     message: str
-    latency_ms: Optional[float] = None
+    latency_ms: float | None = None
     details: dict = field(default_factory=dict)
     checked_at: str = ""
 
     def __post_init__(self):
         if not self.checked_at:
-            self.checked_at = datetime.now(timezone.utc).isoformat()
+            self.checked_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {
@@ -87,7 +86,7 @@ class SystemHealth:
 
     def __post_init__(self):
         if not self.checked_at:
-            self.checked_at = datetime.now(timezone.utc).isoformat()
+            self.checked_at = datetime.now(UTC).isoformat()
 
     def compute_overall(self) -> None:
         """Compute overall health from services."""
@@ -117,7 +116,7 @@ class SystemHealth:
 class HealthChecker:
     """Checks health of NeutronOS services."""
 
-    def __init__(self, repo_root: Optional[Path] = None):
+    def __init__(self, repo_root: Path | None = None):
         from neutron_os import REPO_ROOT
         self.repo_root = repo_root or REPO_ROOT
 
@@ -369,6 +368,8 @@ class HealthChecker:
         """Check main API server (future web/mobile backend)."""
         url = f"http://{host}:{port}"
 
+        import urllib.error
+        import urllib.request
         start = time.time()
 
         # First check if port is open
@@ -433,12 +434,13 @@ class HealthChecker:
 
     def check_sense_server(self, host: str = "localhost", port: int = 8765) -> ServiceHealth:
         """Check Sense inbox server."""
+        import urllib.error
+        import urllib.request
         url = f"http://{host}:{port}"
 
         start = time.time()
 
         try:
-            import urllib.request
 
             req = urllib.request.Request(f"{url}/status", method="GET")
 
@@ -477,7 +479,7 @@ class HealthChecker:
         # MCP server runs on demand via stdio, not as a daemon
         # Check if it's importable and configured
         try:
-            from neutron_os.mcp_server import server  # noqa: F401
+            from neutron_os.mcp_server import server  # type: ignore[import-not-found]  # noqa: F401
 
             return ServiceHealth(
                 name="MCP Server",
@@ -561,7 +563,7 @@ class HealthChecker:
         for unit in ("B", "KB", "MB", "GB"):
             if abs(n) < 1024:
                 return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
-            n = n / 1024
+            n = int(n / 1024)
         return f"{n:.1f} TB"
 
     def _mask_url(self, url: str) -> str:
