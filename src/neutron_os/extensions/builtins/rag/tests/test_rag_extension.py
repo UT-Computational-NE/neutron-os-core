@@ -183,7 +183,7 @@ def test_neut_agent_rag_context_no_url(monkeypatch):
         "neutron_os.extensions.builtins.settings.store.SettingsStore.get",
         return_value="",
     ):
-        result = agent._rag_context("xenon poisoning in reactor")
+        result = agent._rag_context("cache invalidation in distributed systems")
 
     assert result == ""
 
@@ -198,9 +198,9 @@ def test_neut_agent_rag_context_returns_formatted_chunks():
     agent._rag_store = MagicMock()
     agent._rag_store.search.return_value = [
         SearchResult(
-            source_path="docs/tech-specs/xenon.md",
-            source_title="Xenon Poisoning",
-            chunk_text="Xenon-135 is a strong neutron absorber produced during fission.",
+            source_path="docs/tech-specs/caching.md",
+            source_title="Cache Invalidation",
+            chunk_text="Cache coherence is critical for distributed systems consistency.",
             chunk_index=0,
             similarity=0.92,
             combined_score=0.92,
@@ -208,8 +208,8 @@ def test_neut_agent_rag_context_returns_formatted_chunks():
         )
     ]
 
-    result = agent._rag_context("xenon poisoning")
+    result = agent._rag_context("cache invalidation")
 
-    assert "Xenon-135" in result
+    assert "coherence" in result
     assert "rag-community" in result
     assert "knowledge base context" in result.lower()

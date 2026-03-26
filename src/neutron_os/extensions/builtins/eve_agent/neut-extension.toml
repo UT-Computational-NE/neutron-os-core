@@ -44,12 +44,12 @@ docs_url = "https://github.com/settings/tokens"
 
 [[connections]]
 name = "gitlab"
-display_name = "GitLab (TACC)"
+display_name = "GitLab"
 kind = "api"
 credential_env_var = "GITLAB_TOKEN"
 category = "code"
 capabilities = ["read", "write"]
-docs_url = "https://rsicc-gitlab.tacc.utexas.edu/-/user_settings/personal_access_tokens"
+docs_url = ""
 
 [[connections]]
 name = "openai"

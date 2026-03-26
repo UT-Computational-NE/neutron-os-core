@@ -72,24 +72,24 @@ class TestEndpoint:
 
     def test_initiative_filter(self):
         endpoint = Endpoint(
-            id="triga",
-            name="TRIGA Channel",
-            initiatives=["TRIGA Digital Twin", "NETL Backpacks"],
+            id="alpha",
+            name="Alpha Channel",
+            initiatives=["Project Alpha", "Project Beta"],
         )
 
-        triga_signal = Signal(
+        alpha_signal = Signal(
             source="voice", timestamp="2026-02-15T10:00:00Z", raw_text="a",
-            initiatives=["TRIGA Digital Twin"],
+            initiatives=["Project Alpha"],
         )
         other_signal = Signal(
             source="voice", timestamp="2026-02-15T10:00:00Z", raw_text="b",
-            initiatives=["MSR Project"],
+            initiatives=["Project Gamma"],
         )
         no_init = Signal(
             source="voice", timestamp="2026-02-15T10:00:00Z", raw_text="c",
         )
 
-        assert endpoint.matches(triga_signal) is True
+        assert endpoint.matches(alpha_signal) is True
         assert endpoint.matches(other_signal) is False
         assert endpoint.matches(no_init) is False
 

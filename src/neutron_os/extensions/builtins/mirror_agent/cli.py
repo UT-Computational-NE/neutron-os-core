@@ -241,10 +241,12 @@ def _pattern_review(repo_root: Path) -> None:
     """Fallback: grep for obvious sensitive patterns without LLM."""
     import re
 
+    # Internal URL patterns can be customized via INTERNAL_URL_DOMAINS env var
+    internal_domains = os.environ.get("INTERNAL_URL_DOMAINS", "internal|private|intranet")
     patterns = {
         "Email addresses": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
         "Tokens/secrets":  r"(glpat|ghp_|sk-|AKIA)[A-Za-z0-9_\-]{10,}",
-        "Internal URLs":   r"https?://[a-z0-9.-]*(tacc|utexas|rsicc)[a-z0-9./%-]*",
+        "Internal URLs":   rf"https?://[a-z0-9.-]*({internal_domains})[a-z0-9./%-]*",
         "Dollar amounts":  r"\$[0-9,]+(\.[0-9]{2})?",
     }
 

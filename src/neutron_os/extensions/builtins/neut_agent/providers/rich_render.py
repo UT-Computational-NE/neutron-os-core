@@ -83,16 +83,16 @@ class RichRenderProvider(RenderProvider):
         assert Markdown is not None and Live is not None  # guarded by __init__
         import sys
 
-        from ..pulse_spinner import TrigaPulseSpinner
+        from ..pulse_spinner import PulseSpinner
 
         accumulated = ""
         is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
 
-        # Phase 1: Show TRIGA pulse spinner BEFORE Rich Live context.
+        # Phase 1: Show pulse spinner BEFORE Rich Live context.
         # Rich's Live intercepts stdout, so the spinner must run outside it.
-        spinner: TrigaPulseSpinner | None = None
+        spinner: PulseSpinner | None = None
         if is_tty:
-            spinner = TrigaPulseSpinner("Thinking")
+            spinner = PulseSpinner("Thinking")
             spinner.start()
 
         # Consume chunks until first renderable content arrives

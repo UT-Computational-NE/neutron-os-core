@@ -16,7 +16,7 @@
 #     • Should be stable — renaming a provider breaks historical log correlation
 #     • Use descriptive, lowercase, hyphenated names that survive config changes
 #
-#   Good examples:  "anthropic-sonnet-primary", "qwen-tacc-ec", "llama-internal"
+#   Good examples:  "anthropic-sonnet-primary", "qwen-internal", "llama-local"
 #   Bad examples:   "provider1", "test", "qwen" (not specific enough)
 #
 #   The gateway also computes two additional identity fields automatically —
@@ -34,8 +34,8 @@
 #
 # routing_tier  — three tiers
 #   "public"            → safe for cloud LLMs, no VPN needed
-#   "restricted"        → private-network LLM; non-EC nuclear content; falls back to cloud
-#   "export_controlled" → TACC or equivalent EC-authorized environment only (future)
+#   "restricted"        → private-network LLM; sensitive content; falls back to cloud
+#   "export_controlled" → authorized environment only (future)
 #   "any"               → no restriction (default)
 #
 # routing_tags  (facility policy — additive, multiple providers can share tags)
@@ -49,8 +49,8 @@
 #     "private_network"   → any provider behind a VPN/intranet
 #     "export_controlled" → mirrors routing_tier for tag-based callers
 #     "internal_compute"  → facility intranet only, not export-controlled
-#     "mcnp"              → provider tuned/vetted for MCNP-related work
-#     "relap"             → provider for thermal-hydraulics / RELAP work
+#     "domain_specific"  → provider tuned for domain-specific work
+#     "simulation"        → provider for simulation work
 #     "multimodal"        → supports image inputs
 #
 # requires_vpn = true  → TCP reachability check before each call

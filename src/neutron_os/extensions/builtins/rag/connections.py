@@ -34,7 +34,7 @@ def setup_postgresql() -> int:
     print("    postgresql://<user>:<password>@<host>:<port>/<database>")
     print()
     print("  Local k3d (port-forwarded):   postgresql://neut:<pw>@localhost:5432/neut_db")
-    print("  Rascal (port-forwarded):      postgresql://neut:<pw>@localhost:5432/neut_db")
+    print("  Remote (port-forwarded):      postgresql://neut:<pw>@localhost:5432/neut_db")
     print()
 
     try:
@@ -95,7 +95,7 @@ def setup_postgresql() -> int:
 def setup_pack_server() -> int:
     """Post-setup hook for pack-server: prompt for endpoint + API key, health-check, list packs.
 
-    Called by `neut connect pack-server`. Supports named servers (e.g. rascal, tacc)
+    Called by `neut connect pack-server`. Supports named servers (e.g. primary, internal)
     so a user can register multiple pack servers. The server name is stored as
     rag.pack_server_url.<name> / rag.pack_server_key.<name>.
     """
@@ -108,12 +108,12 @@ def setup_pack_server() -> int:
 
     print()
     print("  Pack server examples:")
-    print("    Rascal (UT VPN):   https://rascal.austin.utexas.edu:9000")
-    print("    TACC (TACC net):   https://tacc-neut.tacc.utexas.edu:9000")
+    print("    Internal:   https://pack.internal.example.com:9000")
+    print("    Cloud:      https://pack.cloud.example.com:9000")
     print()
 
     try:
-        name = input("  Server name (e.g. 'rascal', 'tacc') [rascal]: ").strip() or "rascal"
+        name = input("  Server name (e.g. 'primary', 'internal') [primary]: ").strip() or "primary"
         url = input("  Pack server URL: ").strip().rstrip("/")
         key = input("  API key (Enter to skip): ").strip()
     except (EOFError, KeyboardInterrupt):

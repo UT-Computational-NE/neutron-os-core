@@ -100,7 +100,7 @@ def format_markdown_line(line: str) -> str:
     # Headings
     m = _HEADING_RE.match(line)
     if m:
-        return _c(_Colors.BOLD + _Colors.CHERENKOV, line)
+        return _c(_Colors.BOLD + _Colors.ACCENT_BLUE, line)
 
     # List items — bullet in cyan
     m = _LIST_RE.match(line)
@@ -247,13 +247,13 @@ def stream_text(chunks: Iterator[StreamChunk]) -> str:
 
 @contextmanager
 def render_thinking_spinner(label: str = "Thinking"):
-    """Context manager showing a TRIGA pulse spinner while work happens.
+    """Context manager showing a pulse spinner while work happens.
 
     Yields the spinner object so callers can optionally call
     ``spinner.update_tokens()`` or ``spinner.set_sub_state()``.
     Falls back to a static message in non-TTY environments.
     """
-    from .pulse_spinner import TrigaPulseSpinner
+    from .pulse_spinner import PulseSpinner
 
     if not (hasattr(sys.stdout, "isatty") and sys.stdout.isatty()):
         sys.stdout.write(f"  {label}...\n")
@@ -261,7 +261,7 @@ def render_thinking_spinner(label: str = "Thinking"):
         yield None
         return
 
-    spinner = TrigaPulseSpinner(label)
+    spinner = PulseSpinner(label)
     spinner.start()
     try:
         yield spinner
@@ -276,7 +276,7 @@ def render_thinking_spinner(label: str = "Thinking"):
 def render_message(role: str, content: str) -> None:
     """Print a chat message with role prefix and markdown formatting."""
     if role == "assistant":
-        _c(_Colors.BOLD + _Colors.CHERENKOV, "neut>") if _use_color() else "neut>"
+        _c(_Colors.BOLD + _Colors.ACCENT_BLUE, "neut>") if _use_color() else "neut>"
         print()
         for line in content.splitlines():
             formatted = format_markdown_line(line)
@@ -297,7 +297,7 @@ def render_welcome(gateway=None, show_banner: bool = False) -> None:
         mascot_banner()
     else:
         print()
-        print(f"  {_c(_Colors.BOLD + _Colors.CHERENKOV, 'neut chat')} — interactive agent")
+        print(f"  {_c(_Colors.BOLD + _Colors.ACCENT_BLUE, 'neut chat')} — interactive agent")
 
     if gateway is not None:
         provider = gateway.active_provider

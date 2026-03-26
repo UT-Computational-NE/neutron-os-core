@@ -2,7 +2,7 @@ Table of Contents
 
 DocFlow: Document Lifecycle Management System
 
-Version: 0.2.0   Status: Specification (In Development)   Last Updated: February 17, 2026   Owner: Ben Booth (UT Nuclear Engineering)
+Version: 0.2.0   Status: Specification (In Development)   Last Updated: February 17, 2026   Owner: NeutronOS Team
 
 Architecture pattern: DocFlow follows the same Factory/Provider pattern
 established in the 
@@ -870,7 +870,7 @@ Success Metrics
 
 Contributors
 
-• Ben Booth (UT Nuclear Engineering) — Lead architect
+• NeutronOS Team — Lead architect
 
 References
 

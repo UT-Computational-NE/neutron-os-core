@@ -44,11 +44,11 @@ class TestNonBlockingCorrections:
         correction = AppliedCorrection(
             id="corr_test1",
             transcript_path="/test/transcript.md",
-            original="new tronics",
-            corrected="neutronics",
+            original="c of d",
+            corrected="CFD",
             category="technical_term",
             confidence=0.95,
-            context="code inputs for new tronics",
+            context="simulation inputs for c of d",
             reason="Common Whisper mishearing",
         )
 
@@ -281,7 +281,7 @@ class TestContextAwareness:
             clues_against.append("patent/legal context, not project discussion")
 
         # 3. No other JEDI-related terms
-        jedi_terms = ["reactor", "design tool", "neutronics", "inputs"]
+        jedi_terms = ["simulation", "design tool", "analysis", "inputs"]
         jedi_context = any(term in context.lower() for term in jedi_terms)
         if not jedi_context:
             clues_against.append("no JEDI-related technical terms nearby")

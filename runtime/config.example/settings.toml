@@ -7,7 +7,7 @@
 # Project settings take precedence over global.
 # Copy to ~/.neut/settings.toml or .neut/settings.toml and customize.
 #
-# These are *user* preferences. Facility config (API keys, reactor type,
+# These are *user* preferences. Facility config (API keys, facility type,
 # LLM providers) lives in runtime/config/ and is managed by `neut config`.
 
 # ─────────────────────────────────────────────────────────────────────────────

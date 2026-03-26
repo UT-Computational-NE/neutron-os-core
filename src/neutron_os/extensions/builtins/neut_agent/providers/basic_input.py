@@ -18,7 +18,7 @@ class BasicInputProvider(InputProvider):
 
     def prompt(self, prefix: str = "you> ", show_border: bool = False) -> str:
         if _use_color() and prefix == "you> ":
-            prefix = _c(_Colors.CHERENKOV, "you> ")
+            prefix = _c(_Colors.ACCENT_BLUE, "you> ")
         result = input(prefix)
         # Basic provider can only show the bottom border after Enter
         if show_border:

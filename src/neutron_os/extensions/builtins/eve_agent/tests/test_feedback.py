@@ -157,7 +157,7 @@ class TestFeedbackCollector:
         assert request is not None
         assert request.signal_id == sample_signal.signal_id
         assert request.originator == sample_signal.originator
-        assert "thermal" in request.signal_summary
+        assert "Thermal" in request.signal_summary
 
     def test_request_saved_to_pending(self, collector, sample_signal):
         request = collector.create_feedback_request(sample_signal)
@@ -172,8 +172,8 @@ class TestFeedbackCollector:
         feedback = SignalFeedback(
             signal_id=sample_signal.signal_id,
             feedback_type="add_initiative",
-            content="Also relevant to NETL Backpacks",
-            originator="ben@example.com",
+            content="Also relevant to Project Beta",
+            originator="user@example.com",
         )
 
         result = collector.submit_feedback(feedback)

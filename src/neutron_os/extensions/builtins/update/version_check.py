@@ -115,7 +115,7 @@ class VersionChecker:
         # Get registry URL and token from environment or config
         registry_url = os.environ.get(
             "NEUT_REGISTRY_URL",
-            "https://rsicc-gitlab.tacc.utexas.edu/api/v4/projects/77/packages/pypi/simple/neutron-os/",
+            "",  # No default - set NEUT_REGISTRY_URL to enable update checks
         )
         token = os.environ.get("NEUT_REGISTRY_TOKEN", "")
 

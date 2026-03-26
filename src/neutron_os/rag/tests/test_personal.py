@@ -441,7 +441,7 @@ def test_ingest_signals_counts(tmp_path):
     inbox = tmp_path / "processed"
     inbox.mkdir()
 
-    (inbox / "good.json").write_text(json.dumps({"event": "reactor_trip", "severity": "high"}))
+    (inbox / "good.json").write_text(json.dumps({"event": "system_alert", "severity": "high"}))
     (inbox / "empty.json").write_text("{}")
 
     store = _make_store()

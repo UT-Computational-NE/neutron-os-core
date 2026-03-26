@@ -90,8 +90,8 @@ AXIOM_PATHS=(
     "conftest.py"
 )
 
-# Nuclear keywords to check for
-NUCLEAR_KEYWORDS="TRIGA|MCNP|SCALE|HEU|LEU|reactor|10 CFR|NETL|TACC|nuclear"
+# Nuclear keywords to check for (word boundaries to avoid false positives like "heuristic")
+NUCLEAR_KEYWORDS="\bTRIGA\b|\bMCNP\b|\bSCALE\b|\bHEU\b|\bLEU\b|\breactor\b|\b10 CFR\b|\bNETL\b|\bTACC\b|\bnuclear\b"
 
 phase1_prepare() {
     echo "=== Phase 1: In-Place Refactoring ==="

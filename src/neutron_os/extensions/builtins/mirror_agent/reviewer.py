@@ -1,8 +1,8 @@
 """LLM-based sensitivity reviewer for public mirror content.
 
 Scans files that would be published and flags content that may be
-sensitive for a nuclear research program: staff names, internal
-identifiers, budget data, facility-specific configuration, etc.
+sensitive for a research program: staff names, internal identifiers,
+budget data, facility-specific configuration, etc.
 
 Designed to complement path-based allowlists — catches sensitive
 content that slips into otherwise-approved files.
@@ -15,9 +15,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 SENSITIVITY_PROMPT = """\
-You are a security reviewer for an open-source nuclear facility software project.
+You are a security reviewer for an open-source software project.
 Review the following file content and identify anything that should NOT be published
-publicly for a nuclear research program.
+publicly.
 
 Flag any of the following if present:
 - Staff names, researcher names, or personal identifiers (first names + last names together)
@@ -31,8 +31,6 @@ Flag any of the following if present:
 
 Do NOT flag the following — these are public and expected in this codebase:
 - "Neutron OS" or "NeutronOS" — this is the public product name
-- Generic nuclear physics terms: TRIGA (reactor type), Cherenkov radiation, neutron flux,
-  Monte Carlo, OpenMC, fission, criticality, isotopes, dose rates, etc.
 - Standard open-source tooling: GitLab, GitHub, Linear, Docker, Terraform, etc.
 - Generic technical terms that appear in any software project
 - Public URLs and usernames in those URLs (github.com, pypi.org, anthropic.com, etc.)

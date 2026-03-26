@@ -494,11 +494,11 @@ class SetupWizard:
         renderer.blank()
 
     def _ask_facility_type(self) -> str:
-        options = ["Research reactor", "Commercial reactor", "Government facility"]
+        options = ["Research facility", "Production facility", "Government facility"]
         idx = renderer.prompt_choice(
             "What type of facility are you working with?", options
         )
-        return ["research", "commercial", "government"][idx]
+        return ["research", "production", "government"][idx]
 
     def _generate_facility_toml(self, name: str, ftype: str) -> None:
         """Generate facility.toml from template."""
@@ -514,7 +514,7 @@ class SetupWizard:
             return
 
         content = template.read_text(encoding="utf-8")
-        content = content.replace('name = "UT TRIGA Mark II"', f'name = "{name}"')
+        content = content.replace('name = "Example Facility"', f'name = "{name}"')
         content = content.replace('type = "research"', f'type = "{ftype}"')
 
         dest.parent.mkdir(parents=True, exist_ok=True)

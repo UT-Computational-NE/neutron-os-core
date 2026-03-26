@@ -357,7 +357,7 @@ class _OutputLexer(Lexer):
             return [("class:welcome", line)]
 
         # Metadata lines: org line, path line
-        if stripped.startswith("UT Nuclear") or stripped.startswith("/"):
+        if stripped.startswith("  ") and (stripped.endswith("Engineering") or stripped.startswith("/")):
             return [("class:dim", line)]
 
         # Help hint line
@@ -2753,7 +2753,6 @@ class _TuiRenderProvider(RenderProvider):
 
         lines = [mascot]
         lines.append(f"  Neut v{ver} — Neutron OS Agent & CLI\n")
-        lines.append("  UT Nuclear Engineering and Radiation\n")
         lines.append(f"  {cwd}\n")
 
         lines.append("\n  Type /help for commands, ctrl+d to exit.\n\n")

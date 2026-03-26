@@ -230,14 +230,14 @@ class TestCorrectionResult:
         from neutron_os.extensions.builtins.eve_agent.corrector import Correction
 
         correction = Correction(
-            original="new tronics",
-            corrected="neutronics",
+            original="c of d",
+            corrected="CFD",
             category="technical_term",
             confidence=0.95,
-            context="The new tronics calculations...",
-            reason="Common STT error for nuclear engineering term",
+            context="The c of d simulations...",
+            reason="Common STT error for technical acronym",
         )
 
-        assert correction.original == "new tronics"
-        assert correction.corrected == "neutronics"
+        assert correction.original == "c of d"
+        assert correction.corrected == "CFD"
         assert correction.confidence == 0.95

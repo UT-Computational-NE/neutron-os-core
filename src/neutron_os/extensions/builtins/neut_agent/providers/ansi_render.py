@@ -64,7 +64,7 @@ def _format_line(line: str) -> str:
 
     m = _HEADING_RE.match(line)
     if m:
-        return _c(_Colors.BOLD + _Colors.CHERENKOV, line)
+        return _c(_Colors.BOLD + _Colors.ACCENT_BLUE, line)
 
     m = _BLOCKQUOTE_RE.match(line)
     if m:
@@ -89,7 +89,7 @@ class AnsiRenderProvider(RenderProvider):
     """Zero-dependency render provider using ANSI escape codes."""
 
     def stream_text(self, chunks: Iterator[StreamChunk]) -> str:
-        from ..pulse_spinner import TrigaPulseSpinner
+        from ..pulse_spinner import PulseSpinner
 
         accumulated = ""
         in_code_block = False
@@ -97,10 +97,10 @@ class AnsiRenderProvider(RenderProvider):
         partial_displayed = 0
         is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
 
-        # Show TRIGA pulse spinner while waiting for first content
-        spinner: TrigaPulseSpinner | None = None
+        # Show pulse spinner while waiting for first content
+        spinner: PulseSpinner | None = None
         if is_tty:
-            spinner = TrigaPulseSpinner("Thinking")
+            spinner = PulseSpinner("Thinking")
             spinner.start()
 
         def _stop_spinner():
@@ -210,7 +210,7 @@ class AnsiRenderProvider(RenderProvider):
             mascot_banner()
         else:
             print()
-            print(f"  {_c(_Colors.BOLD + _Colors.CHERENKOV, 'neut chat')} — interactive agent")
+            print(f"  {_c(_Colors.BOLD + _Colors.ACCENT_BLUE, 'neut chat')} — interactive agent")
 
         if gateway is not None:
             provider = gateway.active_provider

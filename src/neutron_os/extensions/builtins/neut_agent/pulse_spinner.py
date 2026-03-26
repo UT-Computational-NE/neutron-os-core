@@ -1,9 +1,7 @@
-"""TRIGA reactor pulse animation spinner with live status.
+"""Pulse animation spinner with live status.
 
-A physics-inspired thinking indicator: a small dot pulses from dark navy
-to Cherenkov blue and back, mimicking the brief blue flash of a TRIGA
-reactor pulse.  Those who know what a TRIGA pulse looks like will
-recognise it; everyone else sees a calm breathing dot.
+A calming thinking indicator: a small dot pulses from dark blue
+to light blue and back, creating a gentle breathing effect.
 
 Status line format:
     ● Thinking… (15s · ↓ 1.2k tokens · streaming)
@@ -33,13 +31,13 @@ class PulseFrame:
 
 
 # 10 frames, ~600 ms cycle at 60 ms/frame.
-# Ramps from dark navy → Cherenkov blue → dark navy.
+# Ramps from dark blue → light blue → dark blue.
 PULSE_FRAMES: tuple[PulseFrame, ...] = (
-    PulseFrame("·",   0,  40,  70),   # idle pool
+    PulseFrame("·",   0,  40,  70),   # base
     PulseFrame("·",   0,  70, 120),   # glow starting
     PulseFrame("·",   0, 110, 170),   # building
     PulseFrame("•",   0, 160, 220),   # near peak
-    PulseFrame("•",   0, 195, 250),   # peak — Cherenkov
+    PulseFrame("•",   0, 195, 250),   # peak
     PulseFrame("•",   0, 160, 220),   # fading
     PulseFrame("·",   0, 110, 170),   # dimming
     PulseFrame("·",   0,  70, 120),   # afterglow
@@ -77,12 +75,12 @@ def _format_tokens(n: int) -> str:
 # Spinner
 # ---------------------------------------------------------------------------
 
-class TrigaPulseSpinner:
-    """Thread-safe animated status line with TRIGA pulse animation.
+class PulseSpinner:
+    """Thread-safe animated status line with pulse animation.
 
     Usage::
 
-        with TrigaPulseSpinner("Thinking") as spinner:
+        with PulseSpinner("Thinking") as spinner:
             # do work …
             spinner.update_tokens(input_tokens=500)
             spinner.set_sub_state("streaming")
@@ -136,7 +134,7 @@ class TrigaPulseSpinner:
             sys.stdout.write("\r\033[K")
             sys.stdout.flush()
 
-    def __enter__(self) -> TrigaPulseSpinner:
+    def __enter__(self) -> PulseSpinner:
         self.start()
         return self
 

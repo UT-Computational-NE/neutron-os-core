@@ -280,9 +280,9 @@ python tools/docflow/scripts/first_ingest.py experiment-manager-prd \
 python tools/docflow/scripts/docflow_scan.py
 
 # Output:
-# ✓ medical-isotope-prd: published
-# ⚠️ experiment-manager-prd: draft (missing source .docx)
-# ⚠️ reactor-ops-log-prd: orphan (missing .md)
+# ✓ feature-alpha-prd: published
+# ⚠️ feature-beta-prd: draft (missing source .docx)
+# ⚠️ ops-log-prd: orphan (missing .md)
 # ...
 ```
 
@@ -290,7 +290,7 @@ python tools/docflow/scripts/docflow_scan.py
 
 ```bash
 # If .md was accidentally deleted
-git checkout docs/requirements/prd-medical-isotope.md
+git checkout docs/requirements/prd-feature-alpha.md
 
 # Or rebuild from source .docx
 python tools/docflow/scripts/first_ingest.py medical-isotope-prd \

@@ -46,8 +46,8 @@ def detect_sources() -> list[SourceConfig]:
     if has_credential("gitlab") or os.environ.get("GITLAB_TOKEN"):
         sources.append(SourceConfig(
             provider="gitlab",
-            url="https://rsicc-gitlab.tacc.utexas.edu",
-            group_or_org="ut-computational-ne",
+            url=os.environ.get("GITLAB_URL", "https://gitlab.example.com"),
+            group_or_org=os.environ.get("GITLAB_GROUP", "my-org"),
             token_env="GITLAB_TOKEN",
         ))
 

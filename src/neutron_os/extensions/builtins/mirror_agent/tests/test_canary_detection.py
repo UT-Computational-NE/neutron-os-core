@@ -71,8 +71,8 @@ class TestUnitCanaries:
         ),
         (
             "internal_hostname",
-            "Connect to rsicc-gitlab.tacc.utexas.edu for access.",
-            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Internal hostname: rsicc-gitlab.tacc.utexas.edu\nRECOMMENDATION: Redact.",
+            "Connect to gitlab.internal.example.com for access.",
+            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Internal hostname: gitlab.internal.example.com\nRECOMMENDATION: Redact.",
         ),
         (
             "ip_address",
@@ -86,18 +86,18 @@ class TestUnitCanaries:
         ),
         (
             "project_codename",
-            "The NETL_BackPacks project is tracked in Linear.",
-            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Internal project codename: NETL_BackPacks\nRECOMMENDATION: Redact.",
+            "The Sensor_Grid project is tracked in Linear.",
+            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Internal project codename: Sensor_Grid\nRECOMMENDATION: Redact.",
         ),
         (
             "student_name",
-            "Jeongwon Seo leads the TRIGA Digital Twin.",
-            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Staff/student name: Jeongwon Seo\nRECOMMENDATION: Redact.",
+            "John Smith leads the Project Alpha.",
+            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Staff/student name: John Smith\nRECOMMENDATION: Redact.",
         ),
         (
             "grant_details",
-            "NEUP 2026 grant portfolio — multiple PIs, pre-decisional.",
-            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Pre-decisional grant reference: NEUP 2026\nRECOMMENDATION: Remove.",
+            "NSF 2026 grant portfolio — multiple PIs, pre-decisional.",
+            "VERDICT: REVIEW_NEEDED\nFINDINGS:\n- Pre-decisional grant reference: NSF 2026\nRECOMMENDATION: Remove.",
         ),
     ]
 
@@ -153,7 +153,7 @@ class TestIntegrationCanaries:
 
     def test_catches_internal_hostname(self, tmp_path):
         self._assert_flagged(
-            "Primary server: rsicc-gitlab.tacc.utexas.edu — requires VPN.",
+            "Primary server: gitlab.internal.example.com — requires VPN.",
             "hostname", tmp_path,
         )
 
@@ -177,28 +177,28 @@ class TestIntegrationCanaries:
 
     def test_catches_student_name(self, tmp_path):
         self._assert_flagged(
-            "Jeongwon Seo built the live TRIGA monitoring dashboard.",
+            "Jane Doe built the live monitoring dashboard.",
             "student_name", tmp_path,
         )
 
     def test_catches_internal_project_codename(self, tmp_path):
         self._assert_flagged(
-            "The NETL_BackPacks project integrates sensor data from the DAQ system.",
+            "The Sensor_Grid project integrates sensor data from the DAQ system.",
             "codename", tmp_path,
         )
 
-    def test_does_not_flag_generic_nuclear_terms(self, tmp_path):
-        """Nuclear physics terminology should not be flagged as sensitive."""
+    def test_does_not_flag_generic_technical_terms(self, tmp_path):
+        """Technical terminology should not be flagged as sensitive."""
         from neutron_os.extensions.builtins.mirror_agent.reviewer import _review_file
-        canary = tmp_path / "physics.py"
+        canary = tmp_path / "simulation.py"
         canary.write_text(
-            "# Neutron transport simulation\n"
-            "# Uses OpenMC for Monte Carlo particle transport\n"
-            "CHERENKOV_THRESHOLD_MEV = 0.511\n"
-            "NEUTRON_FLUX_UNIT = 'n/cm²/s'\n"
+            "# Monte Carlo simulation\n"
+            "# Uses standard deviation for uncertainty quantification\n"
+            "CONVERGENCE_THRESHOLD = 0.001\n"
+            "TIME_STEP_UNIT = 'seconds'\n"
         )
         review = _review_file(canary, tmp_path, self.gateway)
         assert review.verdict == "CLEAR", (
-            f"Generic nuclear physics terms incorrectly flagged.\n"
+            f"Generic technical terms incorrectly flagged.\n"
             f"Findings: {review.findings}"
         )

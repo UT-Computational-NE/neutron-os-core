@@ -32,8 +32,8 @@ class GitLabProvider(RepoSourceProvider):
 
     def __init__(
         self,
-        url: str = "https://rsicc-gitlab.tacc.utexas.edu",
-        group: str = "ut-computational-ne",
+        url: str = "https://gitlab.example.com",
+        group: str = "my-org",
         token_env: str = "GITLAB_TOKEN",
         max_commits: int = 50,
     ):
