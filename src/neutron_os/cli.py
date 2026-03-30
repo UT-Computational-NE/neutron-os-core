@@ -10,7 +10,17 @@ from __future__ import annotations
 
 def main() -> None:
     """Entry point for the `neut` command."""
-    from axiom.infra.branding import BrandingConfig, register
+    try:
+        from axiom.infra.branding import BrandingConfig, register
+    except ImportError:
+        import sys
+        print(
+            "Error: the Axiom framework is not installed or has been removed.\n"
+            "Reinstall Neutron OS to restore it:\n\n"
+            "    pip install neutron-os\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     register(BrandingConfig(
         cli_name="neut",
