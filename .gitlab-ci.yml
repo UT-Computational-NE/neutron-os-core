@@ -94,7 +94,7 @@ variables:
   before_script:
     - export PATH="$VENV_DIR/bin:$PATH"
     # Fail fast if venv is broken (stale symlinks, missing Python)
-    - python3 -c "import sys; print(f'venv OK — Python {sys.version}')" || { echo "ERROR: venv broken — preflight:dependencies may have been skipped"; exit 1; }
+    - python3 -c 'import sys; print(f"venv OK — Python {sys.version}")' || (echo "ERROR venv broken — preflight:dependencies may have been skipped" && exit 1)
 
 # =============================================================================
 # Preflight Stage
@@ -166,12 +166,12 @@ preflight:dependencies:
   stage: preflight
   extends: .python-full-setup
   script:
-    - python -c "import neutron_os; from importlib.metadata import version; print(f'neutron-os {version(\"neutron-os\")} — all dependencies resolved')"
-    - python -c "import axiom; from importlib.metadata import version; print(f'axiom {version(\"axiom\")} — upstream dependency OK')"
+    - python -c 'import neutron_os; from importlib.metadata import version; print(f"neutron-os {version(\"neutron-os\")} — all dependencies resolved")'
+    - python -c 'import axiom; from importlib.metadata import version; print(f"axiom {version(\"axiom\")} — upstream dependency OK")'
     # Verify venv binaries are executable (catches broken symlinks)
-    - test -x "$VENV_DIR/bin/python" || { echo "ERROR: venv python not executable"; exit 1; }
-    - test -x "$VENV_DIR/bin/pip" || { echo "ERROR: venv pip not executable"; exit 1; }
-    - test -x "$VENV_DIR/bin/pytest" || { echo "ERROR: venv pytest not executable"; exit 1; }
+    - test -x "$VENV_DIR/bin/python" || (echo "ERROR venv python not executable" && exit 1)
+    - test -x "$VENV_DIR/bin/pip" || (echo "ERROR venv pip not executable" && exit 1)
+    - test -x "$VENV_DIR/bin/pytest" || (echo "ERROR venv pytest not executable" && exit 1)
   artifacts:
     paths:
       - .venv/
