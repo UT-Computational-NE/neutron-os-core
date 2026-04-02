@@ -100,6 +100,18 @@ def build_parser() -> argparse.ArgumentParser:
     audit_p.add_argument("--since", help="Show changes since date (ISO 8601)")
     audit_p.add_argument("--model", dest="model_id", help="Filter by model")
 
+    # materials
+    mat_p = sub.add_parser("materials", help="Browse verified material compositions")
+    mat_p.add_argument("query", nargs="?", help="Search materials by name/category")
+    mat_p.add_argument(
+        "--category", choices=["fuel", "moderator", "coolant", "structural", "absorber", "other"]
+    )
+    mat_p.add_argument("--card", metavar="NAME", help="Generate MCNP material card for NAME")
+    mat_p.add_argument(
+        "--mat-number", type=int, default=1, help="MCNP material number (default: 1)"
+    )
+    mat_p.add_argument("--format", choices=["human", "json", "mcnp", "mpact"], default="human")
+
     return parser
 
 
@@ -124,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         "diff": _cmd_diff,
         "export": _cmd_export,
         "audit": _cmd_audit,
+        "materials": _cmd_materials,
     }
 
     handler = handlers.get(args.action)
@@ -449,6 +462,57 @@ def _cmd_audit(args) -> int:
                     f"{m['model_id']:<40} v{v['version']:<9} "
                     f"{v.get('created_by', ''):<25} {(v.get('checksum') or '')[:16]}"
                 )
+    return 0
+
+
+def _cmd_materials(args) -> int:
+    import json
+
+    from neutron_os.extensions.builtins.model_corral.materials_db import (
+        get_material,
+        list_materials,
+        search_materials,
+    )
+
+    # Generate specific material card
+    card_name = getattr(args, "card", None)
+    if card_name:
+        mat = get_material(card_name)
+        if mat is None:
+            print(f"Material not found: {card_name}")
+            return 1
+        fmt = getattr(args, "format", "mcnp")
+        mat_num = getattr(args, "mat_number", 1)
+        if fmt == "mpact":
+            print(mat.mpact_card())
+        else:
+            print(mat.mcnp_cards(mat_number=mat_num))
+        return 0
+
+    # List/search materials
+    category = getattr(args, "category", None)
+    query = getattr(args, "query", None)
+
+    if query:
+        materials = search_materials(query)
+    elif category:
+        materials = list_materials(category=category)
+    else:
+        materials = list_materials()
+
+    fmt = getattr(args, "format", "human")
+
+    if fmt == "json":
+        print(json.dumps([m.to_dict() for m in materials], indent=2))
+    elif not materials:
+        print("No materials found.")
+    else:
+        print(f"{'Name':<15} {'Category':<12} {'Density':<10} {'Description'}")
+        print("-" * 75)
+        for m in materials:
+            print(f"{m.name:<15} {m.category:<12} {m.density:<10.3f} {m.description[:40]}")
+        print(f"\n{len(materials)} material(s). Use --card NAME to generate input cards.")
+
     return 0
 
 
