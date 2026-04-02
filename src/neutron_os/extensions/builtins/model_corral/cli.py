@@ -87,9 +87,14 @@ def _make_tiered_print_help(parser: argparse.ArgumentParser, noun: str):
             import sys as _sys
 
             out = file or _sys.stdout
+            try:
+                from axiom.infra.branding import get_branding as _gb_tier
+                _tier_cli = _gb_tier().cli_name
+            except Exception:
+                _tier_cli = "neut"
             out.write(
                 f"\n  ({len(hidden)} more commands available at higher tiers."
-                f" Run `axi settings set cli.tier {tier + 1}` to unlock.)\n"
+                f" Run `{_tier_cli} settings set cli.tier {tier + 1}` to unlock.)\n"
             )
 
     parser.print_help = _print_help
@@ -924,10 +929,10 @@ _SERVICE = None
 def _get_service():
     """Get or create the ModelCorralService.
 
-    Connects to the K3D PostgreSQL instance (same as EVE agent) and uses
-    local filesystem storage. S3/SeaweedFS storage comes with Rascal (M3).
-
-    DB URL resolution: AXIOM_DB_URL env var → default K3D PostgreSQL.
+    DB URL resolution order:
+      1. AXIOM_DB_URL env var (explicit)
+      2. PostgreSQL at localhost:5432 (K3D / server install)
+      3. SQLite at ~/.neut/model-corral.db (zero-infra fallback)
     """
     global _SERVICE
     if _SERVICE is not None:
@@ -935,15 +940,38 @@ def _get_service():
 
     import os
 
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, text
 
     from axiom.infra.paths import get_user_state_dir
     from axiom.infra.storage import LocalStorageProvider
     from neutron_os.extensions.builtins.model_corral.db_models import Base
     from neutron_os.extensions.builtins.model_corral.service import ModelCorralService
 
-    db_url = os.environ.get("AXIOM_DB_URL", "postgresql://axiom:axiom@localhost:5432/axiom_db")
-    engine = create_engine(db_url)
+    db_url = os.environ.get("AXIOM_DB_URL", "")
+    engine = None
+
+    if db_url:
+        # Explicit DB URL — use it
+        engine = create_engine(db_url)
+    else:
+        # Try PostgreSQL, fall back to SQLite
+        try:
+            pg_url = "postgresql://axiom:axiom@localhost:5432/axiom_db"
+            test_engine = create_engine(pg_url)
+            with test_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            engine = test_engine
+        except Exception:
+            # PostgreSQL not available — use SQLite
+            state_dir = get_user_state_dir()
+            state_dir.mkdir(parents=True, exist_ok=True)
+            sqlite_path = state_dir / "model-corral.db"
+            engine = create_engine(f"sqlite:///{sqlite_path}")
+            print(
+                "Using local database (~/.neut/model-corral.db)."
+                " Connect to a server with `neut config` for shared access."
+            )
+
     Base.metadata.create_all(engine)
 
     state_dir = get_user_state_dir()

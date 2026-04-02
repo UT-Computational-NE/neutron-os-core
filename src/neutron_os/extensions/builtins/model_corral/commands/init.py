@@ -70,13 +70,20 @@ def model_init(
     # Auto-detect author from git config
     author_email = _git_config("user.email") or "you@example.com"
     if not facility:
-        facility = "CHANGEME"
+        # Smart defaults based on reactor type
+        _facility_defaults = {
+            "TRIGA": "NETL",
+            "MSR": "ORNL",
+            "PWR": "generic",
+        }
+        facility = _facility_defaults.get(reactor_type.upper(), "generic") if reactor_type else "generic"
 
     # Generate model.yaml
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    display_name = name.replace("-", " ").title()
     manifest = {
         "model_id": name,
-        "name": name.replace("-", " ").title(),
+        "name": display_name,
         "version": "0.1.0",
         "status": "draft",
         "reactor_type": reactor_type,
@@ -86,7 +93,7 @@ def model_init(
         "created_by": author_email,
         "created_at": now,
         "access_tier": "facility",
-        "description": f"TODO: describe {name}",
+        "description": f"{display_name} — {reactor_type} {physics_code} model",
         "tags": [],
     }
 

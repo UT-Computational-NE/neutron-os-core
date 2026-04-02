@@ -77,9 +77,14 @@ def _make_tiered_print_help(parser: argparse.ArgumentParser, noun: str):
             import sys as _sys
 
             out = file or _sys.stdout
+            try:
+                from axiom.infra.branding import get_branding as _gb_tier
+                _tier_cli = _gb_tier().cli_name
+            except Exception:
+                _tier_cli = "neut"
             out.write(
                 f"\n  ({len(hidden)} more commands available at higher tiers."
-                f" Run `axi settings set cli.tier {tier + 1}` to unlock.)\n"
+                f" Run `{_tier_cli} settings set cli.tier {tier + 1}` to unlock.)\n"
             )
 
     parser.print_help = _print_help
