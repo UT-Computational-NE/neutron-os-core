@@ -243,17 +243,38 @@ neut <noun> <verb> [args] [--flags]
 Each noun is registered by an extension via `neut-extension.toml`.
 See `docs/requirements/prd-neut-cli.md` for full spec.
 
-### Model Corral Commands (✅ 18 commands, 342 tests)
+### Model Corral Commands (✅ 24 commands, 415+ tests)
 
 ```
-neut model init|validate|add|clone|search|list|show|pull|lineage|diff|export|audit|generate|lint|sweep|materials|share|receive
+neut model init|validate|add|clone|search|list|show|pull|lineage|diff|export|audit|generate|lint|sweep|materials|share|receive|review|reviews|resolve|invite|contributors|status
 ```
 
 All commands support `--json`. Shorthand aliases: `-r` (reactor-type), `-c` (code), `-s` (status), `-f` (facility), `-v` (version), `-m` (message), `-o` (output).
 
 Key features: MaterialSource protocol (5 sources with priority merging), 11 YAML materials with JSON Schema, 3 builtin facility packs (NETL-TRIGA, MSRE, PWR-generic), CoreForge bridge, deterministic MCNP/MPACT generation, 8 lint rules, parametric sweep, federation share/receive with EC safety guard.
 
-### Facility Pack Commands (✅ 8 commands)
+#### Auto-Add
+
+`neut model add ./input.i` automatically detects the code type (MCNP, MPACT, etc.) from file contents, extracts metadata, and registers the model in the corral. No manual metadata entry required.
+
+#### Context-Aware Defaults
+
+Commands infer defaults from the current working directory, active facility pack, and user config. For example, `neut model list` inside a facility directory automatically scopes to that facility's models.
+
+#### Collaboration & Review System
+
+```
+neut model review <id>          # Start a review for a model
+neut model reviews              # List pending reviews
+neut model resolve <review-id>  # Resolve a review (approve/reject)
+neut model invite <id> <user>   # Invite a collaborator to a model
+neut model contributors <id>    # List contributors for a model
+neut model status <id>          # Show model status including review state
+```
+
+The review system supports multi-reviewer workflows with approval gates. Reviews track comments, approvals, and change requests. Contributors are tracked per-model with role-based permissions.
+
+### Facility Pack Commands (✅ 9 commands)
 
 ```
 neut facility list|show|install|uninstall|init|publish|materials|sync

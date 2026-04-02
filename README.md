@@ -6,6 +6,11 @@ A modular digital platform for nuclear facilities that unifies data management, 
 
 ## Key Capabilities
 
+- **Model Corral** — Physics model registry with 18 commands: init, validate, add, clone, search, list, show, pull, lineage, diff, export, audit, generate, lint, sweep, materials, share, receive — plus review, reviews, resolve, invite, contributors, status
+- **Materials** — 11 verified compositions with MCNP/MPACT card generation
+- **Facility Packs** — NETL-TRIGA, MSRE, PWR-generic with 8 commands: list, show, install, uninstall, init, publish, materials, sync
+- **CoreForge Bridge** — Integration with CoreForge neutronics tools
+- **Federation Model Sharing** — Share and receive models across federated nodes
 - **Signal Pipeline** — Ingest signals from voice memos, Teams, GitLab, Linear, and freetext; extract structured insights; publish weekly briefings
 - **Publisher** — Document lifecycle management with provider-based generation, storage, and review
 - **Interactive Agent** — Chat-based assistant with facility context (`neut chat`)
@@ -16,8 +21,10 @@ A modular digital platform for nuclear facilities that unifies data management, 
 ## Quick Start
 
 ```bash
-# Clone
-git clone https://github.com/benjaminbooth/neutron-os-core.git
+pip install neutron-os
+
+# Or from source
+git clone https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core.git
 cd neutron-os-core
 pip install -e ".[all]"
 
@@ -56,9 +63,24 @@ Neutron_OS/
 ## CLI
 
 ```bash
+# Model Corral (18+ commands)
+neut model add ./input.i               # Auto-detect and register a model
+neut model list                         # Browse registered models
+neut model search --code mcnp           # Search by code type
+neut model validate ./input.i           # Validate model file
+neut model materials                    # List available materials
+neut model generate --material UO2      # Generate MCNP/MPACT cards
+neut model review <id>                  # Start a collaborative review
+neut model share <id>                   # Share via federation
+
+# Facility Packs (8 commands)
+neut facility list                      # Available packs
+neut facility install NETL-TRIGA        # Install a facility pack
+neut facility sync                      # Sync with upstream
+
+# Platform
 neut chat                              # Interactive agent
 neut signal pipeline ingest             # Run signal ingestion
-neut signal status                      # Pipeline health
 neut pub publish                       # Generate and publish documents
 neut doctor                            # AI-powered diagnostics
 neut ext init my-extension             # Create a new extension
@@ -68,7 +90,7 @@ neut demo run collaborator             # Guided onboarding walkthrough
 ## Development
 
 ```bash
-make test              # Unit tests
+make test              # 415+ tests
 make integration       # Integration tests (needs .env credentials)
 make lint              # Ruff linter
 make build             # Build wheel
