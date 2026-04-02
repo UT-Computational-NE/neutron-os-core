@@ -20,11 +20,13 @@ NeutronOS instantiates the three Axiom deployment profiles with nuclear-specific
 
 ### Pack Format
 
-NeutronOS uses `.neutpack` as the pack file extension (vs. Axiom's `.axiompack`).
+> **Implementation Status (2026-04-02):** `.axiompack` format is implemented for model/material sharing between federation nodes (share/receive CLI). `.facilitypack` archive format with SHA256SUMS is implemented for facility pack distribution (3 builtin packs: NETL-TRIGA, MSRE, PWR-generic). The `.neutpack` RAG-specific pack format is not yet built.
+
+NeutronOS uses `.neutpack` as the pack file extension for RAG corpus packs (vs. Axiom's `.axiompack` for model/material sharing). Facility packs use `.facilitypack`.
 
 ### First Pack
 
-The first generated pack is `netl-triga` — NETL TRIGA facility procedures, safety analysis, and operational history.
+The first generated packs are the 3 builtin facility packs: `NETL-TRIGA`, `MSRE`, and `PWR-generic` (each with materials and parameters). The RAG corpus pack `netl-triga` (facility procedures, safety analysis, operational history) is planned.
 
 ### Helm Values Files
 

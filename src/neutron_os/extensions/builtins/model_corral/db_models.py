@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    Float,
     JSON,
     Column,
     DateTime,
@@ -66,6 +67,7 @@ class ModelVersion(Base):
     storage_path = Column(String(1000))
     manifest = Column(JSON)
     checksum = Column(String(128))
+    coreforge_provenance = Column(JSON)  # CoreForge config, builder specs, geometry hash
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String(255))
 
@@ -103,3 +105,43 @@ class ModelValidation(Base):
     validated_at = Column(DateTime)
 
     model_version = relationship("ModelVersion", back_populates="validations")
+
+
+class MaterialRecord(Base):
+    """Persisted material composition for federation + search.
+
+    Materials from YAML files and CoreForge are indexed here for
+    full-text search, federation distribution, and audit trail.
+    """
+
+    __tablename__ = "material_records"
+    __table_args__ = (UniqueConstraint("name", "data_library", name="uq_material_name_library"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, index=True)
+    description = Column(Text)
+    density = Column(Float, nullable=False)
+    category = Column(String(50), nullable=False)
+    fraction_type = Column(String(10), nullable=False, default="atom")
+    temperature_k = Column(Float, default=293.6)
+    source_reference = Column(String(500))  # literature reference
+    data_library = Column(String(50))  # "ENDF/B-VII.1", "ENDF/B-VIII.0"
+    data_library_version = Column(String(50))
+    composition_hash = Column(String(128), nullable=False)  # SHA-256 of isotope data
+    isotope_data = Column(JSON, nullable=False)  # [{zaid, fraction, name}, ...]
+    sab = Column(String(100))  # S(alpha,beta) library
+
+    # FAIR metadata
+    license = Column(String(100))  # "CC-BY-4.0", etc.
+    pid = Column(String(255))  # persistent identifier (DOI)
+
+    # Provenance
+    material_source = Column(
+        String(50), nullable=False
+    )  # "builtin", "yaml", "coreforge", "federation"
+    facility_pack = Column(String(100))  # which facility pack, if any
+
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )

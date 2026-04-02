@@ -1,10 +1,10 @@
 # Product Requirements Document: neut CLI
 
-> **Implementation Status: 🟡 Partial** — Core CLI, extension discovery, and 17 builtin extensions shipped. Agents (Neut, EVE, M-O, PR-T, D-FIB) operational. Future domain commands (`log`, `sim`, `model`, `twin`, `data`, `infra`) planned.
+> **Implementation Status: 🟡 Partial** — Core CLI, extension discovery, and 17+ builtin extensions shipped. Agents (Neut, EVE, M-O, PR-T, D-FIB) operational. Model Corral (`neut model` 18 commands, `neut facility` 8 commands) shipped with 342 tests. Remaining domain commands (`log`, `sim`, `twin`, `data`, `infra`) planned.
 
 **Module:** neut Command-Line Interface
 **Status:** Active Development (v0.4.0)
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-04-02
 **Parent:** [Executive PRD](prd-executive.md)
 **Tech Spec:** [neut CLI Specification](../tech-specs/spec-neut-cli.md)
 
@@ -143,26 +143,72 @@ Full slash command design in [CLI Specification §Slash Commands](../tech-specs/
 
 ---
 
-## Planned Commands
+## Shipped Domain Commands
 
-These commands are designed but not yet implemented. Each will ship as an extension. CLI examples are drawn from their constituent PRDs — see each for the full command set.
+### Model Registry (`neut model`) — ✅ 18 commands, 342 tests
 
-### Model Registry (`neut model`)
-
-Physics model registry (Model Corral) with version control, validation, and lineage tracking.
+Physics model registry (Model Corral) with version control, validation, lineage tracking, deterministic code generation, linting, parametric sweeps, and federation sharing.
 
 ```bash
+# Discovery
 neut model search "TRIGA transient MCNP"
 neut model list --reactor=triga --facility=netl
-neut model init ./my-model --reactor=triga --code=mcnp
+neut model show triga-netl-mcnp-transient-v3
+
+# Contribution
+neut model init ./my-model --reactor=triga --code=mcnp --materials
 neut model validate ./my-model
 neut model add ./my-model --message="Initial thermal model"
+neut model clone triga-netl-mcnp-v3 ./my-fork
+
+# Version comparison & lineage
 neut model diff triga-netl-mcnp-v3 triga-netl-mcnp-v2
 neut model lineage triga-netl-rom2-v3
 neut model audit --since=2026-01-01
+
+# Download & export
+neut model pull triga-netl-mcnp-v3 ./workspace/
+neut model export triga-netl-mcnp-v3 -o model.zip
+
+# Code generation & quality
+neut model generate --code=mcnp  # Deterministic MCNP/MPACT material cards
+neut model lint ./my-model       # 8 lint rules
+neut model sweep ./config.yaml   # Parametric sweep with lineage
+
+# Materials
+neut model materials             # Query material registry
+
+# Federation
+neut model share triga-netl-mcnp-v3 --to rascal
+neut model receive --from osu-triga  # EC safety guard
 ```
 
+All commands support `--json` output. Shorthand aliases: `-r` (reactor-type), `-c` (code), `-s` (status), `-f` (facility), `-v` (version), `-m` (message), `-o` (output). `--confirm` on destructive ops.
+
 See [Model Corral PRD](prd-model-corral.md).
+
+### Facility Packs (`neut facility`) — ✅ 8 commands
+
+Manage facility-specific model/material packs.
+
+```bash
+neut facility list
+neut facility show NETL-TRIGA
+neut facility install ./netl-triga.facilitypack
+neut facility uninstall NETL-TRIGA --confirm
+neut facility init ./my-facility
+neut facility publish ./my-facility -o my-facility.facilitypack
+neut facility materials NETL-TRIGA
+neut facility sync NETL-TRIGA
+```
+
+3 builtin packs: NETL-TRIGA, MSRE, PWR-generic. `.facilitypack` archive format with SHA256SUMS.
+
+---
+
+## Planned Commands
+
+These commands are designed but not yet implemented. Each will ship as an extension. CLI examples are drawn from their constituent PRDs — see each for the full command set.
 
 ### Digital Twin Hosting (`neut twin`)
 

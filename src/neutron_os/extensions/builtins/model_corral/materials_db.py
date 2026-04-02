@@ -4,6 +4,11 @@ Provides a shared, authoritative catalog of material compositions used
 across CoreForge, manual MCNP/MPACT input editing, and Model Corral
 validation. Compositions sourced from nuclear data references.
 
+Supports pluggable material sources via the MaterialSource protocol.
+Sources are merged by priority (higher wins). Built-in hardcoded materials
+serve as the lowest-priority fallback; YAML files in the ``materials/``
+directory override them.
+
 Usage:
     from neutron_os.extensions.builtins.model_corral.materials_db import (
         get_material, list_materials, search_materials,
@@ -16,7 +21,10 @@ Usage:
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -88,11 +96,11 @@ class MaterialDef:
 # Material catalog — verified compositions
 # ---------------------------------------------------------------------------
 
-_MATERIALS: dict[str, MaterialDef] = {}
+_BUILTIN_MATERIALS: dict[str, MaterialDef] = {}
 
 
 def _register(mat: MaterialDef) -> MaterialDef:
-    _MATERIALS[mat.name] = mat
+    _BUILTIN_MATERIALS[mat.name] = mat
     return mat
 
 
@@ -318,32 +326,206 @@ _register(
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Material source protocol & implementations
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class MaterialSource(Protocol):
+    """Plugin interface for material sources."""
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def priority(self) -> int: ...
+
+    def load(self) -> list[MaterialDef]: ...
+
+
+class BuiltinMaterialSource:
+    """The existing hardcoded materials (lowest priority fallback)."""
+
+    @property
+    def name(self) -> str:
+        return "builtin"
+
+    @property
+    def priority(self) -> int:
+        return 0  # lowest
+
+    def load(self) -> list[MaterialDef]:
+        return list(_BUILTIN_MATERIALS.values())
+
+
+class YamlMaterialSource:
+    """Loads materials from YAML files in a directory."""
+
+    def __init__(self, directory: Path, priority: int = 50, source_name: str = "yaml"):
+        self._directory = directory
+        self._priority = priority
+        self._source_name = source_name
+
+    @property
+    def name(self) -> str:
+        return self._source_name
+
+    @property
+    def priority(self) -> int:
+        return self._priority
+
+    def load(self) -> list[MaterialDef]:
+        """Load all .yaml files in directory, parse into MaterialDef objects."""
+        materials: list[MaterialDef] = []
+        if not self._directory.exists():
+            return materials
+        for yaml_file in sorted(self._directory.glob("*.yaml")):
+            materials.extend(self._parse_yaml(yaml_file))
+        return materials
+
+    def _parse_yaml(self, path: Path) -> list[MaterialDef]:
+        """Parse a single YAML file containing a list of materials."""
+        import yaml
+
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not isinstance(data, list):
+            return []
+        result: list[MaterialDef] = []
+        for entry in data:
+            isotopes = tuple(
+                Isotope(
+                    zaid=iso["zaid"],
+                    fraction=iso["fraction"],
+                    name=iso.get("name", ""),
+                )
+                for iso in entry.get("isotopes", [])
+            )
+            mat = MaterialDef(
+                name=entry["name"],
+                description=entry.get("description", ""),
+                density=entry["density"],
+                isotopes=isotopes,
+                fraction_type=entry.get("fraction_type", "atom"),
+                temperature_k=entry.get("temperature_k", 293.6),
+                category=entry.get("category", ""),
+                source=entry.get("source", ""),
+                sab=entry.get("sab", ""),
+            )
+            result.append(mat)
+        return result
+
+
+class MaterialRegistry:
+    """Merges materials from multiple sources with priority ordering.
+
+    Higher priority sources override lower priority for same-named materials.
+    """
+
+    def __init__(self) -> None:
+        self._sources: list[MaterialSource] = []
+        self._materials: dict[str, MaterialDef] = {}
+        self._material_sources: dict[str, str] = {}  # name -> source name
+        self._loaded = False
+
+    def register_source(self, source: MaterialSource) -> None:
+        self._sources.append(source)
+        self._sources.sort(key=lambda s: s.priority)
+        self._loaded = False
+
+    def _ensure_loaded(self) -> None:
+        if self._loaded:
+            return
+        self._materials.clear()
+        self._material_sources.clear()
+        # Load in priority order (lowest first, highest overwrites)
+        for source in self._sources:
+            for mat in source.load():
+                self._materials[mat.name] = mat
+                self._material_sources[mat.name] = source.name
+        self._loaded = True
+
+    def get(self, name: str) -> MaterialDef | None:
+        self._ensure_loaded()
+        return self._materials.get(name)
+
+    def list_all(self, category: str = "") -> list[MaterialDef]:
+        self._ensure_loaded()
+        if category:
+            return [m for m in self._materials.values() if m.category == category]
+        return list(self._materials.values())
+
+    def search(self, query: str) -> list[MaterialDef]:
+        self._ensure_loaded()
+        q = query.lower()
+        return [
+            m
+            for m in self._materials.values()
+            if q in m.name.lower() or q in m.description.lower() or q in m.category.lower()
+        ]
+
+    def names(self) -> list[str]:
+        self._ensure_loaded()
+        return sorted(self._materials.keys())
+
+    def source_of(self, name: str) -> str:
+        """Return which source provided a given material."""
+        self._ensure_loaded()
+        return self._material_sources.get(name, "")
+
+    def reload(self) -> None:
+        """Force reload from all sources."""
+        self._loaded = False
+        self._ensure_loaded()
+
+
+def composition_hash(mat: MaterialDef) -> str:
+    """Compute a deterministic SHA-256 hash of a material's composition.
+
+    Used for change detection — if the hash changes, the composition changed.
+    """
+    h = hashlib.sha256()
+    h.update(mat.name.encode())
+    h.update(f"{mat.density}".encode())
+    h.update(mat.fraction_type.encode())
+    for iso in sorted(mat.isotopes, key=lambda i: i.zaid):
+        h.update(f"{iso.zaid}:{iso.fraction}".encode())
+    return h.hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Module-level registry
+# ---------------------------------------------------------------------------
+
+_REGISTRY = MaterialRegistry()
+_REGISTRY.register_source(BuiltinMaterialSource())
+_REGISTRY.register_source(YamlMaterialSource(Path(__file__).parent / "materials", priority=50))
+
+
+# ---------------------------------------------------------------------------
+# Public API (backward-compatible)
 # ---------------------------------------------------------------------------
 
 
 def get_material(name: str) -> MaterialDef | None:
     """Look up a material by name. Returns None if not found."""
-    return _MATERIALS.get(name)
+    return _REGISTRY.get(name)
 
 
 def list_materials(category: str = "") -> list[MaterialDef]:
     """List all materials, optionally filtered by category."""
-    if category:
-        return [m for m in _MATERIALS.values() if m.category == category]
-    return list(_MATERIALS.values())
+    return _REGISTRY.list_all(category)
 
 
 def search_materials(query: str) -> list[MaterialDef]:
     """Search materials by name or description."""
-    q = query.lower()
-    return [
-        m
-        for m in _MATERIALS.values()
-        if q in m.name.lower() or q in m.description.lower() or q in m.category.lower()
-    ]
+    return _REGISTRY.search(query)
 
 
 def material_names() -> list[str]:
     """Return all registered material names."""
-    return sorted(_MATERIALS.keys())
+    return _REGISTRY.names()
+
+
+def get_registry() -> MaterialRegistry:
+    """Get the global material registry (for adding custom sources)."""
+    return _REGISTRY

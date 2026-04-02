@@ -48,13 +48,13 @@ These KRs extend the Axiom platform objectives with nuclear-domain specifics. Se
 
 ### Axiom O2 (Model Registry) — Nuclear KRs
 
-> **Near-term: Nick and Cole (NETL)** — Nick and Cole are actively waiting on `neut model search/add/pull`. This is not a future roadmap item; it is an immediate user need.
+> **Near-term: Nick and Cole (NETL)** — ✅ `neut model` CLI is operational (18 commands, 342 tests). Nick and Cole can `neut model search/add/pull/validate/generate/lint`. Remaining: full TRIGA model file migration into registry.
 
 | Key Result | Target | Timeline | Status |
 |------------|--------|----------|--------|
-| TRIGA models migrated | 10+ models in registry | Q2 | 🔲 |
-| Nick and Cole unblocked | `neut model` CLI working | Q2 | 🔲 |
-| INL LDRD models registerable | Federated model fields in `model.yaml` | Q3 | 🔲 |
+| TRIGA models migrated | 10+ models in registry | Q2 | 🟡 3 facility packs (NETL-TRIGA, MSRE, PWR-generic) with materials + params; full model file migration pending |
+| Nick and Cole unblocked | `neut model` CLI working | Q2 | ✅ 18 commands shipped, 342 tests |
+| INL LDRD models registerable | Federated model fields in `model.yaml` | Q3 | ✅ Federation share/receive with .axiompack, EC safety guard |
 
 ### Axiom O3 (Data Platform) — Nuclear KRs
 
@@ -164,7 +164,7 @@ The INL federated learning LDRD (PI: Jieun Lee, INL NRAD) proposes UT-Austin, OS
 | Milestone | Target | Notes |
 |-----------|--------|-------|
 | Confirm co-investigator role formally | Q2 2026 | Reply to Jieun Lee; align on UT contribution scope and deliverables |
-| Align Model Corral schema with LDRD deliverables | Q2 2026 | Add `federation_round`, `participating_facilities`, `aggregation_method` to `model.yaml` |
+| Align Model Corral schema with LDRD deliverables | Q2 2026 | ✅ Done — federation share/receive with .axiompack, FederationPackSource, ModelSharingService |
 | Rascal validates EC architecture | Q2 2026 | Required before OSU/INL can trust our EC compliance claims |
 | Community corpus federation v1 (UT ↔ OSU bilateral) | Q4 2026 | First bilateral knowledge sharing between founding members |
 | LDRD proposal submission | TBD — follow INL timeline | Ben as external co-PI |

@@ -34,6 +34,7 @@ def model_init(
     physics_code: str = "MCNP",
     facility: str = "",
     output_dir: Path | None = None,
+    include_materials: bool = False,
 ) -> Path:
     """Create a new model directory with model.yaml and README.md.
 
@@ -89,6 +90,12 @@ def model_init(
         "tags": [],
     }
 
+    # Pre-populate materials from installed facility pack
+    if include_materials:
+        materials_list = _suggest_materials(reactor_type)
+        if materials_list:
+            manifest["materials"] = materials_list
+
     # Find the schema path for the yaml-language-server directive
     schema_path = _find_schema_path(model_dir)
 
@@ -109,6 +116,26 @@ def model_init(
     _write_editorconfig(model_dir)
 
     return model_dir
+
+
+def _suggest_materials(reactor_type: str) -> list[dict]:
+    """Suggest materials based on reactor type from installed facility packs."""
+    try:
+        from neutron_os.extensions.builtins.model_corral.facilities.registry import discover_packs
+
+        for pack in discover_packs():
+            if pack.manifest.reactor_type.upper() == reactor_type.upper():
+                # Load material names from this pack
+                from neutron_os.extensions.builtins.model_corral.materials_db import (
+                    YamlMaterialSource,
+                )
+
+                source = YamlMaterialSource(pack.materials_path)
+                mats = source.load()
+                return [{"name": m.name, "number": i} for i, m in enumerate(mats, 1)]
+    except Exception:
+        pass
+    return []
 
 
 def _find_schema_path(model_dir: Path) -> str:

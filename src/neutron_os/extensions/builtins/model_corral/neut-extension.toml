@@ -11,6 +11,11 @@ noun = "model"
 module = "neutron_os.extensions.builtins.model_corral.cli"
 description = "Manage physics simulation models"
 
+[[cli.commands]]
+noun = "facility"
+module = "neutron_os.extensions.builtins.model_corral.facilities.cli"
+description = "Manage facility packs (reactor-specific accelerators)"
+
 # Agent-driven sync — EVE watches for model changes and auto-pushes to Git
 [agent]
 heartbeat_interval = 60

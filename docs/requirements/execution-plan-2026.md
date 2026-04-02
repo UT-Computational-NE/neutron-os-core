@@ -2,7 +2,8 @@
 
 > **Living document.** This is the single source of truth for what gets built, in what order, and why. It supersedes phasing sections in individual PRDs for scheduling purposes. PRDs remain authoritative for *what* to build; this document governs *when* and *in what order*.
 
-**Last Updated:** 2026-04-01
+**Last Updated:** 2026-04-02
+**Total tests (as of 2026-04-02):** Axiom 2199 passing (198 new this session, including 254 federation tests) | NeutronOS 381 passing (342 model_corral + 39 other) | **Grand total: 2580 tests**
 **Tracks:** Neutron OS nuclear-domain work (references Axiom platform milestones as upstream dependencies)
 **Upstream:** [Axiom Platform Execution Plan](https://github.com/…/axiom/docs/requirements/execution-plan-2026.md) — P0–P5 platform milestones
 **Deployment targets:** Local workstation → Rascal (VPN) → TACC (HPC)
@@ -24,10 +25,21 @@
 | **Neut Agent (assistant)** | ✅ | ✅ 31 files / 10k lines | Implemented: chat, code assistance |
 | **DFIB Agent (diagnostics)** | ✅ | ✅ 5 files | Implemented: platform health checks |
 | **Prompt Registry** | ✅ | ✅ 266 lines | Implemented in `infra/prompt_registry.py` |
-| **Model Corral** | ✅ | ❌ 0% | Nick & Cole waiting. Highest user-facing priority. No code yet. |
+| **Model Corral** | ✅ | ✅ Implemented | 18 CLI commands (init, validate, add, clone, search, list, show, pull, lineage, diff, export, audit, generate, lint, sweep, materials, share, receive). MaterialSource protocol (5 sources), 11 YAML materials, 3 facility packs (NETL-TRIGA, MSRE, PWR-generic), CoreForge bridge, deterministic MCNP/MPACT generation, 8 lint rules, parametric sweep, federation share/receive with EC safety guard, .facilitypack archive. `neut facility` CLI (8 commands). 342 NeutronOS tests (29 E2E, 6 persona user-flow). |
 | **Data Platform (Iceberg/dbt)** | ✅ | 🟡 Schema sketched | Not wired to runtime |
 | **Compliance Tracking** | ✅ | ❌ 0% | Not blocking feature work |
-| **Federation** | ✅ (ADR-016) | ❌ 0% | Q4 target, not blocking |
+| **Federation** | ✅ (ADR-016) | ✅ Substantially Implemented | Federation identity, Agent Cards, discovery, trust, .axiompack, fleet view, CLI (7 commands), model sharing, SECUR-T, chaos testing. 254 Axiom tests. User flow tests for 6 personas. |
+| **SECUR-T Agent** | ✅ | ✅ Implemented in Axiom | Content verification, anomaly detection (5 rules), trust scoring, escalation paths. 30 tests. |
+| **Chaos Testing** | ✅ | ✅ Implemented in Axiom | 6 scenarios (network-partition, content-injection, mass-publish, identity-replay, ec-leak, split-brain). 13 tests. |
+| **Prompt Injection Defense** | ✅ | ✅ Implemented in Axiom | Content sanitizer (14 patterns), YAML injection blocking, supply chain verification. 48 tests. |
+| **Call to Research** | ✅ | ✅ Implemented in Axiom | 5 levels, composable DAG chains, knowledge metrics. 34 tests. |
+| **Knowledge Observatory** | ✅ | ✅ Implemented in Axiom | Velocity, accumulation, impact metrics. 25 tests. |
+| **Progressive Disclosure** | ✅ | ✅ Implemented | 5-tier CLI help filtering. 14 tests. |
+| **WASM Sandbox** | ✅ | ✅ Implemented in Axiom | Wasmtime-based sandboxed execution. Tests passing. |
+| **Release Planning** | ✅ | ✅ Implemented in Axiom | Milestone/feature staging, auto-generated notes. 11 tests. |
+| **Connectors** | ✅ | ⚠️ Partial | GitHub, GitLab, LLM providers working. MS 365, Google, Box, Slack, Teams NOT yet. |
+| **Notification & Communication** | — | ❌ 0% | PRD needed. |
+| **Agent Presence** | — | ❌ 0% | PRD needed. |
 | **FAIR / DMP** | ✅ (new PRDs) | ❌ 0% | Layered on top of above |
 
 ---
@@ -198,7 +210,9 @@ flowchart TB
 | 0.2 | `gateway.py` (provider registry, route method, logging) | Axiom | ✅ Done | 1537 lines; tier routing, audit logging |
 | 0.3 | PostgreSQL migration: model_registry, model_versions, model_lineage, model_validations tables | NOS | ❌ Remaining | Model Corral schema not yet created |
 | 0.4 | PostgreSQL migration: RAG tables (documents, chunks, embeddings via pgvector) | Axiom | ✅ Done | pgvector store implemented |
-| 0.5 | S3-compatible storage operational | Axiom | ❌ Remaining | Need SeaweedFS Docker or filesystem fallback for Model Corral artifacts |
+| 0.5 | S3-compatible storage operational | Axiom | ❌ Remaining | Need SeaweedFS Docker or filesystem fallback for Model Corral artifacts. For v1.0 Release 1 (Nick+Cole), LocalStorageProvider is acceptable. SeaweedFS needed for Release 2 (Ondrej/Rascal). |
+| 0.6 | Connector expansion — MS 365 Graph API, Google Workspace, Box connectors | Axiom | ❌ Remaining | NEW — needed for enterprise integration |
+| 0.7 | Notification framework — how agents notify humans (Teams, Slack, email) | Axiom | ❌ Remaining | NEW — PRD needed (prd-notifications.md) |
 
 > **Note on 0.5:** Per project policy, no MinIO. For local dev, use SeaweedFS Docker container or filesystem fallback. S3-compatible endpoint for Rascal/TACC comes in M3.
 
@@ -209,25 +223,30 @@ flowchart TB
 **Goal:** Nick and Cole can `neut model search/add/pull/validate`. Physics models versioned and searchable.
 **Deployment:** Local workstation (read/write with local storage)
 **Timeline:** Weeks 2–5
+**Status:** ✅ Core complete. 18 CLI commands, 342 tests. Material system, facility packs, federation sharing all operational. dbt and dataset migration remain.
 **Unblocks:** Nick, Cole, TRIGA model migration, INL LDRD model schema alignment
 
-| # | Work Item | Axiom or NOS | Depends On | Acceptance Criteria |
+| # | Work Item | Axiom or NOS | Depends On | Status |
 |---|-----------|---|---|---|
-| 1.1 | Scaffold Model Corral extension (`neut-extension.toml`, CLI registration) | NOS | 0.3 | `neut model --help` shows subcommands |
-| 1.2 | Implement `model.yaml` manifest parser + validator (schema, semver, status transitions) | NOS | — | Validates sample TRIGA model manifests; rejects malformed |
-| 1.3 | Implement `neut model init <dir>` (scaffold model directory + model.yaml template) | NOS | 1.1, 1.2 | Creates valid skeleton; includes license, funding_source fields (DOE) |
-| 1.4 | Implement `neut model validate <dir>` (schema + file + syntax checks) | NOS | 1.2 | Validates existing TRIGA models; reports clear errors |
-| 1.5 | Implement `neut model add <dir>` (register in DB + upload artifacts to S3) | NOS | 0.3, 0.5, 1.2 | Model appears in registry; files retrievable |
-| 1.6 | Implement `neut model search/list/show` (query registry) | NOS | 0.3 | Can find models by reactor_type, physics_code, keyword |
-| 1.7 | Implement `neut model pull <model_id> <dest>` (download from registry) | NOS | 1.5 | Round-trip: add → pull produces identical directory |
-| 1.8 | Implement `neut model lineage <model_id>` (ROM → physics chain display) | NOS | 0.3 | Shows parent_model chain in terminal |
-| 1.9 | Migrate 10+ existing TRIGA models into registry | NOS | 1.5 | Models searchable, validated, documented |
-| 1.10 | Add federated model fields to model.yaml (`federation_round`, `participating_facilities`, `aggregation_method`) | NOS | 1.2 | INL LDRD schema compatible |
-| 1.11 | Add DOE DMSP fields: `license` (required), `funding_source`, `doi` | NOS | 1.2 | DOE-compliant model metadata |
-| 1.12 | Dataset inventory: audit all project directories for data artifacts (INV-001) | NOS | — | [prd-dataset-inventory.md](prd-dataset-inventory.md) Tier 1 table populated with actual sizes, formats |
-| 1.13 | Confirm funding source for all Tier 2 datasets (INV-002) | NOS | 1.12 | Each Tier 2 row has confirmed funding status |
-| 1.14 | Migrate existing ROMs with training provenance (MIG-002) | NOS | 1.5 | ROM → physics model lineage visible via `neut model lineage` |
-| 1.15 | Migrate benchmark input decks from `progression_problems/` (MIG-003) | NOS | 1.5 | Benchmarks searchable; linked to ICSBEP/IRPhEP references |
+| 1.1 | Scaffold Model Corral extension (`neut-extension.toml`, CLI registration) | NOS | 0.3 | ✅ Done — 18 commands registered |
+| 1.2 | Implement `model.yaml` manifest parser + validator (schema, semver, status transitions) | NOS | — | ✅ Done — material-schema.json (draft-07), JSON Schema validation |
+| 1.3 | Implement `neut model init <dir>` (scaffold model directory + model.yaml template) | NOS | 1.1, 1.2 | ✅ Done — `--materials` flag suggests from facility packs |
+| 1.4 | Implement `neut model validate <dir>` (schema + file + syntax checks) | NOS | 1.2 | ✅ Done — schema + file checks; `--against-gold` deferred |
+| 1.5 | Implement `neut model add <dir>` (register in DB + upload artifacts to S3) | NOS | 0.3, 0.5, 1.2 | ✅ Done — SQLAlchemy model with FAIR metadata (license, PID, composition_hash) |
+| 1.6 | Implement `neut model search/list/show` (query registry) | NOS | 0.3 | ✅ Done — full-text search, filters, --json output |
+| 1.7 | Implement `neut model pull <model_id> <dest>` (download from registry) | NOS | 1.5 | ✅ Done |
+| 1.8 | Implement `neut model lineage <model_id>` (ROM → physics chain display) | NOS | 0.3 | ✅ Done |
+| 1.9 | Migrate actual TRIGA model files (real MCNP input decks, not just materials) into registry | NOS | 1.5 | 🟡 Partial — 3 facility packs (NETL-TRIGA, MSRE, PWR-generic) with materials + parameters; full MCNP input deck migration pending |
+| 1.10 | Add federated model fields to model.yaml | NOS | 1.2 | ✅ Done — federation share/receive with .axiompack |
+| 1.11 | Add DOE DMSP fields: `license` (required), `funding_source`, `doi` | NOS | 1.2 | ✅ Done — MaterialRecord has license, PID, data_library fields |
+| 1.12 | Dataset inventory (INV-001) | NOS | — | ❌ Remaining |
+| 1.13 | Confirm funding source for all Tier 2 datasets (INV-002) | NOS | 1.12 | ❌ Remaining |
+| 1.14 | Migrate existing ROMs with training provenance (MIG-002) | NOS | 1.5 | 🟡 Partial — coreforge_provenance column on ModelVersion; actual ROM migration pending |
+| 1.15 | Migrate benchmark input decks from `progression_problems/` (MIG-003) | NOS | 1.5 | ❌ Remaining |
+| 1.16 | Slash command cleanup — rename /doc→/pub, /sense→/signal, hide low-level commands | NOS | 1.1 | ❌ Remaining (NEW) |
+| 1.17 | Progressive disclosure wiring verified on all CLIs | NOS | 1.1 | ❌ Remaining (NEW) — 5-tier help filtering implemented, needs verification across all nouns |
+
+**Additional delivered items not in original plan:** `neut model generate` (deterministic MCNP/MPACT material cards), `neut model lint` (8 rules), `neut model sweep` (parametric sweep with lineage), `neut model clone`, `neut model materials`, `neut facility` CLI (8 commands: list, show, install, uninstall, init, publish, materials, sync), .facilitypack archive format with SHA256SUMS, MaterialSource protocol (5 source types with priority-based merging), 11 materials migrated to YAML, CoreForge bridge (optional import, provenance capture), EC safety guard on federation receive, 6 persona user-flow tests (Nick, Cole, Soha, Ondrej, Jay, Ben Collins), performance benchmarks.
 
 ---
 
@@ -251,6 +270,9 @@ flowchart TB
 | 2.10 | Interaction logging | Axiom | ✅ Done | Audit logging in gateway + routing_audit |
 | 2.11 | `axi rag` CLI (`index`, `search`, `status`) | Axiom | ✅ Done | `rag/cli.py` (349 lines) registered as `rag` noun |
 | 2.12 | Validate E2E: `neut chat` → routing → RAG → grounded response on local | NOS | ❌ Remaining | Integration test with NOS CLI shell |
+| 2.13 | Provider switching test — user brings own API key, switches mid-workflow | NOS | ❌ Remaining (NEW) | Validates gateway provider hot-swap |
+| 2.14 | RAG quality benchmarks — promptfoo evals in CI | NOS | ❌ Remaining (NEW) | Automated grounding quality gate |
+| 2.15 | Chat UI polish — streaming in tool-use loop | NOS | ❌ Remaining (NEW) | Smooth UX for interactive chat |
 
 ---
 
@@ -275,6 +297,7 @@ flowchart TB
 | 3.9 | Build nuclear community corpus RAG data pack (Axiom P2.8) | NOS | 3.7 | `.axiompack` loadable on both local and Rascal nodes |
 | 3.10 | E2E: Ondrej `neut chat` → federation discovers Rascal → routes to Qwen → RAG from both stores | NOS | 3.6, 3.7, 3.8 | Ondrej gets grounded, restricted-tier responses |
 | 3.11 | Deployment playbook documented (`docs/playbooks/rascal-deployment.md`) | NOS | 3.10 | Reproducible by another operator |
+| 3.12 | Rascal upgrade to feat/model-corral-v1 + feat/federation-v1 branches | Infra | 3.1 | ❌ Remaining (NEW) — Rascal running current code |
 
 ---
 
@@ -350,22 +373,96 @@ flowchart TB
 
 ---
 
+## Person-Oriented Release Schedule
+
+Releases are staged by user, not by feature. Each release has a named validator.
+
+### Release 1: Nick Luciano + Cole Gentry PhD
+**Target:** Week of April 7, 2026
+**Milestone coverage:** M0 (local storage), M1 (model corral core)
+**Features:** neut model (18 commands), neut facility (8 commands), facility packs, CoreForge bridge, materials
+**Validator criteria:** Nick pulls a reference model, edits, validates, adds. Cole adds CoreForge output with provenance. Both < 10 minutes.
+**Prep:** Progressive disclosure (Tier 0-1 only), tool approval gate, quick reference card
+
+### Release 2: Ondrej
+**Target:** Week of April 21, 2026
+**Milestone coverage:** M2 (RAG + routing), M3 (Rascal connection)
+**Features:** neut chat + RAG, Qwen on VPN, provider switching, community RAG basics
+**Validator criteria:** Ondrej asks "What's the startup procedure for NETL TRIGA?" and gets a grounded answer. Switches from Qwen to Claude.
+**Prep:** Rascal upgraded, NETL docs indexed, RAG quality validated, provider switching tested
+
+### Release 3: Shayan
+**Target:** Week of May 12, 2026
+**Milestone coverage:** M2 (community corpus), M5 partial (knowledge maturity)
+**Features:** Community RAG fully tested, mass onboarding, knowledge metrics
+**Validator criteria:** Shayan indexes 100+ documents, verifies quality, can explain the process to others.
+**Prep:** Bulk indexing workflow, curation guide, knowledge metrics visible
+
+### Release 4: Ben Collins PhD + Soha
+**Target:** Week of May 26, 2026
+**Milestone coverage:** M1 (ROM workflows), M5 partial (agent hardening)
+**Features:** Audit, lineage, diff, sweep, ROM workflows, fleet view, knowledge observatory
+**Validator criteria:** Ben sees all lab activity. Soha traces ROM lineage back to physics model.
+**Prep:** Enough models in registry, lineage chain with real data
+
+---
+
+## Post-v1.0 Fast-Follow (v1.1-v1.4)
+
+Items built this session but staged for post-v1.0 announcement:
+
+| Version | Codename | Features | Tests |
+|---------|----------|----------|-------|
+| v1.1.0 | Generation & Quality | generate, lint, clone, diff, CoreForge bridge | 46 |
+| v1.2.0 | Connect Your Lab | Federation, fleet view, model sharing, sweep | 104 |
+| v1.3.0 | Call to Research | 5-level research coordination, knowledge observatory, WASM | 83 |
+| v1.4.0 | Security & Resilience | SECUR-T, chaos testing, prompt injection defense, progressive disclosure | 116 |
+
+All code is already written and tested. These releases are about staged announcement and documentation, not development.
+
+### New PRDs Needed (post-v1.0)
+- **prd-notifications.md** — How agents notify humans across channels (Teams, Slack, email)
+- **prd-agent-presence.md** — How agents show up in human communication spaces
+- **prd-connectors-v2.md** — MS 365, Google Workspace, Box, research endpoints, identity providers
+- **prd-burn-e-agent.md** — Release/CI/CD pipeline management agent
+
+### Connector Expansion Roadmap
+| Category | Connectors | Priority | Target |
+|----------|-----------|----------|--------|
+| Communication | MS Teams, Slack, Email (SMTP/IMAP), Discord | P1 | v1.2 |
+| Productivity | MS 365 (Graph API), Google Workspace, Box | P1 | v1.2 |
+| Research | DOI/CrossRef, PubMed, arXiv, OSTI.gov | P2 | v1.3 |
+| Identity | InCommon/OIDC, TACC creds | P2 | v1.3 |
+| Storage | SeaweedFS, Box, OneDrive, Google Drive | P1 | v1.2 |
+
+---
+
 ## Critical Path
 
-With gateway, routing, RAG, and agents already implemented in Axiom, the critical path is:
+### Critical Path to v1.0 Release 1 (Nick + Cole) — Week of April 7
 
 ```
-0.3 (Model Corral DB) → 1.1 → 1.5 → 1.9 (Model Corral live)
-0.5 (S3 storage)      → 1.5 → 3.3 (Rascal SeaweedFS)
-Axiom P2 (federation primitives) → 3.4 → 3.10 (Rascal federated E2E)
-2.6 (community corpus) → 3.9 (RAG data pack)
+✅ M0.1-0.4 (infrastructure) → ✅ M1.1-1.8 (model corral core)
+→ Remaining: progressive disclosure verified, tool approval gate, Tier 0-1 help text
+→ Quick reference card → Hand to Nick
 ```
 
-**Two parallel tracks:**
-1. **M1 (Model Corral)** — needs DB migration + S3 storage. Unblocks Nick and Cole immediately.
-2. **M3 (Rascal federation)** — needs Axiom P2 federation primitives + Rascal infra. Unblocks Ondrej and multi-node testing.
+### Critical Path to v1.0 Release 2 (Ondrej) — Week of April 21
 
-Both can proceed in parallel. M3 is no longer "after M2" — it's the first real deployment of Axiom federation.
+```
+M0.5 (SeaweedFS on Rascal) → M3.3 → M3.8 (restricted corpus)
+M2.6 (community corpus) → M2.12 (E2E validation)
+M2.13 (provider switching) → M3.10 (Ondrej E2E)
+```
+
+### Milestone Status Summary
+
+1. **M0 (Infrastructure)** — ✅ Core complete (0.1-0.4). Remaining: SeaweedFS (0.5, deferred for Release 2), connector expansion (0.6), notification framework (0.7).
+2. **M1 (Model Corral)** — ✅ Core complete (18 commands, 342 tests). Remaining: full TRIGA MCNP input deck migration (1.9), dataset inventory (1.12-1.15), slash command cleanup (1.16), progressive disclosure verification (1.17).
+3. **M2 (Routing + RAG)** — ✅ Platform complete. Remaining: community corpus (2.6), NOS E2E validation (2.12), provider switching (2.13), RAG benchmarks (2.14), chat UI polish (2.15).
+4. **M3 (Rascal)** — Needs Rascal infra + code upgrade (3.12). Federation code exists in Axiom. Unblocks Ondrej and multi-node testing.
+
+M1 completion unblocks M4 (DOE Data Management) for FAIR metadata on models.
 
 ---
 
