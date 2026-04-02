@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=...
+model_id: triga-steady-state
+name: NETL TRIGA Steady-State Reference
+version: "1.0.0"
+status: production
+reactor_type: TRIGA
+facility: NETL
+physics_code: MCNP
+physics_domain:
+  - neutronics
+created_by: nick@utexas.edu
+created_at: "2026-04-01T00:00:00Z"
+access_tier: facility
+description: >-
+  Reference steady-state MCNP model for the UT Austin NETL TRIGA Mark II
+  reactor at 1 MW thermal power. Standard 90-element core with graphite
+  reflector, 4 B4C control rods, and light water coolant/moderator.
+tags:
+  - triga
+  - steady-state
+  - reference
+  - netl
+materials:
+  - name: UZrH-20
+    number: 1
+  - name: H2O
+    number: 2
+  - name: graphite
+    number: 3
+  - name: SS304
+    number: 4
+  - name: Zircaloy-4
+    number: 5
+  - name: B4C
+    number: 6
+  - name: air
+    number: 7
