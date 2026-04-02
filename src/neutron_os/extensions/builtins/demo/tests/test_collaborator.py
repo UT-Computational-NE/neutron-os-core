@@ -91,7 +91,10 @@ class TestCollaboratorScenario:
                     # Path embedded in command must exist on disk
                     path_str = cmd.split()[-1]
                     from pathlib import Path
-                    assert Path(path_str).exists(), f"Fixture path in command does not exist: {path_str}"
+
+                    assert Path(path_str).exists(), (
+                        f"Fixture path in command does not exist: {path_str}"
+                    )
 
     def test_runs_in_auto_mode(self):
         """Scenario runs to completion in auto mode."""

@@ -291,7 +291,6 @@ class ModelCorralService:
     ) -> dict:
         """Add a review comment to a model."""
         from datetime import UTC, datetime
-        import json
         import secrets
 
         review = {

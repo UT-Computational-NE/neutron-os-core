@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -34,8 +33,10 @@ def reviews_dir(tmp_path: Path) -> Path:
 class TestAddReview:
     def test_creates_review_with_correct_fields(self, svc, reviews_dir):
         review = svc.add_review(
-            "test-model", reviewer="cole@utexas.edu",
-            comment="Water temp should be 300K", reviews_dir=reviews_dir,
+            "test-model",
+            reviewer="cole@utexas.edu",
+            comment="Water temp should be 300K",
+            reviews_dir=reviews_dir,
         )
         assert review["model_id"] == "test-model"
         assert review["reviewer"] == "cole@utexas.edu"
@@ -45,21 +46,30 @@ class TestAddReview:
 
     def test_auto_generates_review_id(self, svc, reviews_dir):
         review = svc.add_review(
-            "test-model", reviewer="cole", comment="test", reviews_dir=reviews_dir,
+            "test-model",
+            reviewer="cole",
+            comment="test",
+            reviews_dir=reviews_dir,
         )
         assert review["review_id"].startswith("rev-")
         assert len(review["review_id"]) == 16  # "rev-" + 12 hex chars
 
     def test_stores_version(self, svc, reviews_dir):
         review = svc.add_review(
-            "test-model", reviewer="cole", comment="test",
-            version="1.2.0", reviews_dir=reviews_dir,
+            "test-model",
+            reviewer="cole",
+            comment="test",
+            version="1.2.0",
+            reviews_dir=reviews_dir,
         )
         assert review["version"] == "1.2.0"
 
     def test_version_defaults_to_none(self, svc, reviews_dir):
         review = svc.add_review(
-            "test-model", reviewer="cole", comment="test", reviews_dir=reviews_dir,
+            "test-model",
+            reviewer="cole",
+            comment="test",
+            reviews_dir=reviews_dir,
         )
         assert review["version"] is None
 
@@ -120,7 +130,10 @@ class TestResolveReview:
     def test_dismiss_changes_status(self, svc, reviews_dir):
         r = svc.add_review("m1", reviewer="a", comment="nit", reviews_dir=reviews_dir)
         ok = svc.resolve_review(
-            "m1", r["review_id"], resolution="dismissed", reviews_dir=reviews_dir,
+            "m1",
+            r["review_id"],
+            resolution="dismissed",
+            reviews_dir=reviews_dir,
         )
         assert ok is True
 
@@ -169,10 +182,20 @@ class TestCLIReview:
     def test_reviews_command_shows_open_count(self, mock_get_svc, capsys):
         mock_svc = MagicMock()
         mock_svc.get_reviews.return_value = [
-            {"review_id": "rev-1", "reviewer": "cole", "comment": "fix this",
-             "status": "open", "version": None},
-            {"review_id": "rev-2", "reviewer": "nick", "comment": "done",
-             "status": "addressed", "version": None},
+            {
+                "review_id": "rev-1",
+                "reviewer": "cole",
+                "comment": "fix this",
+                "status": "open",
+                "version": None,
+            },
+            {
+                "review_id": "rev-2",
+                "reviewer": "nick",
+                "comment": "done",
+                "status": "addressed",
+                "version": None,
+            },
         ]
         mock_get_svc.return_value = mock_svc
 
@@ -227,8 +250,12 @@ class TestShowIncludesReviews:
             "versions": [],
         }
         mock_svc.get_reviews.return_value = [
-            {"review_id": "rev-1", "reviewer": "cole@utexas.edu",
-             "comment": "Water temp should be 300K not 293K", "status": "open"},
+            {
+                "review_id": "rev-1",
+                "reviewer": "cole@utexas.edu",
+                "comment": "Water temp should be 300K not 293K",
+                "status": "open",
+            },
         ]
         mock_get_svc.return_value = mock_svc
 

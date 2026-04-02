@@ -67,9 +67,7 @@ class TestDemoRunner:
             commands=["echo ok"],
             validator=lambda: True,
         )
-        scenario = Scenario(
-            name="Validated", slug="validated", tagline="Test", acts=[act]
-        )
+        scenario = Scenario(name="Validated", slug="validated", tagline="Test", acts=[act])
         runner = DemoRunner(scenario, auto=True)
         runner.run()
         assert 1 in runner.completed_acts
@@ -84,15 +82,14 @@ class TestDemoRunner:
             validator=lambda: False,
             fallback_message="Expected failure",
         )
-        scenario = Scenario(
-            name="Fail", slug="fail", tagline="Test", acts=[act]
-        )
+        scenario = Scenario(name="Fail", slug="fail", tagline="Test", acts=[act])
         runner = DemoRunner(scenario, auto=True)
         runner.run()
         assert 1 in runner.completed_acts
 
     def test_validator_exception_continues(self):
         """Acts with validators that throw still complete."""
+
         def bad_validator():
             raise RuntimeError("boom")
 
@@ -103,9 +100,7 @@ class TestDemoRunner:
             commands=["echo error"],
             validator=bad_validator,
         )
-        scenario = Scenario(
-            name="Error", slug="error", tagline="Test", acts=[act]
-        )
+        scenario = Scenario(name="Error", slug="error", tagline="Test", acts=[act])
         runner = DemoRunner(scenario, auto=True)
         runner.run()
         assert 1 in runner.completed_acts
@@ -147,15 +142,9 @@ class TestDemoRunner:
 
     def test_mode_label(self):
         """Acts properly label CLI vs Chat mode."""
-        act_cli = Act(
-            number=1, title="CLI", description="d", commands=["x"], mode="cli"
-        )
-        act_chat = Act(
-            number=2, title="Chat", description="d", commands=["y"], mode="chat"
-        )
-        scenario = Scenario(
-            name="Modes", slug="modes", tagline="Test", acts=[act_cli, act_chat]
-        )
+        act_cli = Act(number=1, title="CLI", description="d", commands=["x"], mode="cli")
+        act_chat = Act(number=2, title="Chat", description="d", commands=["y"], mode="chat")
+        scenario = Scenario(name="Modes", slug="modes", tagline="Test", acts=[act_cli, act_chat])
         runner = DemoRunner(scenario, auto=True)
         runner.run()
         assert len(runner.completed_acts) == 2
@@ -169,9 +158,7 @@ class TestDemoRunner:
             commands=["echo x"],
             hints=["First hint", "Second hint"],
         )
-        scenario = Scenario(
-            name="Hints", slug="hints", tagline="Test", acts=[act]
-        )
+        scenario = Scenario(name="Hints", slug="hints", tagline="Test", acts=[act])
         runner = DemoRunner(scenario, auto=True)
         runner.run()
         captured = capsys.readouterr()

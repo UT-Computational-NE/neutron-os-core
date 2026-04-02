@@ -22,19 +22,20 @@ def get_parser() -> argparse.ArgumentParser:
     run_p = sub.add_parser("run", help="Run a demo scenario")
     scenario_group = run_p.add_mutually_exclusive_group()
     scenario_group.add_argument(
-        "--collaborator", dest="scenario", action="store_const", const="collaborator",
+        "--collaborator",
+        dest="scenario",
+        action="store_const",
+        const="collaborator",
         help="The Silent Contributor — Jay's onboarding walkthrough",
     )
     scenario_group.add_argument(
-        "--scenario", dest="scenario", metavar="NAME",
+        "--scenario",
+        dest="scenario",
+        metavar="NAME",
         help="Run a scenario by name (for external/custom scenarios)",
     )
-    run_p.add_argument(
-        "--from", dest="from_act", type=int, default=None, help="Start from act N"
-    )
-    run_p.add_argument(
-        "--auto", action="store_true", help="Skip pauses (for testing)"
-    )
+    run_p.add_argument("--from", dest="from_act", type=int, default=None, help="Start from act N")
+    run_p.add_argument("--auto", action="store_true", help="Skip pauses (for testing)")
 
     sub.add_parser("reset", help="Reset demo state")
     sub.add_parser("list", help="List available scenarios")

@@ -79,9 +79,7 @@ class DemoRunner:
 
     def run_act(self, act_number: int) -> None:
         """Run a specific act by number."""
-        act = next(
-            (a for a in self.scenario.acts if a.number == act_number), None
-        )
+        act = next((a for a in self.scenario.acts if a.number == act_number), None)
         if act is None:
             renderer.error(f"Act {act_number} not found.")
             return
@@ -137,17 +135,13 @@ class DemoRunner:
         renderer.text(self.scenario.tagline)
         renderer.blank()
         renderer.text(f"This demo has {len(self.scenario.acts)} acts.")
-        renderer.text(
-            "Each act shows commands to run. Execute them, then press Enter to continue."
-        )
+        renderer.text("Each act shows commands to run. Execute them, then press Enter to continue.")
         renderer.divider()
 
     def _print_outro(self) -> None:
         renderer.blank()
         renderer.divider()
-        renderer.success(
-            f"Demo complete! All {len(self.scenario.acts)} acts finished."
-        )
+        renderer.success(f"Demo complete! All {len(self.scenario.acts)} acts finished.")
         renderer.blank()
         renderer.text("What's next:")
         steps = [
@@ -167,9 +161,7 @@ class DemoRunner:
     def _pause(self, act: Act) -> None:
         """Wait for user to execute commands and return."""
         try:
-            input(
-                "\n  Run the commands above, then press Enter to continue... "
-            )
+            input("\n  Run the commands above, then press Enter to continue... ")
         except EOFError:
             pass
 
@@ -180,9 +172,7 @@ class DemoRunner:
         renderer.text(f"Progress: {done}/{total} acts completed.")
         if done < total:
             next_act = self.scenario.acts[done].number
-            renderer.text(
-                f"Resume with: neut demo run {self.scenario.slug} --from {next_act}"
-            )
+            renderer.text(f"Resume with: neut demo run {self.scenario.slug} --from {next_act}")
 
     def reset(self) -> None:
         """Reset demo state."""

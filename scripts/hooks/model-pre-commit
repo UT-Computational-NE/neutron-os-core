@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Pre-commit hook: validates any model.yaml files being committed.
+# Install: cp scripts/hooks/model-pre-commit .git/hooks/pre-commit
+
+# Find model.yaml files in the staging area
+model_files=$(git diff --cached --name-only --diff-filter=ACM | grep "model\.yaml$")
+
+if [ -z "$model_files" ]; then
+    exit 0  # No model files being committed
+fi
+
+echo "Validating model files..."
+failed=0
+
+for f in $model_files; do
+    dir=$(dirname "$f")
+    if command -v neut &> /dev/null; then
+        neut model validate "$dir" 2>&1
+        if [ $? -ne 0 ]; then
+            echo "  FAILED: $f"
+            failed=1
+        else
+            echo "  OK: $f"
+        fi
+    fi
+done
+
+if [ $failed -ne 0 ]; then
+    echo ""
+    echo "Model validation failed. Fix issues before committing."
+    echo "Use --no-verify to skip (not recommended)."
+    exit 1
+fi

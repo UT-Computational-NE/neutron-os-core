@@ -14,10 +14,12 @@ def list_scenarios() -> list[dict[str, str]]:
     result = []
     for slug, builder in SCENARIOS.items():
         scenario = builder()
-        result.append({
-            "slug": slug,
-            "name": scenario.name,
-            "tagline": scenario.tagline,
-            "acts": str(len(scenario.acts)),
-        })
+        result.append(
+            {
+                "slug": slug,
+                "name": scenario.name,
+                "tagline": scenario.tagline,
+                "acts": str(len(scenario.acts)),
+            }
+        )
     return result

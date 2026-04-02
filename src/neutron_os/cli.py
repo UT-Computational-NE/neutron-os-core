@@ -14,6 +14,7 @@ def main() -> None:
         from axiom.infra.branding import BrandingConfig, register
     except ImportError:
         import sys
+
         print(
             "Error: the Axiom framework is not installed or has been removed.\n"
             "Reinstall Neutron OS to restore it:\n\n"
@@ -22,17 +23,20 @@ def main() -> None:
         )
         sys.exit(1)
 
-    register(BrandingConfig(
-        cli_name="neut",
-        product_name="Neutron OS",
-        mascot_name="Neut",
-        tagline="The intelligence platform for nuclear power systems",
-        package_name="neutron-os",
-        banner_fn=_neut_banner,
-        shell_comment="Neutron OS CLI shortcut",
-    ))
+    register(
+        BrandingConfig(
+            cli_name="neut",
+            product_name="Neutron OS",
+            mascot_name="Neut",
+            tagline="The intelligence platform for nuclear power systems",
+            package_name="neutron-os",
+            banner_fn=_neut_banner,
+            shell_comment="Neutron OS CLI shortcut",
+        )
+    )
 
     from axiom.axiom_cli import main as axiom_main
+
     axiom_main()
 
 
@@ -50,6 +54,7 @@ def _neut_banner() -> None:
     """Print the Neut mascot banner — art owned by NeutronOS, not Axiom."""
     try:
         from axiom.setup.renderer import _c, _Colors  # pylint: disable=import-outside-toplevel
+
         for line in _NEUT_ART.strip("\n").splitlines():
             print(_c(_Colors.BOLD + _Colors.ACCENT_BLUE, line))
         print()

@@ -77,7 +77,11 @@ def _git_info(directory: Path) -> dict:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--is-inside-work-tree"],
-            capture_output=True, text=True, timeout=5, check=False, cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            cwd=directory,
         )
         if result.returncode != 0:
             return info
@@ -86,35 +90,55 @@ def _git_info(directory: Path) -> dict:
         # Branch
         result = subprocess.run(
             ["git", "branch", "--show-current"],
-            capture_output=True, text=True, timeout=5, check=False, cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            cwd=directory,
         )
         info["branch"] = result.stdout.strip() if result.returncode == 0 else ""
 
         # Commit hash
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5, check=False, cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            cwd=directory,
         )
         info["commit"] = result.stdout.strip() if result.returncode == 0 else ""
 
         # Dirty state
         result = subprocess.run(
             ["git", "status", "--porcelain"],
-            capture_output=True, text=True, timeout=5, check=False, cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            cwd=directory,
         )
         info["dirty"] = bool(result.stdout.strip()) if result.returncode == 0 else False
 
         # Author
         result = subprocess.run(
             ["git", "config", "--get", "user.email"],
-            capture_output=True, text=True, timeout=5, check=False, cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            cwd=directory,
         )
         info["author"] = result.stdout.strip() if result.returncode == 0 else ""
 
         # Remote URL (for provenance)
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5, check=False, cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            cwd=directory,
         )
         info["remote"] = result.stdout.strip() if result.returncode == 0 else ""
 

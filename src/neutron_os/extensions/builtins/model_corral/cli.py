@@ -315,7 +315,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # status (model-specific)
     mstatus_p = sub.add_parser("status", help="Show model status with suggested next actions")
-    mstatus_p.add_argument("model_id", nargs="?", help="Model identifier (default: current directory)")
+    mstatus_p.add_argument(
+        "model_id", nargs="?", help="Model identifier (default: current directory)"
+    )
     mstatus_p.add_argument("--format", choices=["human", "json"], default="human")
 
     # review (add a comment)
@@ -326,21 +328,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     # reviews (list comments)
     reviews_p = sub.add_parser("reviews", help="Show review comments on a model")
-    reviews_p.add_argument(
-        "model_id", nargs="?", default=".", help="Model identifier or directory"
-    )
-    reviews_p.add_argument(
-        "--status", choices=["open", "addressed", "dismissed"], default=None
-    )
+    reviews_p.add_argument("model_id", nargs="?", default=".", help="Model identifier or directory")
+    reviews_p.add_argument("--status", choices=["open", "addressed", "dismissed"], default=None)
     reviews_p.add_argument("--format", choices=["human", "json"], default="human")
 
     # resolve (address a comment)
     resolve_p = sub.add_parser("resolve", help="Mark a review comment as addressed")
     resolve_p.add_argument("model_id", help="Model identifier")
     resolve_p.add_argument("review_id", help="Review ID to resolve")
-    resolve_p.add_argument(
-        "--dismiss", action="store_true", help="Dismiss instead of address"
-    )
+    resolve_p.add_argument("--dismiss", action="store_true", help="Dismiss instead of address")
 
     _make_tiered_print_help(parser, "model")
     return parser
@@ -1128,9 +1124,7 @@ def _cmd_model_status(args) -> int:
                 break
 
     if output_json:
-        latest_version = (
-            info["versions"][-1]["version"] if info.get("versions") else None
-        )
+        latest_version = info["versions"][-1]["version"] if info.get("versions") else None
         result = {
             "model_id": model_id,
             "version": latest_version,
@@ -1143,9 +1137,7 @@ def _cmd_model_status(args) -> int:
         }
         print(json.dumps(result, indent=2))
     else:
-        latest_v = (
-            info["versions"][-1]["version"] if info.get("versions") else "?"
-        )
+        latest_v = info["versions"][-1]["version"] if info.get("versions") else "?"
         print(f"Model: {info['model_id']} v{latest_v}")
         print(f"  Status: {info['status']}")
         print(f"  Author: {info['created_by']}")
@@ -1154,9 +1146,7 @@ def _cmd_model_status(args) -> int:
         if lineage:
             print("\n  Lineage:")
             for entry in lineage:
-                print(
-                    f"    \u2190 {entry['parent_model_id']} ({entry['relationship_type']})"
-                )
+                print(f"    \u2190 {entry['parent_model_id']} ({entry['relationship_type']})")
 
         if children:
             print("\n  Derived models:")
@@ -1172,9 +1162,7 @@ def _cmd_model_status(args) -> int:
                 print("    neut model generate          # create material cards")
         elif info["status"] == "review":
             print("    neut model validate          # re-validate before approval")
-            print(
-                f"    neut model diff {model_id}@v1 {model_id}@latest  # see what changed"
-            )
+            print(f"    neut model diff {model_id}@v1 {model_id}@latest  # see what changed")
         elif info["status"] == "production":
             print(f"    neut model clone {model_id}  # fork for modifications")
             print(f"    neut model export {model_id} # archive as ZIP")

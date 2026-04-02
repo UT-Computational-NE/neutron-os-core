@@ -210,8 +210,14 @@ def test_auto_add_gitignore_created(tmp_path: Path) -> None:
 
     with mock.patch(
         "neutron_os.extensions.builtins.model_corral.commands.auto_add._git_info",
-        return_value={"in_repo": True, "branch": "main", "commit": "abc123",
-                      "dirty": False, "author": "nick@utexas.edu", "remote": ""},
+        return_value={
+            "in_repo": True,
+            "branch": "main",
+            "commit": "abc123",
+            "dirty": False,
+            "author": "nick@utexas.edu",
+            "remote": "",
+        },
     ):
         auto_add_mcnp(f)
 
@@ -231,8 +237,14 @@ def test_auto_add_git_provenance(tmp_path: Path) -> None:
 
     with mock.patch(
         "neutron_os.extensions.builtins.model_corral.commands.auto_add._git_info",
-        return_value={"in_repo": True, "branch": "feat/new-rods", "commit": "abc123",
-                      "dirty": False, "author": "nick@utexas.edu", "remote": "git@github.com:lab/models.git"},
+        return_value={
+            "in_repo": True,
+            "branch": "feat/new-rods",
+            "commit": "abc123",
+            "dirty": False,
+            "author": "nick@utexas.edu",
+            "remote": "git@github.com:lab/models.git",
+        },
     ):
         auto_add_mcnp(f)
 

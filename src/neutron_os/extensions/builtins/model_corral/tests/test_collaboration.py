@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -132,7 +131,6 @@ class TestParserRegistration:
 
     def test_handlers_include_new_commands(self):
         """All new commands are in the handler dict."""
-        from neutron_os.extensions.builtins.model_corral.cli import main
 
         # We can't easily inspect the dict, but we can verify
         # that unknown commands return 1, not KeyError
@@ -159,9 +157,7 @@ class TestInvite:
     def test_invite_generates_token(self, capsys):
         from neutron_os.extensions.builtins.model_corral.cli import main
 
-        with patch(
-            "neutron_os.extensions.builtins.model_corral.cli._record"
-        ):
+        with patch("neutron_os.extensions.builtins.model_corral.cli._record"):
             rc = main(["invite", "cole@utexas.edu"])
         assert rc == 0
         out = capsys.readouterr().out
@@ -172,9 +168,7 @@ class TestInvite:
     def test_invite_with_models(self, capsys):
         from neutron_os.extensions.builtins.model_corral.cli import main
 
-        with patch(
-            "neutron_os.extensions.builtins.model_corral.cli._record"
-        ):
+        with patch("neutron_os.extensions.builtins.model_corral.cli._record"):
             rc = main(["invite", "cole@utexas.edu", "--models", "model-a", "model-b"])
         assert rc == 0
         out = capsys.readouterr().out
@@ -183,9 +177,7 @@ class TestInvite:
     def test_invite_with_message(self, capsys):
         from neutron_os.extensions.builtins.model_corral.cli import main
 
-        with patch(
-            "neutron_os.extensions.builtins.model_corral.cli._record"
-        ):
+        with patch("neutron_os.extensions.builtins.model_corral.cli._record"):
             rc = main(["invite", "cole@utexas.edu", "-m", "Welcome aboard!"])
         assert rc == 0
         out = capsys.readouterr().out
@@ -194,9 +186,7 @@ class TestInvite:
     def test_invite_json(self, capsys):
         from neutron_os.extensions.builtins.model_corral.cli import main
 
-        with patch(
-            "neutron_os.extensions.builtins.model_corral.cli._record"
-        ):
+        with patch("neutron_os.extensions.builtins.model_corral.cli._record"):
             rc = main(["invite", "cole@utexas.edu", "--json"])
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
@@ -215,9 +205,7 @@ class TestContributors:
         service.add(valid_model_dir, message="parent")
 
         # Create child by different author
-        child_dir = _make_child_dir(
-            tmp_path, "triga-test-mcnp-v1", "nick-run-1", "nick@utexas.edu"
-        )
+        child_dir = _make_child_dir(tmp_path, "triga-test-mcnp-v1", "nick-run-1", "nick@utexas.edu")
         service.add(child_dir, message="child")
 
         with patch(
@@ -309,10 +297,13 @@ class TestModelStatus:
         """When no model_id given, detect from model.yaml in cwd."""
         service.add(valid_model_dir, message="test")
 
-        with patch(
-            "neutron_os.extensions.builtins.model_corral.cli._get_service",
-            return_value=service,
-        ), patch("pathlib.Path.cwd", return_value=valid_model_dir):
+        with (
+            patch(
+                "neutron_os.extensions.builtins.model_corral.cli._get_service",
+                return_value=service,
+            ),
+            patch("pathlib.Path.cwd", return_value=valid_model_dir),
+        ):
             from neutron_os.extensions.builtins.model_corral.cli import main
 
             rc = main(["status"])
