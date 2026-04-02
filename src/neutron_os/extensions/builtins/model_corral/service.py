@@ -45,7 +45,9 @@ class ModelCorralService:
     # Add (M1.5)
     # ------------------------------------------------------------------
 
-    def add(self, model_dir: Path, message: str = "") -> AddResult:
+    def add(
+        self, model_dir: Path, message: str = "", coreforge_provenance: dict | None = None
+    ) -> AddResult:
         """Validate, upload, and register a model from a local directory."""
         # Validate first
         validation = validate_model_dir(model_dir)
@@ -115,6 +117,7 @@ class ModelCorralService:
                 manifest=data,
                 checksum=checksum,
                 created_by=data.get("created_by", ""),
+                coreforge_provenance=coreforge_provenance,
             )
             session.add(ver)
 

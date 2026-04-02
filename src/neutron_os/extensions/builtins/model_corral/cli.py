@@ -8,10 +8,17 @@ Usage:
     neut model list [--filters]         List models with filters
     neut model show <model_id>          Show model details
     neut model pull <model_id> [dest]   Download model
+    neut model clone <model_id>         Clone for editing (fork)
     neut model lineage <model_id>       Show ROM → physics chain
     neut model diff <id_a> <id_b>       Compare two models
+    neut model generate <path>          Generate input deck sections
+    neut model lint <path>              Run standardization checks
+    neut model sweep <path>             Generate parametric variants
     neut model export <model_id>        Export as ZIP archive
     neut model audit [--since DATE]     View change history
+    neut model materials [query]        Browse material compositions
+    neut model share <model_id>         Package model for sharing
+    neut model receive <path>           Import a shared model pack
 """
 
 from __future__ import annotations
@@ -20,11 +27,107 @@ import argparse
 import json
 import sys
 
+# Progressive disclosure — graceful degradation if axiom.infra.cli_tiers unavailable
+try:
+    from axiom.infra.cli_tiers import get_user_tier, record_action, should_show_command
+
+    _HAS_CLI_TIERS = True
+except ImportError:
+    _HAS_CLI_TIERS = False
+
+
+def _make_tiered_print_help(parser: argparse.ArgumentParser, noun: str):
+    """Create a print_help method that filters subcommands by user tier."""
+    _original_print_help = parser.print_help
+
+    def _print_help(file=None):
+        if not _HAS_CLI_TIERS:
+            return _original_print_help(file)
+
+        try:
+            tier = get_user_tier()
+        except Exception:
+            return _original_print_help(file)
+
+        # Save originals and filter
+        saved = {}
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                saved["npm"] = action._name_parser_map.copy()
+                saved["choices"] = dict(action.choices) if action.choices else {}
+                saved["choices_actions"] = list(action._choices_actions)
+                hidden = [
+                    name
+                    for name in list(action._name_parser_map.keys())
+                    if not should_show_command(noun, name, tier)
+                ]
+                hidden_set = set(hidden)
+                for name in hidden:
+                    del action._name_parser_map[name]
+                action.choices = {k: v for k, v in action.choices.items() if k not in hidden_set}
+                action._choices_actions = [
+                    ca for ca in action._choices_actions if ca.dest not in hidden_set
+                ]
+                break
+        else:
+            hidden = []
+
+        _original_print_help(file)
+
+        # Restore
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction) and saved:
+                action._name_parser_map = saved["npm"]
+                action.choices = saved["choices"]
+                action._choices_actions = saved["choices_actions"]
+                break
+
+        # Append hint
+        if hidden and tier < 4:
+            import sys as _sys
+
+            out = file or _sys.stdout
+            out.write(
+                f"\n  ({len(hidden)} more commands available at higher tiers."
+                f" Run `axi settings set cli.tier {tier + 1}` to unlock.)\n"
+            )
+
+    parser.print_help = _print_help
+
+
+_EPILOG = """\
+Common workflows:
+
+  New model:     neut model init my-model --reactor-type TRIGA --materials
+                 neut model validate ./my-model
+                 neut model add ./my-model -m "initial submission"
+
+  Edit existing: neut model pull netl-steady-state
+                 # edit files...
+                 neut model validate ./netl-steady-state
+                 neut model add ./netl-steady-state -m "updated control rods"
+
+  Fork & modify: neut model clone netl-steady-state --name my-variant
+                 neut model add ./my-variant
+
+  CoreForge:     neut model add ./coreforge-output --from-coreforge --coreforge-config config.py
+
+  Materials:     neut model materials --category fuel
+                 neut model materials --card UZrH-20 --format mcnp
+
+  Generate:      neut model generate ./my-model --format mcnp -o materials.i
+
+  Share:         neut model share netl-steady-state
+                 neut model receive ./received-model.axiompack
+"""
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="neut model",
         description="Physics model registry — versioning, validation, and provenance",
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="action")
 
@@ -32,12 +135,18 @@ def build_parser() -> argparse.ArgumentParser:
     init_p = sub.add_parser("init", help="Scaffold a new model directory")
     init_p.add_argument("name", help="Model name (kebab-case)")
     init_p.add_argument(
-        "--reactor-type", help="Reactor type (TRIGA, MSR, PWR, BWR, HTGR, SFR, custom)"
+        "-r", "--reactor-type", help="Reactor type (TRIGA, MSR, PWR, BWR, HTGR, SFR, custom)"
     )
     init_p.add_argument(
-        "--physics-code", help="Physics code (MCNP, VERA, SAM, Griffin, OpenMC, etc.)"
+        "-c", "--physics-code", help="Physics code (MCNP, VERA, SAM, Griffin, OpenMC, etc.)"
     )
-    init_p.add_argument("--facility", help="Facility identifier (e.g., NETL, MIT)")
+    init_p.add_argument("-f", "--facility", help="Facility identifier (e.g., NETL, MIT)")
+    init_p.add_argument(
+        "--materials",
+        action="store_true",
+        help="Pre-populate materials section from installed facility pack",
+    )
+    init_p.add_argument("--json", action="store_true", help="Output JSON")
 
     # validate
     val_p = sub.add_parser("validate", help="Validate a model directory")
@@ -48,6 +157,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_p = sub.add_parser("add", help="Submit model to registry")
     add_p.add_argument("path", help="Path to model directory")
     add_p.add_argument("-m", "--message", default="", help="Submission message")
+    add_p.add_argument(
+        "--from-coreforge",
+        action="store_true",
+        help="Capture CoreForge provenance (config, builder, geometry hash)",
+    )
+    add_p.add_argument("--coreforge-config", help="Path to CoreForge .py config file")
+    add_p.add_argument("--json", action="store_true", help="Output JSON")
 
     # search
     search_p = sub.add_parser("search", help="Search models")
@@ -56,10 +172,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     # list
     list_p = sub.add_parser("list", help="List models")
-    list_p.add_argument("--reactor", "--reactor-type", dest="reactor_type")
-    list_p.add_argument("--code", "--physics-code", dest="physics_code")
-    list_p.add_argument("--status")
-    list_p.add_argument("--facility")
+    list_p.add_argument("-r", "--reactor", "--reactor-type", dest="reactor_type")
+    list_p.add_argument("-c", "--code", "--physics-code", dest="physics_code")
+    list_p.add_argument("-s", "--status")
+    list_p.add_argument("-f", "--facility")
     list_p.add_argument("--format", choices=["human", "json"], default="human")
 
     # show
@@ -71,8 +187,9 @@ def build_parser() -> argparse.ArgumentParser:
     pull_p = sub.add_parser("pull", help="Download model")
     pull_p.add_argument("model_id", help="Model identifier")
     pull_p.add_argument("dest", nargs="?", default=".", help="Destination directory")
-    pull_p.add_argument("--version", help="Specific version to pull")
+    pull_p.add_argument("-v", "--version", help="Specific version to pull")
     pull_p.add_argument("--open", action="store_true", help="Open in editor after download")
+    pull_p.add_argument("--json", action="store_true", help="Output JSON")
 
     # lineage
     lin_p = sub.add_parser("lineage", help="Show ROM → physics model chain")
@@ -84,21 +201,54 @@ def build_parser() -> argparse.ArgumentParser:
     clone_p.add_argument("model_id", help="Model to clone")
     clone_p.add_argument("--name", help="New model name (auto-generated if omitted)")
     clone_p.add_argument("--no-open", action="store_true", help="Don't open in editor")
+    clone_p.add_argument("--json", action="store_true", help="Output JSON")
 
     # diff
     diff_p = sub.add_parser("diff", help="Compare two model versions")
     diff_p.add_argument("model_a", help="First model (model_id or model_id@version)")
     diff_p.add_argument("model_b", help="Second model")
+    diff_p.add_argument("--format", choices=["human", "json"], default="human")
 
     # export
     export_p = sub.add_parser("export", help="Export model as ZIP")
     export_p.add_argument("model_id", help="Model identifier")
     export_p.add_argument("--output", "-o", help="Output file path")
+    export_p.add_argument("--json", action="store_true", help="Output JSON")
 
     # audit
     audit_p = sub.add_parser("audit", help="View change history")
     audit_p.add_argument("--since", help="Show changes since date (ISO 8601)")
     audit_p.add_argument("--model", dest="model_id", help="Filter by model")
+    audit_p.add_argument("--format", choices=["human", "json"], default="human")
+
+    # generate
+    gen_p = sub.add_parser("generate", help="Generate input deck sections from model.yaml")
+    gen_p.add_argument("path", help="Path to model directory")
+    gen_p.add_argument(
+        "--section",
+        default="materials",
+        choices=["materials"],
+        help="Section to generate (default: materials)",
+    )
+    gen_p.add_argument(
+        "--format", choices=["mcnp", "mpact", "json"], default="mcnp", help="Output format"
+    )
+    gen_p.add_argument("-o", "--output", help="Write to file instead of stdout")
+
+    # lint
+    lint_p = sub.add_parser("lint", help="Run standardization checks")
+    lint_p.add_argument("path", help="Path to model directory")
+    lint_p.add_argument("--format", choices=["human", "json"], default="human")
+
+    # sweep
+    sweep_p = sub.add_parser("sweep", help="Generate parametric variants")
+    sweep_p.add_argument("path", help="Path to model directory")
+    sweep_p.add_argument("--param", required=True, help="Parameter to sweep (e.g., enrichment)")
+    sweep_p.add_argument(
+        "--values", required=True, help="Comma-separated values (e.g., 0.05,0.10,0.20)"
+    )
+    sweep_p.add_argument("--output-dir", help="Output directory for variants")
+    sweep_p.add_argument("--json", action="store_true", help="Output JSON")
 
     # materials
     mat_p = sub.add_parser("materials", help="Browse verified material compositions")
@@ -112,6 +262,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     mat_p.add_argument("--format", choices=["human", "json", "mcnp", "mpact"], default="human")
 
+    # share
+    share_p = sub.add_parser("share", help="Package model for federation sharing")
+    share_p.add_argument("model_id", help="Model to share")
+    share_p.add_argument("-o", "--output", help="Output .axiompack path")
+    share_p.add_argument(
+        "--access-tier",
+        choices=["public", "facility", "export_controlled"],
+        default="facility",
+    )
+    share_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    # receive
+    recv_p = sub.add_parser("receive", help="Import a shared model pack")
+    recv_p.add_argument("path", help="Path to .axiompack file")
+    recv_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    _make_tiered_print_help(parser, "model")
     return parser
 
 
@@ -136,7 +303,12 @@ def main(argv: list[str] | None = None) -> int:
         "diff": _cmd_diff,
         "export": _cmd_export,
         "audit": _cmd_audit,
+        "generate": _cmd_generate,
+        "lint": _cmd_lint,
+        "sweep": _cmd_sweep,
         "materials": _cmd_materials,
+        "share": _cmd_share,
+        "receive": _cmd_receive,
     }
 
     handler = handlers.get(args.action)
@@ -164,16 +336,21 @@ def _cmd_init(args) -> int:
             physics_code=args.physics_code or "MCNP",
             facility=getattr(args, "facility", "") or "",
             output_dir=Path.cwd(),
+            include_materials=getattr(args, "materials", False),
         )
-        print(f"Created: {model_dir}/")
-        print("\nNext steps:")
-        print(f"  1. Add your input files to {model_dir}/")
-        print(f"  2. Edit {model_dir}/model.yaml (fill in description, facility, tags)")
-        print(f"  3. Run: neut model validate {model_dir}")
-        print(f"  4. Run: neut model add {model_dir}")
+        if getattr(args, "json", False):
+            print(json.dumps({"path": str(model_dir), "model_id": args.name}, indent=2))
+        else:
+            print(f"Created: {model_dir}/")
+            print("\nNext steps:")
+            print(f"  1. Add your input files to {model_dir}/")
+            print(f"  2. Edit {model_dir}/model.yaml (fill in description, facility, tags)")
+            print(f"  3. Run: neut model validate {model_dir}")
+            print(f"  4. Run: neut model add {model_dir}")
 
-        # Open in editor if available
-        _open_in_editor(model_dir)
+            # Open in editor if available
+            _open_in_editor(model_dir)
+        _record("model", "init")
         return 0
     except (ValueError, FileExistsError) as e:
         print(f"Error: {e}")
@@ -190,11 +367,49 @@ def _cmd_add(args) -> int:
     from pathlib import Path
 
     svc = _get_service()
-    result = svc.add(Path(args.path), message=getattr(args, "message", ""))
+
+    # Capture CoreForge provenance if requested
+    coreforge_prov = None
+    if getattr(args, "from_coreforge", False):
+        from neutron_os.extensions.builtins.model_corral.coreforge_bridge import (
+            extract_provenance,
+            is_coreforge_available,
+        )
+
+        if not is_coreforge_available():
+            print("Warning: CoreForge not installed — provenance will be partial")
+
+        config_path = None
+        if getattr(args, "coreforge_config", None):
+            config_path = Path(args.coreforge_config)
+
+        coreforge_prov = extract_provenance(config_path=config_path)
+
+    result = svc.add(
+        Path(args.path),
+        message=getattr(args, "message", ""),
+        coreforge_provenance=coreforge_prov.to_dict() if coreforge_prov else None,
+    )
     if result.success:
-        print(f"Added: {result.model_id} v{result.version}")
+        if getattr(args, "json", False):
+            data = {
+                "model_id": result.model_id,
+                "version": result.version,
+                "success": True,
+            }
+            if coreforge_prov:
+                data["coreforge_version"] = coreforge_prov.coreforge_version
+            print(json.dumps(data, indent=2))
+        else:
+            print(f"Added: {result.model_id} v{result.version}")
+            if coreforge_prov:
+                print(f"  CoreForge: v{coreforge_prov.coreforge_version}")
+        _record("model", "add")
         return 0
-    print(f"Error: {result.error}")
+    if getattr(args, "json", False):
+        print(json.dumps({"success": False, "error": result.error}, indent=2))
+    else:
+        print(f"Error: {result.error}")
     return 1
 
 
@@ -211,15 +426,28 @@ def _cmd_clone(args) -> int:
             new_name=getattr(args, "name", "") or "",
             output_dir=Path.cwd(),
         )
-        print(f"Cloned: {clone_dir}/")
-        print(f"  Forked from: {args.model_id}")
-        print("\nNext steps:")
-        print("  1. Edit your files and model.yaml")
-        print(f"  2. Run: neut model validate {clone_dir}")
-        print(f"  3. Run: neut model add {clone_dir}")
+        if getattr(args, "json", False):
+            print(
+                json.dumps(
+                    {
+                        "clone_dir": str(clone_dir),
+                        "parent": args.model_id,
+                        "model_id": clone_dir.name,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(f"Cloned: {clone_dir}/")
+            print(f"  Forked from: {args.model_id}")
+            print("\nNext steps:")
+            print("  1. Edit your files and model.yaml")
+            print(f"  2. Run: neut model validate {clone_dir}")
+            print(f"  3. Run: neut model add {clone_dir}")
 
-        if not getattr(args, "no_open", False):
-            _open_in_editor(clone_dir)
+            if not getattr(args, "no_open", False):
+                _open_in_editor(clone_dir)
+        _record("model", "clone")
         return 0
     except (FileExistsError, RuntimeError) as e:
         print(f"Error: {e}")
@@ -304,11 +532,22 @@ def _cmd_pull(args) -> int:
     dest = Path(args.dest) / args.model_id
     result = svc.pull(args.model_id, dest, version=getattr(args, "version", None))
     if result.success:
-        print(f"Downloaded to: {dest}")
-        if getattr(args, "open", False):
-            _open_in_editor(dest)
+        if getattr(args, "json", False):
+            data = {
+                "path": str(dest),
+                "model_id": args.model_id,
+                "version": getattr(args, "version", None),
+            }
+            print(json.dumps(data, indent=2))
+        else:
+            print(f"Downloaded to: {dest}")
+            if getattr(args, "open", False):
+                _open_in_editor(dest)
         return 0
-    print(f"Error: {result.error}")
+    if getattr(args, "json", False):
+        print(json.dumps({"error": result.error}, indent=2))
+    else:
+        print(f"Error: {result.error}")
     return 1
 
 
@@ -336,6 +575,8 @@ def _cmd_diff(args) -> int:
     a = svc.show(args.model_a)
     b = svc.show(args.model_b)
 
+    output_json = getattr(args, "format", "human") == "json"
+
     if a is None:
         print(f"Model not found: {args.model_a}")
         return 1
@@ -352,50 +593,75 @@ def _cmd_diff(args) -> int:
 
         if not res_a.success or not res_b.success:
             # Fall back to metadata diff
-            print(f"Comparing metadata: {args.model_a} vs {args.model_b}\n")
-            _diff_metadata(a, b)
+            if output_json:
+                print(json.dumps({"model_a": a, "model_b": b, "type": "metadata"}, indent=2))
+            else:
+                print(f"Comparing metadata: {args.model_a} vs {args.model_b}\n")
+                _diff_metadata(a, b)
             return 0
 
         # Diff model.yaml (the most important file)
         yaml_a = (dir_a / "model.yaml").read_text() if (dir_a / "model.yaml").exists() else ""
         yaml_b = (dir_b / "model.yaml").read_text() if (dir_b / "model.yaml").exists() else ""
 
-        if yaml_a != yaml_b:
-            print(f"--- {args.model_a}/model.yaml")
-            print(f"+++ {args.model_b}/model.yaml")
-            diff = difflib.unified_diff(
-                yaml_a.splitlines(keepends=True),
-                yaml_b.splitlines(keepends=True),
-                fromfile=args.model_a,
-                tofile=args.model_b,
-            )
-            for line in diff:
-                if line.startswith("+") and not line.startswith("+++"):
-                    print(f"\033[32m{line}\033[0m", end="")
-                elif line.startswith("-") and not line.startswith("---"):
-                    print(f"\033[31m{line}\033[0m", end="")
-                else:
-                    print(line, end="")
-            print()
-
         # Show files that differ or are only in one
         files_a = {str(f.relative_to(dir_a)) for f in dir_a.rglob("*") if f.is_file()}
         files_b = {str(f.relative_to(dir_b)) for f in dir_b.rglob("*") if f.is_file()}
 
-        only_a = files_a - files_b
-        only_b = files_b - files_a
+        only_a = sorted(files_a - files_b)
+        only_b = sorted(files_b - files_a)
 
-        if only_a:
-            print(f"Only in {args.model_a}:")
-            for f in sorted(only_a):
-                print(f"  - {f}")
-        if only_b:
-            print(f"Only in {args.model_b}:")
-            for f in sorted(only_b):
-                print(f"  + {f}")
+        if output_json:
+            diff_lines = list(
+                difflib.unified_diff(
+                    yaml_a.splitlines(),
+                    yaml_b.splitlines(),
+                    fromfile=args.model_a,
+                    tofile=args.model_b,
+                )
+            )
+            print(
+                json.dumps(
+                    {
+                        "model_a": args.model_a,
+                        "model_b": args.model_b,
+                        "yaml_diff": diff_lines,
+                        "only_in_a": only_a,
+                        "only_in_b": only_b,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            if yaml_a != yaml_b:
+                print(f"--- {args.model_a}/model.yaml")
+                print(f"+++ {args.model_b}/model.yaml")
+                diff = difflib.unified_diff(
+                    yaml_a.splitlines(keepends=True),
+                    yaml_b.splitlines(keepends=True),
+                    fromfile=args.model_a,
+                    tofile=args.model_b,
+                )
+                for line in diff:
+                    if line.startswith("+") and not line.startswith("+++"):
+                        print(f"\033[32m{line}\033[0m", end="")
+                    elif line.startswith("-") and not line.startswith("---"):
+                        print(f"\033[31m{line}\033[0m", end="")
+                    else:
+                        print(line, end="")
+                print()
 
-        if yaml_a == yaml_b and not only_a and not only_b:
-            print("No differences found.")
+            if only_a:
+                print(f"Only in {args.model_a}:")
+                for f in only_a:
+                    print(f"  - {f}")
+            if only_b:
+                print(f"Only in {args.model_b}:")
+                for f in only_b:
+                    print(f"  + {f}")
+
+            if yaml_a == yaml_b and not only_a and not only_b:
+                print("No differences found.")
 
     return 0
 
@@ -440,29 +706,84 @@ def _cmd_export(args) -> int:
         output = getattr(args, "output", None) or f"{args.model_id}.zip"
         output = output.removesuffix(".zip")
         shutil.make_archive(output, "zip", dest)
-        print(f"Exported: {output}.zip")
+        if getattr(args, "json", False):
+            print(json.dumps({"path": f"{output}.zip"}, indent=2))
+        else:
+            print(f"Exported: {output}.zip")
     return 0
 
 
 def _cmd_audit(args) -> int:
     svc = _get_service()
+    output_json = getattr(args, "format", "human") == "json"
     # Simple audit — list all versions with timestamps
     models = svc.list_models()
     if not models:
-        print("No models in registry.")
+        if output_json:
+            print(json.dumps([], indent=2))
+        else:
+            print("No models in registry.")
         return 0
 
-    print(f"{'Model ID':<40} {'Version':<10} {'Created By':<25} {'Checksum'}")
-    print("-" * 90)
-    for m in models:
-        info = svc.show(m["model_id"])
-        if info and info.get("versions"):
-            for v in info["versions"]:
-                print(
-                    f"{m['model_id']:<40} v{v['version']:<9} "
-                    f"{v.get('created_by', ''):<25} {(v.get('checksum') or '')[:16]}"
-                )
+    if output_json:
+        audit_records = []
+        for m in models:
+            info = svc.show(m["model_id"])
+            if info and info.get("versions"):
+                for v in info["versions"]:
+                    audit_records.append(
+                        {
+                            "model_id": m["model_id"],
+                            "version": v["version"],
+                            "created_by": v.get("created_by", ""),
+                            "checksum": v.get("checksum", ""),
+                        }
+                    )
+        print(json.dumps(audit_records, indent=2))
+    else:
+        print(f"{'Model ID':<40} {'Version':<10} {'Created By':<25} {'Checksum'}")
+        print("-" * 90)
+        for m in models:
+            info = svc.show(m["model_id"])
+            if info and info.get("versions"):
+                for v in info["versions"]:
+                    print(
+                        f"{m['model_id']:<40} v{v['version']:<9} "
+                        f"{v.get('created_by', ''):<25} {(v.get('checksum') or '')[:16]}"
+                    )
     return 0
+
+
+def _cmd_generate(args) -> int:
+    from neutron_os.extensions.builtins.model_corral.commands.generate import cmd_generate
+
+    return cmd_generate(
+        args.path,
+        section=getattr(args, "section", "materials"),
+        output_format=getattr(args, "format", "mcnp"),
+        output=getattr(args, "output", None),
+    )
+
+
+def _cmd_lint(args) -> int:
+    from neutron_os.extensions.builtins.model_corral.commands.lint import cmd_lint
+
+    return cmd_lint(args.path, output_format=getattr(args, "format", "human"))
+
+
+def _cmd_sweep(args) -> int:
+    from neutron_os.extensions.builtins.model_corral.commands.sweep import cmd_sweep
+
+    rc = cmd_sweep(
+        args.path,
+        param=args.param,
+        values=args.values,
+        output_dir=getattr(args, "output_dir", None),
+        output_json=getattr(args, "json", False),
+    )
+    if rc == 0:
+        _record("model", "sweep")
+    return rc
 
 
 def _cmd_materials(args) -> int:
@@ -514,6 +835,73 @@ def _cmd_materials(args) -> int:
         print(f"\n{len(materials)} material(s). Use --card NAME to generate input cards.")
 
     return 0
+
+
+def _cmd_share(args) -> int:
+
+    from neutron_os.extensions.builtins.model_corral.federation import ModelSharingService
+
+    sharing = ModelSharingService()
+    try:
+        access_tier = getattr(args, "access_tier", "public")
+        pack_path = sharing.share_model(
+            args.model_id,
+            access_tier=access_tier,
+        )
+        if getattr(args, "json", False):
+            print(
+                json.dumps(
+                    {"pack_path": str(pack_path), "access_tier": access_tier},
+                    indent=2,
+                )
+            )
+        else:
+            print(f"Packaged: {pack_path}")
+            print(f"  Access tier: {access_tier}")
+            print("\nShare this file with federation peers or transfer manually.")
+        _record("model", "share")
+        return 0
+    except (ValueError, PermissionError) as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def _cmd_receive(args) -> int:
+    from pathlib import Path
+
+    from neutron_os.extensions.builtins.model_corral.federation import ModelSharingService
+
+    sharing = ModelSharingService()
+    try:
+        result = sharing.receive_model(Path(args.path))
+        if getattr(args, "json", False):
+            print(
+                json.dumps(
+                    {
+                        "model_id": result["model_id"],
+                        "path": str(result["path"]),
+                        "access_tier": result.get("access_tier", "public"),
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(f"Received: {result['model_id']}")
+            print(f"  Access tier: {result.get('access_tier', 'public')}")
+            print(f"  Path: {result['path']}")
+        return 0
+    except (ValueError, PermissionError, FileNotFoundError) as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def _record(noun: str, verb: str) -> None:
+    """Record a user action for progressive disclosure (best-effort)."""
+    if _HAS_CLI_TIERS:
+        try:
+            record_action(noun, verb)
+        except Exception:
+            pass
 
 
 def _open_in_editor(path) -> None:

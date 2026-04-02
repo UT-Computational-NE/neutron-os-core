@@ -8,9 +8,9 @@
 
 | Property | Value |
 |----------|-------|
-| Version | 0.1 |
-| Last Updated | 2026-03-17 |
-| Status | Draft |
+| Version | 0.2 |
+| Last Updated | 2026-04-02 |
+| Status | Substantially Implemented |
 | PRD | [Model Corral PRD](../requirements/prd-model-corral.md) |
 | Related | [Digital Twin Hosting Spec](spec-digital-twin-hosting.md), [Data Architecture Spec](spec-data-architecture.md), [DOE Data Management & Sharing PRD](../requirements/prd-doe-data-management.md) |
 
@@ -36,6 +36,8 @@
 ---
 
 ## 1. Overview
+
+> **Implementation Note (2026-04-02):** Model Corral is substantially implemented. The material system (MaterialSource protocol with 5 source types, MaterialRegistry, composition_hash, 11 YAML materials, JSON Schema validation, MaterialRecord SQLAlchemy model), facility packs (3 builtin: NETL-TRIGA, MSRE, PWR-generic), CoreForge bridge, deterministic MCNP/MPACT generation, model lint (8 rules), parametric sweep, and federation sharing (.axiompack, EC safety guard) are all built and tested. 342 tests including 29 E2E integration tests and 6 persona user-flow tests. Web interface, dbt integration, and object storage (SeaweedFS) are not yet built.
 
 Model Corral is NeutronOS's unified registry for computational models:
 
@@ -549,24 +551,45 @@ Model documentation indexed into `rag-models` corpus:
 
 ## 12. CLI Interface
 
+> **Implementation Status (2026-04-02):** ✅ 18 commands shipped, 342 tests. All commands support `--json` output. Shorthand aliases: `-r`, `-c`, `-s`, `-f`, `-v`, `-m`, `-o`. `--confirm` on destructive ops. Epilog with persona workflow examples.
+
 ### 12.1 Command Structure
 
 ```
 neut model <verb> [args] [--flags]
 
-Verbs:
-  search    Search for models
-  list      List models with filters
-  show      Show model details
-  init      Initialize new model directory
-  validate  Validate model against schema
-  add       Submit model to registry
-  pull      Download model
-  export    Export model as archive
-  diff      Compare model versions
-  lineage   Show ROM → physics model chain
-  sync      Push/pull Git remote
-  audit     View change history
+Verbs (✅ = implemented):
+  init       ✅  Initialize new model directory (--materials suggests from facility packs)
+  validate   ✅  Validate model against schema
+  add        ✅  Submit model to registry
+  clone      ✅  Clone model with lineage
+  search     ✅  Search for models (full-text + filters)
+  list       ✅  List models with filters
+  show       ✅  Show model details
+  pull       ✅  Download model
+  lineage    ✅  Show ROM → physics model chain
+  diff       ✅  Compare model versions
+  export     ✅  Export model as archive
+  audit      ✅  View change history
+  generate   ✅  Deterministic MCNP/MPACT material card generation
+  lint       ✅  8 lint rules for model quality
+  sweep      ✅  Parametric sweep with lineage tracking
+  materials  ✅  Query material registry
+  share      ✅  Share model via .axiompack to federation peer
+  receive    ✅  Receive model from federation (EC safety guard)
+  sync       🔲  Push/pull Git remote (not yet built)
+
+neut facility <verb> [args] [--flags]
+
+Verbs (✅ = implemented):
+  list       ✅  List available facility packs
+  show       ✅  Show facility pack details
+  install    ✅  Install facility pack (--confirm on destructive)
+  uninstall  ✅  Uninstall facility pack
+  init       ✅  Initialize new facility pack
+  publish    ✅  Publish facility pack as .facilitypack
+  materials  ✅  List materials in a facility pack
+  sync       ✅  Sync facility pack with registry
 ```
 
 ### 12.2 Key Commands

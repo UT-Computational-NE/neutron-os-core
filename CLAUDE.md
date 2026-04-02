@@ -243,6 +243,24 @@ neut <noun> <verb> [args] [--flags]
 Each noun is registered by an extension via `neut-extension.toml`.
 See `docs/requirements/prd-neut-cli.md` for full spec.
 
+### Model Corral Commands (✅ 18 commands, 342 tests)
+
+```
+neut model init|validate|add|clone|search|list|show|pull|lineage|diff|export|audit|generate|lint|sweep|materials|share|receive
+```
+
+All commands support `--json`. Shorthand aliases: `-r` (reactor-type), `-c` (code), `-s` (status), `-f` (facility), `-v` (version), `-m` (message), `-o` (output).
+
+Key features: MaterialSource protocol (5 sources with priority merging), 11 YAML materials with JSON Schema, 3 builtin facility packs (NETL-TRIGA, MSRE, PWR-generic), CoreForge bridge, deterministic MCNP/MPACT generation, 8 lint rules, parametric sweep, federation share/receive with EC safety guard.
+
+### Facility Pack Commands (✅ 8 commands)
+
+```
+neut facility list|show|install|uninstall|init|publish|materials|sync
+```
+
+`.facilitypack` archive format with SHA256SUMS. `--confirm` on destructive ops (uninstall).
+
 ---
 
 ## Signal Pipeline (`neut signal`)
