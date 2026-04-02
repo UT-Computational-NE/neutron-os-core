@@ -79,6 +79,7 @@ def _make_tiered_print_help(parser: argparse.ArgumentParser, noun: str):
             out = file or _sys.stdout
             try:
                 from axiom.infra.branding import get_branding as _gb_tier
+
                 _tier_cli = _gb_tier().cli_name
             except Exception:
                 _tier_cli = "neut"

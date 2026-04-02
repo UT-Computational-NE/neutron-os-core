@@ -89,6 +89,7 @@ def _make_tiered_print_help(parser: argparse.ArgumentParser, noun: str):
             out = file or _sys.stdout
             try:
                 from axiom.infra.branding import get_branding as _gb_tier
+
                 _tier_cli = _gb_tier().cli_name
             except Exception:
                 _tier_cli = "neut"
@@ -155,12 +156,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     # validate
     val_p = sub.add_parser("validate", help="Validate a model directory")
-    val_p.add_argument("path", help="Path to model directory")
+    val_p.add_argument("path", nargs="?", default=".", help="Path to model directory (default: .)")
     val_p.add_argument("--format", choices=["human", "json"], default="human")
 
     # add
     add_p = sub.add_parser("add", help="Submit model to registry")
-    add_p.add_argument("path", help="Path to model directory")
+    add_p.add_argument(
+        "path", nargs="?", default=".", help="Path to model directory or MCNP file (default: .)"
+    )
     add_p.add_argument("-m", "--message", default="", help="Submission message")
     add_p.add_argument(
         "--from-coreforge",
@@ -228,7 +231,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # generate
     gen_p = sub.add_parser("generate", help="Generate input deck sections from model.yaml")
-    gen_p.add_argument("path", help="Path to model directory")
+    gen_p.add_argument("path", nargs="?", default=".", help="Path to model directory (default: .)")
     gen_p.add_argument(
         "--section",
         default="materials",
@@ -242,12 +245,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     # lint
     lint_p = sub.add_parser("lint", help="Run standardization checks")
-    lint_p.add_argument("path", help="Path to model directory")
+    lint_p.add_argument("path", nargs="?", default=".", help="Path to model directory (default: .)")
     lint_p.add_argument("--format", choices=["human", "json"], default="human")
 
     # sweep
     sweep_p = sub.add_parser("sweep", help="Generate parametric variants")
-    sweep_p.add_argument("path", help="Path to model directory")
+    sweep_p.add_argument(
+        "path", nargs="?", default=".", help="Path to model directory (default: .)"
+    )
     sweep_p.add_argument("--param", required=True, help="Parameter to sweep (e.g., enrichment)")
     sweep_p.add_argument(
         "--values", required=True, help="Comma-separated values (e.g., 0.05,0.10,0.20)"
@@ -370,6 +375,33 @@ def _cmd_validate(args) -> int:
 
 def _cmd_add(args) -> int:
     from pathlib import Path
+
+    path = Path(getattr(args, "path", "."))
+
+    # Auto-detect: if path is an MCNP file, auto-create model directory
+    if path.is_file():
+        from neutron_os.extensions.builtins.model_corral.commands.auto_add import (
+            auto_add_mcnp,
+            is_mcnp_file,
+        )
+
+        if is_mcnp_file(path):
+            try:
+                model_dir = auto_add_mcnp(path, message=getattr(args, "message", ""))
+                print(f"Auto-registered from {path.name}:")
+                print(f"  Model directory: {model_dir}/")
+                print("  model.yaml created with detected metadata")
+                print(f"\nReview and edit {model_dir}/model.yaml, then run:")
+                print(f"  neut model validate {model_dir}")
+                # Continue with normal add flow using the new directory
+                args.path = str(model_dir)
+            except (ValueError, FileNotFoundError) as e:
+                print(f"Error: {e}")
+                return 1
+        else:
+            print(f"Error: {path} is a file but not a recognized MCNP input deck.")
+            print("  Supported extensions: .i, .inp, .mcnp")
+            return 1
 
     svc = _get_service()
 

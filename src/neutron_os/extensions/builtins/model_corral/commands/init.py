@@ -76,7 +76,9 @@ def model_init(
             "MSR": "ORNL",
             "PWR": "generic",
         }
-        facility = _facility_defaults.get(reactor_type.upper(), "generic") if reactor_type else "generic"
+        facility = (
+            _facility_defaults.get(reactor_type.upper(), "generic") if reactor_type else "generic"
+        )
 
     # Generate model.yaml
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
