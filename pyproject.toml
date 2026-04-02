@@ -4,8 +4,23 @@ version = "0.9.0"
 description = "Nuclear facility digital operations platform — extends Axiom"
 requires-python = ">=3.11"
 license = "MIT"
+readme = "README.md"
+authors = [{name = "Benjamin Booth", email = "bbooth@utexas.edu"}]
+keywords = ["nuclear", "reactor", "mcnp", "physics", "simulation", "model-registry"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+]
 dependencies = [
-    "axiom @ git+https://github.com/benjaminbooth/axiom.git@v0.5.4",
+    "axiom-os>=0.6.0",
 ]
 
 [project.optional-dependencies]
@@ -22,12 +37,13 @@ all = [
 [project.scripts]
 neut = "neutron_os.cli:main"
 
+[project.urls]
+Homepage = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
+Repository = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/neutron_os"]
