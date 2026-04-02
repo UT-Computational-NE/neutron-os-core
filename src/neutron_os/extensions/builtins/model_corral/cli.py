@@ -19,6 +19,9 @@ Usage:
     neut model materials [query]        Browse material compositions
     neut model share <model_id>         Package model for sharing
     neut model receive <path>           Import a shared model pack
+    neut model invite <email>           Invite a collaborator
+    neut model contributors <model_id>  Show who contributed to lineage
+    neut model status [model_id]        Show model status & next actions
 """
 
 from __future__ import annotations
@@ -125,6 +128,11 @@ Common workflows:
 
   Share:         neut model share netl-steady-state
                  neut model receive ./received-model.axiompack
+
+  Collaborate:   neut model invite cole@utexas.edu
+                 neut model clone nick-triga-ss --name my-variant
+                 neut model contributors my-variant
+                 neut model status my-variant
 """
 
 
@@ -208,6 +216,11 @@ def build_parser() -> argparse.ArgumentParser:
     clone_p = sub.add_parser("clone", help="Clone a model for editing (creates fork)")
     clone_p.add_argument("model_id", help="Model to clone")
     clone_p.add_argument("--name", help="New model name (auto-generated if omitted)")
+    clone_p.add_argument(
+        "--progression",
+        action="store_true",
+        help="Auto-name as next progression level (e.g., progression-1 → progression-1-run)",
+    )
     clone_p.add_argument("--no-open", action="store_true", help="Don't open in editor")
     clone_p.add_argument("--json", action="store_true", help="Output JSON")
 
@@ -288,6 +301,47 @@ def build_parser() -> argparse.ArgumentParser:
     recv_p.add_argument("path", help="Path to .axiompack file")
     recv_p.add_argument("--json", action="store_true", help="Output JSON")
 
+    # invite
+    invite_p = sub.add_parser("invite", help="Invite a collaborator to your model registry")
+    invite_p.add_argument("email", help="Collaborator's email address")
+    invite_p.add_argument("--models", nargs="*", help="Specific models to share (default: all)")
+    invite_p.add_argument("--message", "-m", default="", help="Personal message")
+    invite_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    # contributors
+    contrib_p = sub.add_parser("contributors", help="Show who contributed to a model's lineage")
+    contrib_p.add_argument("model_id", help="Model identifier")
+    contrib_p.add_argument("--format", choices=["human", "json"], default="human")
+
+    # status (model-specific)
+    mstatus_p = sub.add_parser("status", help="Show model status with suggested next actions")
+    mstatus_p.add_argument("model_id", nargs="?", help="Model identifier (default: current directory)")
+    mstatus_p.add_argument("--format", choices=["human", "json"], default="human")
+
+    # review (add a comment)
+    review_p = sub.add_parser("review", help="Leave a review comment on a model")
+    review_p.add_argument("model_id", help="Model to review")
+    review_p.add_argument("--comment", "-c", required=True, help="Review comment")
+    review_p.add_argument("--json", action="store_true")
+
+    # reviews (list comments)
+    reviews_p = sub.add_parser("reviews", help="Show review comments on a model")
+    reviews_p.add_argument(
+        "model_id", nargs="?", default=".", help="Model identifier or directory"
+    )
+    reviews_p.add_argument(
+        "--status", choices=["open", "addressed", "dismissed"], default=None
+    )
+    reviews_p.add_argument("--format", choices=["human", "json"], default="human")
+
+    # resolve (address a comment)
+    resolve_p = sub.add_parser("resolve", help="Mark a review comment as addressed")
+    resolve_p.add_argument("model_id", help="Model identifier")
+    resolve_p.add_argument("review_id", help="Review ID to resolve")
+    resolve_p.add_argument(
+        "--dismiss", action="store_true", help="Dismiss instead of address"
+    )
+
     _make_tiered_print_help(parser, "model")
     return parser
 
@@ -319,6 +373,12 @@ def main(argv: list[str] | None = None) -> int:
         "materials": _cmd_materials,
         "share": _cmd_share,
         "receive": _cmd_receive,
+        "invite": _cmd_invite,
+        "contributors": _cmd_contributors,
+        "status": _cmd_model_status,
+        "review": _cmd_review,
+        "reviews": _cmd_reviews,
+        "resolve": _cmd_resolve,
     }
 
     handler = handlers.get(args.action)
@@ -456,13 +516,40 @@ def _cmd_clone(args) -> int:
     from neutron_os.extensions.builtins.model_corral.commands.clone import model_clone
 
     svc = _get_service()
+
+    new_name = getattr(args, "name", "") or ""
+    progression = getattr(args, "progression", False)
+    progression_desc = ""
+
+    if progression and not new_name:
+        new_name, progression_desc = _progression_name(args.model_id, svc)
+
     try:
         clone_dir = model_clone(
             args.model_id,
             svc,
-            new_name=getattr(args, "name", "") or "",
+            new_name=new_name,
             output_dir=Path.cwd(),
         )
+
+        # If progression, update the description in model.yaml
+        if progression and progression_desc:
+            import yaml as _yaml
+
+            manifest_path = clone_dir / "model.yaml"
+            if manifest_path.exists():
+                text = manifest_path.read_text(encoding="utf-8")
+                data = _yaml.safe_load(text)
+                data["description"] = progression_desc
+                header = ""
+                for line in text.splitlines():
+                    if line.startswith("# yaml-language-server"):
+                        header = line + "\n"
+                        break
+                manifest_path.write_text(
+                    header + _yaml.dump(data, default_flow_style=False, sort_keys=False),
+                    encoding="utf-8",
+                )
         if getattr(args, "json", False):
             print(
                 json.dumps(
@@ -559,6 +646,15 @@ def _cmd_show(args) -> int:
                 print(
                     f"    v{v['version']}  {v.get('created_by', '')}  {v.get('checksum', '')[:12]}..."
                 )
+        # Show open reviews
+        reviews = svc.get_reviews(args.model_id, status="open")
+        if reviews:
+            print(f"\n  Reviews ({len(reviews)} open):")
+            for r in reviews:
+                comment_preview = r["comment"][:60]
+                if len(r["comment"]) > 60:
+                    comment_preview += "..."
+                print(f"    \u25cb {r['reviewer']}: {comment_preview}")
     return 0
 
 
@@ -930,6 +1026,266 @@ def _cmd_receive(args) -> int:
     except (ValueError, PermissionError, FileNotFoundError) as e:
         print(f"Error: {e}")
         return 1
+
+
+def _cmd_invite(args) -> int:
+    import secrets
+
+    email = args.email
+    token = f"neut-invite-{secrets.token_hex(8)}"
+    models = getattr(args, "models", None)
+    message = getattr(args, "message", "")
+
+    if getattr(args, "json", False):
+        print(json.dumps({"token": token, "email": email, "models": models or []}))
+    else:
+        print(f"Invitation for {email}")
+        print(f"  Token: {token}")
+        print()
+        print(f"Send this to {email}:")
+        print("  \u2500" * 41)
+        print("  Install: pip install neutron-os")
+        print("  Setup:   neut config")
+        print(f"  Connect: neut connect --token {token}")
+        if models:
+            print(f"  Models:  {', '.join(models)}")
+        if message:
+            print(f"  Note:    {message}")
+        print("  \u2500" * 41)
+
+    _record("model", "invite")
+    return 0
+
+
+def _cmd_contributors(args) -> int:
+    svc = _get_service()
+
+    contributors: dict[str, list[str]] = {}
+    models_in_chain: set[str] = set()
+
+    def _walk(model_id: str) -> None:
+        if model_id in models_in_chain:
+            return
+        models_in_chain.add(model_id)
+        info = svc.show(model_id)
+        if info:
+            author = info.get("created_by", "")
+            if author:
+                if author not in contributors:
+                    contributors[author] = []
+                contributors[author].append(model_id)
+            # Walk parents
+            for entry in svc.lineage(model_id):
+                _walk(entry["parent_model_id"])
+
+    _walk(args.model_id)
+
+    if getattr(args, "format", "human") == "json":
+        print(json.dumps(contributors, indent=2))
+    else:
+        if not contributors:
+            print(f"Model not found: {args.model_id}")
+            return 1
+        print(f"Contributors to {args.model_id} lineage:")
+        for author, models in contributors.items():
+            print(f"  {author}: {', '.join(models)}")
+    return 0
+
+
+def _cmd_model_status(args) -> int:
+    import yaml as _yaml
+
+    model_id = getattr(args, "model_id", None)
+    if not model_id:
+        from pathlib import Path
+
+        model_yaml = Path.cwd() / "model.yaml"
+        if model_yaml.exists():
+            data = _yaml.safe_load(model_yaml.read_text())
+            model_id = data.get("model_id", "")
+
+    if not model_id:
+        print("No model specified and no model.yaml in current directory.")
+        return 1
+
+    svc = _get_service()
+    info = svc.show(model_id)
+    if info is None:
+        print(f"Model not found: {model_id}")
+        return 1
+
+    output_json = getattr(args, "format", "human") == "json"
+
+    # Collect lineage
+    lineage = svc.lineage(model_id)
+
+    # Find children (models derived from this one)
+    children = []
+    for m in svc.list_models():
+        for entry in svc.lineage(m["model_id"]):
+            if entry["parent_model_id"] == model_id:
+                children.append(m["model_id"])
+                break
+
+    if output_json:
+        latest_version = (
+            info["versions"][-1]["version"] if info.get("versions") else None
+        )
+        result = {
+            "model_id": model_id,
+            "version": latest_version,
+            "status": info["status"],
+            "created_by": info["created_by"],
+            "reactor_type": info["reactor_type"],
+            "physics_code": info["physics_code"],
+            "lineage": lineage,
+            "children": children,
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        latest_v = (
+            info["versions"][-1]["version"] if info.get("versions") else "?"
+        )
+        print(f"Model: {info['model_id']} v{latest_v}")
+        print(f"  Status: {info['status']}")
+        print(f"  Author: {info['created_by']}")
+        print(f"  Reactor: {info['reactor_type']}  Code: {info['physics_code']}")
+
+        if lineage:
+            print("\n  Lineage:")
+            for entry in lineage:
+                print(
+                    f"    \u2190 {entry['parent_model_id']} ({entry['relationship_type']})"
+                )
+
+        if children:
+            print("\n  Derived models:")
+            for c in children:
+                print(f"    \u2192 {c}")
+
+        # Suggest next actions based on status
+        print("\n  Suggested actions:")
+        if info["status"] == "draft":
+            print("    neut model validate          # check for issues")
+            print("    neut model lint              # standardization checks")
+            if not lineage:
+                print("    neut model generate          # create material cards")
+        elif info["status"] == "review":
+            print("    neut model validate          # re-validate before approval")
+            print(
+                f"    neut model diff {model_id}@v1 {model_id}@latest  # see what changed"
+            )
+        elif info["status"] == "production":
+            print(f"    neut model clone {model_id}  # fork for modifications")
+            print(f"    neut model export {model_id} # archive as ZIP")
+
+    return 0
+
+
+def _progression_name(model_id: str, svc) -> tuple[str, str]:
+    """Derive a progression clone name from a model_id.
+
+    Returns (new_name, description).
+    """
+    import re
+
+    match = re.search(r"progression[- ]?(\d+)", model_id)
+    if match:
+        num = int(match.group(1))
+        # Check if a "run" variant exists
+        run_name = f"{model_id}-run"
+        existing = svc.show(run_name)
+        if existing:
+            # Next progression level
+            next_num = num + 1
+            prefix = model_id[: match.start()] + f"progression-{next_num}" + model_id[match.end() :]
+            return prefix, f"Progression problem {next_num}"
+        return run_name, f"Materials run for progression problem {num}"
+
+    # No progression number detected -- just append -run
+    return f"{model_id}-run", f"Materials run for {model_id}"
+
+
+def _cmd_review(args) -> int:
+    svc = _get_service()
+    # Auto-detect reviewer from git config
+    import subprocess
+
+    reviewer = ""
+    try:
+        result = subprocess.run(
+            ["git", "config", "--get", "user.email"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode == 0:
+            reviewer = result.stdout.strip()
+    except Exception:
+        pass
+    reviewer = reviewer or "anonymous"
+
+    review = svc.add_review(args.model_id, reviewer=reviewer, comment=args.comment)
+
+    if getattr(args, "json", False):
+        print(json.dumps(review, indent=2))
+    else:
+        print(f"Review added to {args.model_id}:")
+        print(f"  {review['review_id']}: {args.comment}")
+        print(f"  By: {reviewer}")
+    _record("model", "review")
+    return 0
+
+
+def _cmd_reviews(args) -> int:
+    model_id = args.model_id
+    if model_id == ".":
+        # Try to detect from cwd
+        from pathlib import Path
+
+        import yaml as _yaml
+
+        model_yaml = Path.cwd() / "model.yaml"
+        if model_yaml.exists():
+            data = _yaml.safe_load(model_yaml.read_text())
+            model_id = data.get("model_id", "")
+
+    if not model_id:
+        print("No model specified.")
+        return 1
+
+    svc = _get_service()
+    reviews = svc.get_reviews(model_id, status=getattr(args, "status", None))
+
+    if getattr(args, "format", "human") == "json":
+        print(json.dumps(reviews, indent=2))
+    elif not reviews:
+        print(f"No reviews on {model_id}.")
+    else:
+        open_count = sum(1 for r in reviews if r.get("status") == "open")
+        print(f"Reviews on {model_id} ({open_count} open):\n")
+        for r in reviews:
+            status_icon = {"open": "\u25cb", "addressed": "\u2713", "dismissed": "\u2717"}.get(
+                r["status"], "?"
+            )
+            print(f"  {status_icon} [{r['review_id']}] {r['reviewer']}:")
+            print(f"    {r['comment']}")
+            if r.get("version"):
+                print(f"    (on v{r['version']})")
+            print()
+    return 0
+
+
+def _cmd_resolve(args) -> int:
+    svc = _get_service()
+    resolution = "dismissed" if getattr(args, "dismiss", False) else "addressed"
+    if svc.resolve_review(args.model_id, args.review_id, resolution):
+        print(f"Review {args.review_id}: {resolution}")
+        _record("model", "resolve")
+        return 0
+    print(f"Review not found: {args.review_id}")
+    return 1
 
 
 def _record(noun: str, verb: str) -> None:

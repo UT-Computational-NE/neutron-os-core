@@ -277,6 +277,113 @@ class ModelCorralService:
             ]
 
     # ------------------------------------------------------------------
+    # Reviews
+    # ------------------------------------------------------------------
+
+    def add_review(
+        self,
+        model_id: str,
+        reviewer: str,
+        comment: str,
+        version: str | None = None,
+        *,
+        reviews_dir: Path | None = None,
+    ) -> dict:
+        """Add a review comment to a model."""
+        from datetime import UTC, datetime
+        import json
+        import secrets
+
+        review = {
+            "review_id": f"rev-{secrets.token_hex(6)}",
+            "model_id": model_id,
+            "version": version,
+            "reviewer": reviewer,
+            "comment": comment,
+            "created_at": datetime.now(UTC).isoformat(),
+            "status": "open",
+        }
+
+        if reviews_dir is None:
+            from axiom.infra.paths import get_user_state_dir
+
+            reviews_dir = get_user_state_dir() / "model-reviews"
+
+        reviews_dir.mkdir(parents=True, exist_ok=True)
+        reviews_file = reviews_dir / f"{model_id}.jsonl"
+
+        from axiom.infra.state import locked_append_jsonl
+
+        locked_append_jsonl(reviews_file, review)
+        return review
+
+    def get_reviews(
+        self,
+        model_id: str,
+        status: str | None = None,
+        *,
+        reviews_dir: Path | None = None,
+    ) -> list[dict]:
+        """Get all reviews for a model."""
+        import json
+
+        if reviews_dir is None:
+            from axiom.infra.paths import get_user_state_dir
+
+            reviews_dir = get_user_state_dir() / "model-reviews"
+
+        reviews_file = reviews_dir / f"{model_id}.jsonl"
+        if not reviews_file.exists():
+            return []
+
+        reviews = []
+        for line in reviews_file.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                try:
+                    review = json.loads(line)
+                    if status and review.get("status") != status:
+                        continue
+                    reviews.append(review)
+                except json.JSONDecodeError:
+                    continue
+        return reviews
+
+    def resolve_review(
+        self,
+        model_id: str,
+        review_id: str,
+        resolution: str = "addressed",
+        *,
+        reviews_dir: Path | None = None,
+    ) -> bool:
+        """Mark a review as addressed or dismissed."""
+        import json
+
+        if reviews_dir is None:
+            from axiom.infra.paths import get_user_state_dir
+
+            reviews_dir = get_user_state_dir() / "model-reviews"
+
+        reviews_file = reviews_dir / f"{model_id}.jsonl"
+        if not reviews_file.exists():
+            return False
+
+        lines = reviews_file.read_text(encoding="utf-8").splitlines()
+        updated = False
+        new_lines = []
+        for line in lines:
+            if line.strip():
+                review = json.loads(line)
+                if review.get("review_id") == review_id:
+                    review["status"] = resolution
+                    updated = True
+                new_lines.append(json.dumps(review))
+
+        if updated:
+            reviews_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        return updated
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
