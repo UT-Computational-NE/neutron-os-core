@@ -8,6 +8,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -95,6 +96,7 @@ class TestModelSyncAgent:
         assert result.success is True
         assert result.action == "skip"
 
+    @pytest.mark.integration
     def test_push_to_remote(self, tmp_path):
         from neutron_os.extensions.builtins.model_corral.sync import ModelSyncAgent, SyncConfig
 
