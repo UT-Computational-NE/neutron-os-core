@@ -365,9 +365,9 @@ class TestCLIParser:
 
     def test_epilog_has_workflows(self):
         parser = build_parser()
-        assert "Common workflows" in parser.epilog
-        assert "CoreForge" in parser.epilog
-        assert "Fork & modify" in parser.epilog
+        assert "Start here" in parser.epilog
+        assert "neut model add" in parser.epilog
+        assert "neut model materials" in parser.epilog
 
     def test_init_has_materials_flag(self):
         parser = build_parser()

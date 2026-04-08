@@ -105,34 +105,29 @@ def _make_tiered_print_help(parser: argparse.ArgumentParser, noun: str):
 
 
 _EPILOG = """\
-Common workflows:
+Got an MCNP deck? Start here:
 
-  New model:     neut model init my-model --reactor-type TRIGA --materials
-                 neut model validate ./my-model
-                 neut model add ./my-model -m "initial submission"
+  neut model add ./your-deck.i        Register it (auto-detects code type)
+  neut model list                     See what's registered
+  neut model materials --card UO2     Generate verified MCNP material cards
 
-  Edit existing: neut model pull netl-steady-state
-                 # edit files...
-                 neut model validate ./netl-steady-state
-                 neut model add ./netl-steady-state -m "updated control rods"
+Browse materials:
 
-  Fork & modify: neut model clone netl-steady-state --name my-variant
-                 neut model add ./my-variant
+  neut model materials                All 11 verified compositions
+  neut model materials --card UZrH-20 Generate MCNP card for UZrH-20
+  neut model materials --category fuel Show fuels only
 
-  CoreForge:     neut model add ./coreforge-output --from-coreforge --coreforge-config config.py
+Facility packs (pre-built material sets for your reactor):
 
-  Materials:     neut model materials --category fuel
-                 neut model materials --card UZrH-20 --format mcnp
+  neut facility list                  Available packs
+  neut facility install NETL-TRIGA    Install NETL-TRIGA pack
+  neut facility materials NETL-TRIGA  Materials in the pack
 
-  Generate:      neut model generate ./my-model --format mcnp -o materials.i
+More workflows (unlocked as you use the tool):
 
-  Share:         neut model share netl-steady-state
-                 neut model receive ./received-model.axiompack
-
-  Collaborate:   neut model invite cole@utexas.edu
-                 neut model clone nick-triga-ss --name my-variant
-                 neut model contributors my-variant
-                 neut model status my-variant
+  neut model clone <id> --name variant  Fork a model for editing
+  neut model diff <id_a> <id_b>         Compare two versions
+  neut model generate ./model --format mcnp -o materials.i
 """
 
 
@@ -444,11 +439,6 @@ def _cmd_add(args) -> int:
         if is_mcnp_file(path):
             try:
                 model_dir = auto_add_mcnp(path, message=getattr(args, "message", ""))
-                print(f"Auto-registered from {path.name}:")
-                print(f"  Model directory: {model_dir}/")
-                print("  model.yaml created with detected metadata")
-                print(f"\nReview and edit {model_dir}/model.yaml, then run:")
-                print(f"  neut model validate {model_dir}")
                 # Continue with normal add flow using the new directory
                 args.path = str(model_dir)
             except (ValueError, FileNotFoundError) as e:
@@ -494,9 +484,39 @@ def _cmd_add(args) -> int:
                 data["coreforge_version"] = coreforge_prov.coreforge_version
             print(json.dumps(data, indent=2))
         else:
-            print(f"Added: {result.model_id} v{result.version}")
+            # Friendly success output with next steps
+            print(f"\n  Model registered: {result.model_id} (v{result.version})")
             if coreforge_prov:
                 print(f"  CoreForge: v{coreforge_prov.coreforge_version}")
+
+            # Try to show what was detected
+            try:
+                model_svc = _get_service()
+                model = model_svc.get(result.model_id)
+                if model:
+                    code = getattr(model, "physics_code", None) or "unknown"
+                    print(f"  Code type:  {code}")
+                    mats = getattr(model, "materials", None)
+                    if mats:
+                        mat_names = [
+                            m.get("name", m) if isinstance(m, dict) else str(m) for m in mats[:5]
+                        ]
+                        print(f"  Materials:  {', '.join(mat_names)}")
+            except Exception:
+                pass  # detection output is best-effort
+
+            try:
+                from axiom.infra.branding import get_branding as _gb_add
+
+                _cli = _gb_add().cli_name
+            except Exception:
+                _cli = "neut"
+
+            print("\n  Next steps:")
+            print(f"    {_cli} model list                         See all your models")
+            print(f"    {_cli} model show {result.model_id:<20s}  Full details")
+            print(f"    {_cli} model validate {result.model_id:<15s}  Run checks")
+            print(f"    {_cli} model materials --card UO2         Generate material cards")
         _record("model", "add")
         return 0
     if getattr(args, "json", False):
@@ -956,12 +976,48 @@ def _cmd_materials(args) -> int:
         print(json.dumps([m.to_dict() for m in materials], indent=2))
     elif not materials:
         print("No materials found.")
-    else:
+    elif query or category:
+        # Filtered view — simple table
         print(f"{'Name':<15} {'Category':<12} {'Density':<10} {'Description'}")
         print("-" * 75)
         for m in materials:
             print(f"{m.name:<15} {m.category:<12} {m.density:<10.3f} {m.description[:40]}")
         print(f"\n{len(materials)} material(s). Use --card NAME to generate input cards.")
+    else:
+        # Full listing — grouped by category for discoverability
+        by_cat: dict[str, list] = {}
+        for m in materials:
+            by_cat.setdefault(m.category, []).append(m)
+
+        print(f"Verified material compositions ({len(materials)} materials):\n")
+        for cat in ["fuel", "moderator", "coolant", "structural", "absorber", "other"]:
+            mats_in_cat = by_cat.get(cat, [])
+            if not mats_in_cat:
+                continue
+            print(f"  {cat.title()}:")
+            for m in mats_in_cat:
+                print(f"    {m.name:<15} {m.description[:50]:50s} ({m.density:.2f} g/cc)")
+            print()
+
+        # Show leftover categories not in the standard list
+        for cat, mats_in_cat in by_cat.items():
+            if cat not in {"fuel", "moderator", "coolant", "structural", "absorber", "other"}:
+                print(f"  {cat.title()}:")
+                for m in mats_in_cat:
+                    print(f"    {m.name:<15} {m.description[:50]:50s} ({m.density:.2f} g/cc)")
+                print()
+
+        try:
+            from axiom.infra.branding import get_branding as _gb_mat
+
+            _cli = _gb_mat().cli_name
+        except Exception:
+            _cli = "neut"
+
+        print(f"Generate MCNP cards:  {_cli} model materials --card UO2")
+        print(f"Generate MPACT cards: {_cli} model materials --card UO2 --format mpact")
+        print(f"Filter by category:   {_cli} model materials --category fuel")
+        print("\nSources: PNNL-15870, GA-4314, NUREG/CR-6698")
 
     return 0
 

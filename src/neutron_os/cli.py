@@ -35,9 +35,51 @@ def main() -> None:
         )
     )
 
+    # First-run guidance: if bare `neut` with no args, show quick start
+    import sys as _sys
+
     from axiom.axiom_cli import main as axiom_main
 
+    if len(_sys.argv) <= 1:
+        _neut_banner()
+        _print_quick_start()
+        return
+
     axiom_main()
+
+
+def _print_quick_start() -> None:
+    """Show friendly quick-start for new users on bare `neut` invocation."""
+    try:
+        from axiom.setup.renderer import _c, _Colors
+
+        def h(text: str) -> str:
+            return _c(_Colors.BOLD, text)
+
+        def d(text: str) -> str:
+            return _c(_Colors.DIM, text)
+    except Exception:
+
+        def h(text: str) -> str:
+            return text
+
+        def d(text: str) -> str:
+            return text
+
+    print(h("Quick start:"))
+    print()
+    print(
+        f"  neut model add ./your-deck.i    {d('Register an MCNP model (auto-detects code type)')}"
+    )
+    print(f"  neut model materials            {d('Browse 11 verified material compositions')}")
+    print(f"  neut model materials --card UO2 {d('Generate MCNP material cards')}")
+    print(f"  neut facility list              {d('See available facility packs')}")
+    print(f"  neut chat                       {d('Ask questions with RAG-grounded answers')}")
+    print(f"  neut doctor                     {d('Check your setup')}")
+    print()
+    print(f"  neut --help                     {d('All commands')}")
+    print(f"  neut model --help               {d('Model registry commands')}")
+    print()
 
 
 _NEUT_ART = r"""
