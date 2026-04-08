@@ -489,19 +489,30 @@ def _cmd_add(args) -> int:
             if coreforge_prov:
                 print(f"  CoreForge: v{coreforge_prov.coreforge_version}")
 
-            # Try to show what was detected
+            # Show what was discovered (not what the user already knows)
             try:
                 model_svc = _get_service()
                 model = model_svc.get(result.model_id)
                 if model:
-                    code = getattr(model, "physics_code", None) or "unknown"
-                    print(f"  Code type:  {code}")
+                    print("  Detected:")
+                    rtype = getattr(model, "reactor_type", None)
+                    if rtype:
+                        print(f"    Reactor type: {rtype}")
+                    fac = getattr(model, "facility", None)
+                    if fac and fac != "unknown":
+                        print(f"    Facility:     {fac}")
                     mats = getattr(model, "materials", None)
                     if mats:
                         mat_names = [
                             m.get("name", m) if isinstance(m, dict) else str(m) for m in mats[:5]
                         ]
-                        print(f"  Materials:  {', '.join(mat_names)}")
+                        print(f"    Materials:    {', '.join(mat_names)}")
+                    det_mat_nums = getattr(model, "_detected_material_numbers", None)
+                    if det_mat_nums and not mats:
+                        print(
+                            f"    Material cards found: {len(det_mat_nums)}"
+                            f" (m{', m'.join(str(n) for n in det_mat_nums[:8])})"
+                        )
             except Exception:
                 pass  # detection output is best-effort
 
