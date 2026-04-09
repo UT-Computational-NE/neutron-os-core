@@ -1055,46 +1055,192 @@ class BiasUpdateAgent:
 
 ---
 
+## Simulation Execution Wrapper
+
+Before ROMs, Shadows, and real-time inference, researchers need the fundamental capability: **run a physics code from the Model Corral**. The execution wrapper bridges "I have a registered model" to "I ran it and got results."
+
+### The Gap Today
+
+Nick has an MCNP deck registered in Model Corral. To run it, he:
+1. Opens a terminal, `cd`s to the model directory
+2. Remembers which MCNP executable to use and where it is
+3. Writes or modifies a run script
+4. Runs it, waits, checks output manually
+5. For HPC: `scp` files, write SLURM script, `sbatch`, `squeue`, `scp` results back
+6. Loses the connection between "which version of the model produced this output"
+
+The execution wrapper eliminates steps 2-6.
+
+### `neut model run` — Local Execution
+
+```bash
+# First time: tell NeutronOS where your MCNP executable is
+neut config set mcnp.executable /usr/local/bin/mcnp6
+
+# Run a registered model
+neut model run ./input.i
+
+# Run with parameter overrides (no file editing)
+neut model run ./input.i --set enrichment=4.95 --set coolant_temp=300
+```
+
+The run is tracked in `dt_runs` with full provenance: which model version, which parameters were overridden, who ran it, what the outputs were.
+
+### Parameter Override System
+
+A standard vocabulary for tweaking model inputs at launch, without editing input files:
+
+```bash
+neut model run ./input.i --set enrichment=4.95 --set coolant_temp=300
+```
+
+**Design:** Each physics code has a **CodeAdapter** that knows how to apply a named parameter to its input format. The adapter translates `--set enrichment=4.95` into the correct modification for MCNP, MPACT, Serpent, OpenMC, etc.
+
+| Code | Adapter | How `--set enrichment=4.95` works |
+|------|---------|----------------------------------|
+| MCNP | `MCNPAdapter` | Modifies material card isotopic fractions |
+| MPACT | `MPACTAdapter` | Updates enrichment field in XML input |
+| Serpent | `SerpentAdapter` | Modifies material definition |
+| OpenMC | `OpenMCAdapter` | Updates material XML |
+
+The parameter vocabulary is code-agnostic — the same `--set` flags work regardless of physics code. The CodeAdapter handles the translation. This builds on:
+- **`sweep.py`** (Model Corral) — already uses dot-notation YAML paths for parametric variation
+- **CoreForge bridge** — already parameterizes reactor geometry and materials via MaterialSource protocol
+
+CodeAdapters are registered by domain extensions, so new physics codes can be added without modifying core.
+
+### Remote Execution — HPC and Federation
+
+```bash
+# Register a remote compute target (one-time)
+neut connect tacc-lonestar
+  Host: ls6.tacc.utexas.edu
+  Scheduler: SLURM (auto-detected)
+  Modules: mcnp6/6.2
+
+# Run on remote
+neut model run ./input.i --on tacc-lonestar
+  Uploading input files...
+  Generating SLURM script (1 node, 48 cores, 2h walltime)
+  Submitted: job 1847293
+  Monitor: neut model run status 1847293
+
+# Check status from your laptop
+neut model run status
+  Job 1847293  triga-ss  RUNNING  tacc-lonestar  45min elapsed
+
+# Pull results when done
+neut model run pull 1847293
+  Downloaded: output.o, meshtal, runtpe (3 files, 142 MB)
+  Linked to model: triga-ss v1 → run #3
+```
+
+**Connection profiles** build on the existing `neut connect` infrastructure:
+
+```toml
+# ~/.axi/connections/tacc-lonestar.toml
+[connection]
+name = "tacc-lonestar"
+type = "hpc"
+host = "ls6.tacc.utexas.edu"
+scheduler = "slurm"
+scratch = "/scratch/06123/nluciano/"
+modules = ["mcnp6/6.2"]
+
+[defaults]
+partition = "normal"
+nodes = 1
+tasks_per_node = 48
+walltime = "02:00:00"
+```
+
+**Sharing compute resources:**
+- Out-of-band: share connection URL in email/Slack, recipient runs `neut connect <url>`
+- Federation: `neut federation resources` advertises compute alongside LLM/RAG. Peer nodes can submit jobs to shared HPC via federation auth.
+
+### CURI-O Adaptive Execution Loop
+
+CURI-O (research agent) manages an auto-research loop around running simulations:
+
+```
+1. CURI-O launches run via neut model run
+2. Tails output in real-time (code-specific output parser)
+3. Watches for domain-specific conditions:
+   - k-eff convergence rate (MCNP) — converging fast enough?
+   - Temperature divergence — something blowing up?
+   - Statistical uncertainty — will we hit target with current histories?
+   - Criticality search threshold — eigenvalue crossed a boundary?
+4. When a condition triggers:
+   - CURI-O proposes action (stop, modify parameter, restart)
+   - Human approves or overrides (RACI: human is Accountable)
+   - CURI-O executes: cancel job, apply --set override, resubmit
+5. Results feed back into knowledge base
+```
+
+**Watch conditions must come from domain experts** — Nick and Cole need to enumerate what MCNP output patterns mean "stop and adjust" vs "expected behavior." Each CodeAdapter includes a set of observable conditions specific to that physics code.
+
+**Example MCNP watch conditions:**
+- `keff_convergence_rate < threshold` — eigenvalue not settling
+- `relative_error > target after N% of histories` — won't meet statistical target
+- `temperature_max > safety_limit` — thermal divergence
+- `lost_particles > threshold` — geometry error
+
+These are registered per-code, and CURI-O evaluates them against the output stream. This is a research-grade feature that requires careful design with domain experts before implementation.
+
+---
+
 ## Implementation Phases
 
-### Phase 1: Foundation (Q2 2026)
+### Phase 0: Execution Wrapper Foundation (Q2 2026) — NEW
 
-- [ ] Define run tracking schema (PostgreSQL)
-- [ ] Implement CLI scaffolding (`neut twin run/status`)
-- [ ] Create Bronze dbt models for run tracking
-- [ ] Establish secure HPC job submission integration (SLURM)
+- [ ] CodeAdapter ABC + MCNP adapter
+- [ ] `neut model run` local execution (find executable, stream stdout, track in dt_runs)
+- [ ] Parameter override system (`--set key=value`)
+- [ ] Run tracking schema (PostgreSQL `dt_runs` table)
+- [ ] `neut model run status` / `neut model run pull`
+- [ ] Connection profile for remote HPC (`neut connect tacc-lonestar`)
+- [ ] Remote execution via SSH + SLURM (`--on tacc-lonestar`)
+- [ ] Job monitoring and result pull-back
+
+### Phase 1: Shadow + Run Tracking (Q3 2026)
+
+- [ ] Full `dt_runs` / `dt_run_states` / `dt_run_validations` schema
+- [ ] `neut twin` CLI scaffolding (run/status/list/shadow)
 - [ ] Shadow run automation for TRIGA NETL
+- [ ] Prediction vs measured comparison engine (basic)
+- [ ] CURI-O watch condition framework + MCNP observer (requires domain expert input)
 
-### Phase 2: ROM-2 Infrastructure (Q3 2026)
+### Phase 2: ROM-2 Infrastructure (Q4 2026)
 
 - [ ] WASM surrogate runtime completion (from spike)
 - [ ] ROM-2 training pipeline
 - [ ] ROM-2 inference integration
-- [ ] Prediction vs measured comparison engine
-- [ ] Basic Superset dashboards
+- [ ] Prediction vs measured comparison engine (full)
+- [ ] Basic dashboards
 
-### Phase 3: ROM-1 Real-Time (Q4 2026)
+### Phase 3: ROM-1 Real-Time (Q1-Q2 2027)
 
-- [ ] Streaming integration (Redpanda → ROM-1)
+- [ ] Streaming integration (sensor data → ROM-1)
 - [ ] WebSocket endpoint for real-time predictions
 - [ ] Control room display integration
 - [ ] Alert generation for divergence
 
-### Phase 4: Multi-Reactor Expansion (Q1 2027)
+### Phase 4: Multi-Reactor + Federation Compute (Q2-Q3 2027)
 
 - [ ] MSR provider implementation
 - [ ] Generic PWR provider
+- [ ] Federation compute sharing (`--on peer-node-gpu`)
 - [ ] Cross-reactor analytics dashboards
-- [ ] Export control enforcement
+- [ ] Export control enforcement on remote execution
 
-### Phase 5: AI Agents (Q2-Q3 2027)
+### Phase 5: AI Agents + CURI-O Adaptive Loop (Q3-Q4 2027)
 
 - [ ] DAQ → Shadow Agent
 - [ ] ROM Training Agent
 - [ ] Bias Update Agent
-- [ ] Operator Learning Agent
+- [ ] CURI-O adaptive execution loop (output tailing, condition detection, auto-propose-and-resubmit)
 
-### Phase 6: Semi-Autonomous Operations (Q4 2027+)
+### Phase 6: Semi-Autonomous Operations (2028+)
 
 - [ ] Operational planning integration
 - [ ] Rod position suggestions

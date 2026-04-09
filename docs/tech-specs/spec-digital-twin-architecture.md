@@ -8,12 +8,13 @@
 
 | Property | Value |
 |----------|-------|
-| Version | 0.2 |
-| Last Updated | 2026-03-17 |
+| Version | 0.3 |
+| Last Updated | 2026-04-08 |
 | Status | Draft |
 | PRD | [Digital Twin Hosting PRD](../requirements/prd-digital-twin-hosting.md) |
 | Related | [Model Corral Spec](spec-model-corral.md), [Data Architecture Spec](spec-data-architecture.md) |
 | Related ADRs | [ADR-008: WASM Extension Runtime](../adr/008-wasm-extension-runtime.md) |
+| **v0.3 Changes** | Added §12 Simulation Execution Wrapper (CodeAdapter, parameter overrides, remote execution, CURI-O watch conditions). Split CLI into `neut model run` (Phase 0) and `neut twin` (Phase 1+). |
 
 ---
 
@@ -759,37 +760,185 @@ world surrogate { export model; }
 
 ---
 
-## 12. CLI Interface
+## 12. Simulation Execution Wrapper
 
-### 12.1 Command Structure
+The execution wrapper is the bridge from Model Corral (model registry) to Digital Twin Hosting (run tracking, Shadow, ROMs). It provides `neut model run` — a code-agnostic execution interface.
+
+### 12.1 CodeAdapter Pattern
+
+Each physics code has an adapter that translates between the generic parameter vocabulary and code-specific input format:
+
+```python
+class CodeAdapter(ABC):
+    """Translates generic parameters to code-specific input modifications."""
+
+    @abstractmethod
+    def code_name(self) -> str: ...
+
+    @abstractmethod
+    def detect(self, path: Path) -> bool:
+        """Detect if a file is an input for this code."""
+        ...
+
+    @abstractmethod
+    def apply_overrides(self, input_path: Path, overrides: dict[str, str]) -> Path:
+        """Apply --set key=value overrides to the input file.
+        Returns path to modified input (in a temp copy, not in-place)."""
+        ...
+
+    @abstractmethod
+    def find_executable(self) -> Path | None:
+        """Find the code executable (config → PATH → module system)."""
+        ...
+
+    @abstractmethod
+    def build_run_command(self, input_path: Path, **kwargs) -> list[str]:
+        """Build the shell command to execute the code."""
+        ...
+
+    @abstractmethod
+    def parse_output(self, stdout: str) -> RunOutput:
+        """Parse stdout for progress, results, and watch conditions."""
+        ...
+
+    def build_slurm_script(self, input_path: Path, profile: HpcProfile) -> str:
+        """Generate SLURM submission script. Default template; override for code-specific needs."""
+        ...
+```
+
+**Shipped adapters:**
+
+| Adapter | Code | Detect Pattern | Executable Config Key |
+|---------|------|---------------|----------------------|
+| `MCNPAdapter` | MCNP | `.i`, `.inp`, `.mcnp` + title card | `mcnp.executable` |
+| `MPACTAdapter` | MPACT | XML with MPACT namespace | `mpact.executable` |
+| `SerpentAdapter` | Serpent | `set title` directive | `serpent.executable` |
+| `OpenMCAdapter` | OpenMC | `geometry.xml` + `materials.xml` | `openmc.executable` |
+
+Domain extensions register additional adapters.
+
+### 12.2 Parameter Override
+
+`--set key=value` on the CLI is translated by the CodeAdapter into code-specific modifications:
+
+```python
+@dataclass
+class ParameterOverride:
+    key: str          # code-agnostic name (e.g., "enrichment")
+    value: str        # new value (e.g., "4.95")
+    adapter: str      # which adapter applied it
+    original: str     # original value (for audit trail)
+```
+
+The adapter creates a **temporary copy** of the input file with overrides applied. The original is never modified. The override history is recorded in `dt_runs.config_snapshot` JSONB.
+
+Adapters map generic parameter names to code-specific locations using a parameter registry:
+
+```python
+# MCNP example
+MCNP_PARAMETER_MAP = {
+    "enrichment": MCNPMaterialEnrichment,    # modifies material card U-235 fraction
+    "coolant_temp": MCNPMaterialTemperature,  # modifies mt card temperature
+    "power_level": MCNPSourceStrength,        # modifies SDEF NPS
+    "histories": MCNPNPS,                     # modifies NPS card
+}
+```
+
+CoreForge's parameter vocabulary is consumed as a MaterialSource — so `--set` flags work identically for hand-written and CoreForge-generated models.
+
+### 12.3 Remote Execution
+
+```python
+class RemoteExecutor:
+    """Execute runs on remote compute targets via SSH."""
+
+    def __init__(self, profile: HpcProfile):
+        self.profile = profile
+
+    async def submit(self, input_path: Path, adapter: CodeAdapter) -> str:
+        """Upload files, generate SLURM script, submit, return job ID."""
+        run_dir = f"{self.profile.scratch}/neut-runs/{run_id}/"
+        await self._rsync_upload(input_path.parent, run_dir)
+        slurm_script = adapter.build_slurm_script(input_path, self.profile)
+        await self._write_remote(f"{run_dir}/submit.slurm", slurm_script)
+        job_id = await self._ssh_exec(f"cd {run_dir} && sbatch submit.slurm")
+        return job_id.strip()
+
+    async def status(self, job_id: str) -> JobStatus:
+        """Check job status via squeue/sacct."""
+        ...
+
+    async def pull_results(self, job_id: str, local_dir: Path) -> list[Path]:
+        """rsync results back from scratch."""
+        ...
+```
+
+### 12.4 CURI-O Watch Conditions
+
+Output observers are registered per-CodeAdapter. CURI-O evaluates them against the output stream:
+
+```python
+@dataclass
+class WatchCondition:
+    name: str                              # e.g., "keff_convergence"
+    description: str                       # human-readable
+    evaluate: Callable[[str], WatchResult] # parses output line → result
+    severity: str = "info"                 # info, warning, action
+
+@dataclass
+class WatchResult:
+    triggered: bool
+    message: str = ""
+    proposed_action: str = ""              # e.g., "increase histories to 5M"
+    proposed_overrides: dict = field(default_factory=dict)  # --set key=value
+
+# MCNP example conditions
+MCNP_WATCH_CONDITIONS = [
+    WatchCondition(
+        name="keff_slow_convergence",
+        description="k-eff not converging within expected rate",
+        evaluate=_check_keff_convergence,
+        severity="warning",
+    ),
+    WatchCondition(
+        name="lost_particles_high",
+        description="Excessive lost particles (possible geometry error)",
+        evaluate=_check_lost_particles,
+        severity="action",
+    ),
+]
+```
+
+**These conditions require domain expert input before implementation.** The framework is code; the conditions are domain knowledge.
+
+### 12.5 CLI Commands
+
+Two CLI surfaces — `neut model run` for the execution wrapper (Phase 0), and `neut twin` for the full DT platform (Phase 1+):
+
+#### `neut model run` (Execution Wrapper — Phase 0)
 
 ```
-neut twin <verb> [args] [--flags]
-
-Verbs:
-  run         Execute a DT model
-  shadow      Manage Shadow runs
-  rom-train   Train ROM from Shadow data
-  infer       Run ROM inference
-  compare     Compare ROM vs Shadow
-  validate    Validate predictions against measurements
-  list        List runs
-  show        Show run details
-  export      Export run results
+neut model run <path> [--set K=V ...] [--on TARGET] [--budget HOURS]
+neut model run status [JOB_ID]
+neut model run pull <JOB_ID>
+neut model run list [--status running|completed|failed]
+neut model run cancel <JOB_ID>
 ```
 
-### 12.2 Key Commands
+#### `neut twin` (Full DT Platform — Phase 1+)
 
-| Command | Description |
-|---------|-------------|
-| `neut twin run triga-netl-rom1 --reactor netl-001` | Execute ROM-1 model |
-| `neut twin shadow start --model triga-shadow-v3` | Start Shadow run |
-| `neut twin rom-train --source shadow-run-123 --tier rom-2` | Train ROM from Shadow |
-| `neut twin compare --rom rom-run-456 --shadow shadow-run-123` | Compare ROM accuracy |
-| `neut twin list --reactor netl-001 --tier rom-1` | List runs by filter |
-| `neut twin show run-789` | Show run details |
+```
+neut twin run --model=triga-netl-rom1 --type=inference
+neut twin shadow --facility=netl --date=2026-03-16
+neut twin rom-train --source shadow-run-123 --tier rom-2
+neut twin compare --run run-456 --against measured
+neut twin infer --model triga-netl-rom1 --stream
+neut twin list --reactor netl-001 --tier rom-1
+neut twin show <run-id>
+neut twin drift --model triga-netl-rom2 --since 2026-01-01
+```
 
-### 12.3 Output Formats
+### 12.6 Output Formats
 
 | Format | Flag | Use Case |
 |--------|------|----------|
@@ -1044,7 +1193,11 @@ Just as automotive autonomy advances through demonstrated safety at each level, 
 
 ## Related Documents
 
-- [Digital Twin Hosting PRD](../requirements/prd-digital-twin-hosting.md) — User requirements
-- [Model Corral Spec](spec-model-corral.md) — Model registry
+- [Digital Twin Hosting PRD](../requirements/prd-digital-twin-hosting.md) — User requirements, use cases, execution wrapper vision
+- [Model Corral Spec](spec-model-corral.md) — Model registry (execution wrapper consumes registered models)
+- [Model Corral sweep.py](../../src/neutron_os/extensions/builtins/model_corral/commands/sweep.py) — Existing parametric sweep (dot-notation YAML paths)
+- [CoreForge Bridge](../../src/neutron_os/extensions/builtins/model_corral/coreforge_bridge.py) — MaterialSource protocol (parameter vocabulary)
 - [Data Architecture Spec](spec-data-architecture.md) — Lakehouse integration
 - [ADR-008: WASM Extension Runtime](../adr/008-wasm-extension-runtime.md) — WASM decision
+- [Auto-Research PRD](../requirements/prd-auto-research.md) — CURI-O agent (adaptive execution loop)
+- [Federation Spec](../../axiom/docs/tech-specs/spec-federation.md) — Resource sharing (federation compute targets)
