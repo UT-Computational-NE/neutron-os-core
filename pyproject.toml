@@ -1,6 +1,6 @@
 [project]
 name = "neutron-os"
-version = "0.9.2"
+version = "0.10.0"
 description = "Nuclear facility digital operations platform — extends Axiom"
 requires-python = ">=3.11"
 license = "MIT"
@@ -20,7 +20,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "axi-platform>=0.6.2",
+    "axi-platform>=0.8.1",
 ]
 
 [project.optional-dependencies]
