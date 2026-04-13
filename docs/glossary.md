@@ -101,7 +101,8 @@ ROM accuracy is bounded by input data quality. Key considerations (per Dr. Clarn
 |------|---------|
 | **Extension** | Any deployable capability in NeutronOS — agents, tools, utilities. Everything is an extension |
 | **Provider** | A swappable implementation behind an extension point (e.g., OneDrive storage provider, pandoc generation provider). Not "plugin" |
-| **Agent** | An extension with LLM autonomy, named after WALL-E characters: Neut, EVE, M-O, PR-T, D-FIB |
+| **Agent** | An extension with LLM autonomy, named after WALL-E characters. Active agents: WALL-E (branded "Neut"), EVE, CURI-O, M-O, PR-T, D-FIB, BURN-E. Retired: ~~Mirror~~ (absorbed by PR-T), ~~SECUR-T~~ (absorbed by D-FIB). Agents map to a REPL model — see **REPL** below |
+| **REPL (agent model)** | Read-Eval-Print-Loop — the conceptual framework for agent roles. EVE=Read (signal ingestion), CURI-O=Eval (knowledge synthesis), PR-T=Print (publishable output), WALL-E/Neut=Loop (interactive orchestration). Supporting roles: M-O=Infrastructure, D-FIB=Health, BURN-E=Ship |
 | **Signal** | A raw input to EVE's intelligence pipeline — voice memo, meeting transcript, chat message, code commit, document change |
 | **Intelligence** | The structured output of EVE's signal processing — extracted entities, decisions, action items, correlated across sources |
 | **Endpoint** | A destination for published content (OneDrive, Box, S3, local filesystem). Not an API endpoint unless qualified |
@@ -176,7 +177,7 @@ Digital twin applicability varies by reactor category (per Dr. Clarno):
 | Convention | Rule | Example |
 |------------|------|---------|
 | **CLI nouns** | Generic English nouns, not brand names | `neut model` (not `neut corral`), `neut pub` (not `neut prt`) |
-| **Agent names** | WALL-E characters, used in docs and AGENT.md files | EVE, M-O, PR-T, D-FIB, Neut |
+| **Agent names** | WALL-E characters, used in docs and AGENT.md files. Each agent has a REPL role | WALL-E (Neut), EVE, CURI-O, M-O, PR-T, D-FIB, BURN-E |
 | **Module brand names** | Used in prose and PRD titles, not CLI | "Model Corral", "Signal Pipeline", "Publisher" |
 | **Extension directories** | Snake case, agents suffixed with `_agent` | `eve_agent/`, `model_corral/`, `prt_agent/` |
 | **Doc filenames** | Hyphen-separated, type-prefixed | `prd-model-corral.md`, `spec-digital-twin-architecture.md` |

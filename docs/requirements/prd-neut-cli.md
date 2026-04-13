@@ -46,14 +46,19 @@ Nuclear facilities currently interact with data and simulations through:
 
 NeutronOS agents are named after robots from Pixar's WALL-E — a film about a world made uninhabitable by environmental neglect. The irony is intentional: NeutronOS helps build the cleanest large-scale energy source available.
 
-| Agent | Character | CLI | Role |
-|-------|-----------|-----|------|
-| **Neut** | The Axiom | `neut chat` | Orchestrator — routes commands, delegates to other agents, maintains context |
-| **EVE** | Probe droid | `neut signal` | Event Evaluator — signal detection and intelligence extraction |
-| **M-O** | Cleaning robot | `neut mo` | Micro-Obliterator — resource stewardship and system hygiene |
-| **PR-T** | Beauty bot | `neut pub` | Purty — document lifecycle, .md → polished .docx → publish |
-| **D-FIB** | Medical bot | `neut doctor` | Defib — diagnostics, security health, configuration audit |
-| **Mirror** | — | `neut mirror` | Public mirror gate — reviews content for sensitive data before publishing |
+| Agent | Character | CLI | Role | REPL Role |
+|-------|-----------|-----|------|-----------|
+| **Neut** (WALL-E) | WALL-E | `neut chat` | Orchestrator — routes commands, delegates to other agents, maintains context. WALL-E branded as "Neut" in NeutronOS | **Loop** |
+| **EVE** | Probe droid | `neut signal` | Event Evaluator — signal detection and intelligence extraction | **Read** |
+| **CURI-O** | — | `neut research` | Research agent — autonomous RAG optimization and knowledge synthesis | **Eval** |
+| **M-O** | Cleaning robot | `neut mo` | Micro-Obliterator — resource stewardship and system hygiene | Infrastructure |
+| **PR-T** | Beauty bot | `neut pub` | Purty — document lifecycle, .md → polished .docx → publish. Also owns content gating (formerly Mirror) | **Print** |
+| **D-FIB** | Medical bot | `neut doctor` | Defib — diagnostics, health, configuration audit. Also owns security checks (formerly SECUR-T) | Health |
+| **BURN-E** | Welder bot | `neut release` | Release agent — build, tag, ship | Ship |
+| ~~Mirror~~ | — | ~~`neut mirror`~~ | Deprecated — agent retired, content gate absorbed by PR-T | — |
+| ~~SECUR-T~~ | — | — | Retired — security ownership transferred to D-FIB | — |
+
+Agents follow a **REPL model** (Read-Eval-Print-Loop): EVE reads signals in, CURI-O evaluates and synthesizes knowledge, PR-T prints publishable output, and Neut (WALL-E) is the interactive loop that orchestrates the cycle.
 
 ---
 
@@ -79,7 +84,7 @@ NeutronOS agents are named after robots from Pixar's WALL-E — a film about a w
 | `neut signal` | eve_agent (EVE) | Agentic signal ingestion pipeline |
 | `neut pub` | prt_agent (PR-T) | Document publishing lifecycle. Alias: `neut doc` |
 | `neut mo` | mo_agent (M-O) | Resource steward — scratch, vitals, cleanup |
-| `neut mirror` | mirror_agent | AI-powered sensitive data review before publishing |
+| ~~`neut mirror`~~ | ~~mirror_agent~~ | Deprecated — content gate absorbed by PR-T |
 
 ### Tools & Services
 

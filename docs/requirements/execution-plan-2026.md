@@ -22,14 +22,14 @@
 | **EVE Agent (signal pipeline)** | ✅ | ✅ 69 files (~20k+ lines) | Implemented: signal ingestion, extraction, synthesis, correction review, media library, briefing, voice ID, echo suppression |
 | **M-O Agent (steward)** | ✅ | ✅ 18 files | Implemented: node health, retention, log steward, repo hygiene, network monitoring |
 | **PRT Agent (publisher)** | ✅ | ✅ 51 files | Implemented: DOCX generation, OneDrive/Box storage, publish engine, state tracking, validation |
-| **Neut Agent (assistant)** | ✅ | ✅ 31 files / 10k lines | Implemented: chat, code assistance |
+| **WALL-E Agent (chat/loop)** | ✅ | ✅ 31 files / 10k lines | Implemented: chat, code assistance, REPL loop |
 | **DFIB Agent (diagnostics)** | ✅ | ✅ 5 files | Implemented: platform health checks |
 | **Prompt Registry** | ✅ | ✅ 266 lines | Implemented in `infra/prompt_registry.py` |
 | **Model Corral** | ✅ | ✅ Implemented | 18 CLI commands (init, validate, add, clone, search, list, show, pull, lineage, diff, export, audit, generate, lint, sweep, materials, share, receive). MaterialSource protocol (5 sources), 11 YAML materials, 3 facility packs (NETL-TRIGA, MSRE, PWR-generic), CoreForge bridge, deterministic MCNP/MPACT generation, 8 lint rules, parametric sweep, federation share/receive with EC safety guard, .facilitypack archive. `neut facility` CLI (8 commands). 342 NeutronOS tests (29 E2E, 6 persona user-flow). |
 | **Data Platform (Iceberg/dbt)** | ✅ | 🟡 Schema sketched | Not wired to runtime |
 | **Compliance Tracking** | ✅ | ❌ 0% | Not blocking feature work |
 | **Federation** | ✅ (ADR-016) | ✅ Substantially Implemented | Federation identity, Agent Cards, discovery, trust, .axiompack, fleet view, CLI (7 commands), model sharing, SECUR-T, chaos testing. 254 Axiom tests. User flow tests for 6 personas. |
-| **SECUR-T Agent** | ✅ | ✅ Implemented in Axiom | Content verification, anomaly detection (5 rules), trust scoring, escalation paths. 30 tests. |
+| **~~SECUR-T~~ Agent** | ✅ | ✅ Implemented in Axiom | **Retired — absorbed by D-FIB.** Content verification, anomaly detection (5 rules), trust scoring, escalation paths. 30 tests. |
 | **Chaos Testing** | ✅ | ✅ Implemented in Axiom | 6 scenarios (network-partition, content-injection, mass-publish, identity-replay, ec-leak, split-brain). 13 tests. |
 | **Prompt Injection Defense** | ✅ | ✅ Implemented in Axiom | Content sanitizer (14 patterns), YAML injection blocking, supply chain verification. 48 tests. |
 | **Call to Research** | ✅ | ✅ Implemented in Axiom | 5 levels, composable DAG chains, knowledge metrics. 34 tests. |
@@ -266,7 +266,7 @@ flowchart TB
 | 2.6 | Build community corpus bundle (~33k chunks, nuclear domain knowledge) | NOS | ❌ Remaining | Content curation + bundling needed |
 | 2.7 | RAG retrieval (similarity search + access tier filtering) | Axiom | ✅ Done | `rag/store.py` (423 lines) |
 | 2.8 | Personal workspace indexing (`axi rag index .`) | Axiom | ✅ Done | `rag/personal.py` (259 lines), `rag/watcher.py` (166 lines) |
-| 2.9 | Wire RAG into `axi chat` (context injection before LLM call) | Axiom | ✅ Done | Neut agent (31 files / 10k lines) integrates RAG |
+| 2.9 | Wire RAG into `axi chat` (context injection before LLM call) | Axiom | ✅ Done | WALL-E agent (chat/loop, 31 files / 10k lines) integrates RAG |
 | 2.10 | Interaction logging | Axiom | ✅ Done | Audit logging in gateway + routing_audit |
 | 2.11 | `axi rag` CLI (`index`, `search`, `status`) | Axiom | ✅ Done | `rag/cli.py` (349 lines) registered as `rag` noun |
 | 2.12 | Validate E2E: `neut chat` → routing → RAG → grounded response on local | NOS | ❌ Remaining | Integration test with NOS CLI shell |
@@ -416,7 +416,7 @@ Items built this session but staged for post-v1.0 announcement:
 | v1.1.0 | Generation & Quality | generate, lint, clone, diff, CoreForge bridge | 46 |
 | v1.2.0 | Connect Your Lab | Federation, fleet view, model sharing, sweep | 104 |
 | v1.3.0 | Call to Research | 5-level research coordination, knowledge observatory, WASM | 83 |
-| v1.4.0 | Security & Resilience | SECUR-T, chaos testing, prompt injection defense, progressive disclosure | 116 |
+| v1.4.0 | Security & Resilience | D-FIB security (formerly SECUR-T), chaos testing, prompt injection defense, progressive disclosure | 116 |
 
 All code is already written and tested. These releases are about staged announcement and documentation, not development.
 
