@@ -98,7 +98,6 @@ def load_kb_entities(
 
         # The filename is the source document slug
         doc_slug = json_file.stem
-        doc_entity_name = doc_slug.upper().replace("-", " ")
 
         for category, items in data.items():
             label = _CATEGORY_MAP.get(category, "Concept")
