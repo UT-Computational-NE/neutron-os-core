@@ -20,7 +20,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "axi-platform>=0.10.3",
+    "axi-platform>=0.10.11",
 ]
 
 [project.optional-dependencies]
