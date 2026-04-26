@@ -1,7 +1,4 @@
-"""Tests for model_corral CLI scaffold.
-
-TDD: These tests are written BEFORE the implementation.
-"""
+"""Tests for model_corral CLI scaffold + AEOS manifest."""
 
 from __future__ import annotations
 
@@ -12,25 +9,35 @@ import pytest
 
 class TestExtensionManifest:
     def test_toml_exists(self):
-        toml_path = Path(__file__).parent.parent / "neut-extension.toml"
+        toml_path = Path(__file__).parent.parent / "axiom-extension.toml"
         assert toml_path.exists()
 
     def test_toml_parseable(self):
         import tomllib
 
-        toml_path = Path(__file__).parent.parent / "neut-extension.toml"
+        toml_path = Path(__file__).parent.parent / "axiom-extension.toml"
         data = tomllib.loads(toml_path.read_text())
-        assert data["extension"]["name"] == "model-corral"
-        assert data["extension"]["kind"] == "tool"
+        assert data["extension"]["name"] == "model_corral"
+        assert data["extension"]["builtin"] is True
+        assert data["extension"]["aeos_version"] == "0.1.0"
 
     def test_cli_noun_is_model(self):
         import tomllib
 
-        toml_path = Path(__file__).parent.parent / "neut-extension.toml"
+        toml_path = Path(__file__).parent.parent / "axiom-extension.toml"
         data = tomllib.loads(toml_path.read_text())
-        commands = data.get("cli", {}).get("commands", [])
-        nouns = [c["noun"] for c in commands]
+        provides = data.get("extension", {}).get("provides", [])
+        nouns = [p.get("noun") for p in provides if p.get("kind") == "cmd"]
         assert "model" in nouns
+
+    def test_facility_noun_present(self):
+        import tomllib
+
+        toml_path = Path(__file__).parent.parent / "axiom-extension.toml"
+        data = tomllib.loads(toml_path.read_text())
+        provides = data.get("extension", {}).get("provides", [])
+        nouns = [p.get("noun") for p in provides if p.get("kind") == "cmd"]
+        assert "facility" in nouns
 
 
 class TestCliParser:
