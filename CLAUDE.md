@@ -218,6 +218,38 @@ Use `extra={"llm_provider": provider.name}` for routine events, or `extra=provid
 
 ---
 
+## Rascal Services — :41883 vs :8766
+
+Today the user-facing config refers to "Rascal" as one thing. Architecturally
+there are **two different services** running on the rascal host
+(`10.159.142.118`); they are NOT interchangeable. The
+`rag_grounding` builtin extension ships a `[[connect.preset]]` for each:
+
+| Aspect | `rascal-qwen-ec` (:41883) | `rascal-neutronos-rag` (:8766) |
+|---|---|---|
+| What it is | Bare Qwen behind llama-server | NeutronOS gateway with RAG corpus over Qwen |
+| Auth | API-key (`QWEN_API_KEY`) | None today (TODO: gateway auth) |
+| RAG | None — model only | Yes — domain corpus pre-pended to prompts |
+| EC-safe? | **Yes** — no domain context, no cloud egress | **No** — gateway cloud-routes |
+| Routing tags | `private_network`, `ut_vpn`, `ec_safe` | `private_network`, `ut_vpn`, `rag_grounded`, `not_ec_safe` |
+| Best for | General technical Q&A where answer must stay on-prem | NETL/TRIGA/regulatory questions where corpus grounding matters |
+| Worst for | Domain-heavy questions (no RAG → falls back to training prior) | Sensitive content (gateway is unauthenticated + cloud-routes) |
+
+**Trade-off in one sentence:** :41883 is EC-safe but knows no domain;
+:8766 has the corpus but is not yet EC-safe. Pick :41883 for sensitive
+content, :8766 for accuracy on NETL/TRIGA/regulatory questions, and
+**always** wire `rag_grounding.make_grounding_hooks()` into any
+RAG-aware ask path so a low-confidence retrieval prepends an
+"answering from training-data prior — verify before citing" notice
+instead of letting the model invent facts (the failure mode the
+2026-04-28 head-to-head evaluation surfaced).
+
+When the in-flight `axi connect` framework lands, both presets
+become discoverable via `axi connect list`. Until then, see
+`src/neutron_os/extensions/builtins/rag_grounding/axiom-extension.toml`.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology | Notes |
