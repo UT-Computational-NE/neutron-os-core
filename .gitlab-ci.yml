@@ -135,11 +135,15 @@ preflight:connections:
       WARN = "\033[33m!\033[0m"
       errors = []
 
-      # --- GitLab token (required) ---
+      # --- GitLab token (best-effort — only needed for notify:failure-issue) ---
+      # notify:failure-issue uses GITLAB_TOKEN to file an issue when other
+      # jobs fail. If the token is missing/expired, the notify job fails on
+      # cascade — but the pipeline only reaches notify when something else
+      # already failed, so the cascade is informational. Don't fail preflight
+      # on it; let the operator refresh GITLAB_TOKEN at their leisure.
       token = os.environ.get("GITLAB_TOKEN", "")
       if not token:
-          print(f"{FAIL} GITLAB_TOKEN not set")
-          errors.append("GITLAB_TOKEN missing")
+          print(f"{WARN} GITLAB_TOKEN not set (notify:failure-issue will fail if it runs)")
       else:
           r = requests.get(
               "https://rsicc-gitlab.tacc.utexas.edu/api/v4/user",
@@ -148,8 +152,7 @@ preflight:connections:
           if r.status_code == 200:
               print(f"{PASS} GitLab token valid (user: {r.json().get('username')})")
           else:
-              print(f"{FAIL} GitLab token invalid (HTTP {r.status_code})")
-              errors.append(f"GITLAB_TOKEN rejected: HTTP {r.status_code}")
+              print(f"{WARN} GitLab token invalid (HTTP {r.status_code}) — refresh PAT or notify:failure-issue will fail")
 
       # --- GitHub tokens (optional — best-effort) ---
       # Two fine-grained PATs, one per org. Both gated to warn-not-fail
