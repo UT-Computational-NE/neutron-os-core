@@ -1,0 +1,127 @@
+# LangFuse — institutional observability for NeutronOS / Axiom LLM traffic.
+#
+# Installed against Rascal's K3S cluster as the first cut at Server-tier
+# observability. Single-node, single-replica throughout. Will be re-homed
+# under a proper AEOS observability extension wrapper post-Prague during
+# the deeper observability dive.
+#
+# Upstream chart: langfuse/langfuse  (chart 1.5.28 / app 3.171.0 at install)
+# Helm repo:      https://langfuse.github.io/langfuse-k8s
+#
+# DEBT (flagged for deeper observability dive):
+#   - Bundled MinIO (s3.deploy=true) violates the SeaweedFS-not-MinIO rule.
+#     Acceptable temporarily; replace with SeaweedFS + S3-compatible adapter
+#     when the proper extension wrapper is built.
+#   - No ingress / TLS yet. NodePort 30030 reachable on Rascal LAN (UT VPN).
+#     Ondrej-from-Prague external access is a separate work item (Tailscale
+#     recommended).
+#   - Public sign-up enabled. First admin self-creates; restrict after.
+
+global:
+  security:
+    allowInsecureImages: true  # Permits bitnamilegacy/* images used by chart
+
+# ---------------- LangFuse core ---------------------------------------------
+langfuse:
+  nodeEnv: production
+
+  features:
+    telemetryEnabled: false       # Don't phone home to LangFuse Inc
+    signUpDisabled: false         # First admin needs to sign up; tighten later
+    experimentalFeaturesEnabled: false
+
+  # Secrets are pulled from the langfuse-secrets Secret created out-of-band.
+  # See README.md for the openssl-rand commands that generate them.
+  salt:
+    secretKeyRef:
+      name: langfuse-secrets
+      key: salt
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse-secrets
+      key: encryption-key
+  nextauth:
+    url: "http://rascal.austin.utexas.edu:30030"
+    secret:
+      secretKeyRef:
+        name: langfuse-secrets
+        key: nextauth-secret
+
+  # Single replica web + worker; we're a single-node Server-tier deploy.
+  replicas: 1
+  ingress:
+    enabled: false
+
+  web:
+    service:
+      type: NodePort
+      port: 3000
+      nodePort: 30030
+
+  worker:
+    service:
+      type: ClusterIP
+
+# ---------------- PostgreSQL (bundled via Bitnami subchart) -----------------
+postgresql:
+  deploy: true
+  auth:
+    database: postgres_langfuse
+    existingSecret: langfuse-secrets
+    secretKeys:
+      userPasswordKey: postgres-password
+      adminPasswordKey: postgres-password
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+
+# ---------------- Redis / Valkey (bundled) ----------------------------------
+redis:
+  deploy: true
+  architecture: standalone
+  auth:
+    existingSecret: langfuse-secrets
+    existingSecretPasswordKey: redis-password
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# ---------------- ClickHouse (bundled) --------------------------------------
+# Default chart preset is 2xlarge / 3 replicas — overkill for single-node.
+clickhouse:
+  deploy: true
+  shards: 1
+  replicaCount: 1
+  clusterEnabled: false
+  resourcesPreset: medium
+  auth:
+    existingSecret: langfuse-secrets
+    existingSecretKey: clickhouse-password
+  persistence:
+    enabled: true
+    size: 50Gi
+  zookeeper:
+    enabled: false  # ZK only needed for cluster mode; we're single-replica
+    replicaCount: 1
+
+# ---------------- S3 / MinIO (bundled — DEBT) -------------------------------
+# Replace with SeaweedFS during deeper observability dive.
+# Note: the chart does NOT auto-wire LangFuse to the bundled MinIO; we have
+# to point LangFuse at the in-cluster MinIO Service explicitly and pull
+# credentials from the chart-created `langfuse-s3` secret.
+s3:
+  deploy: true
+  bucket: langfuse
+  forcePathStyle: true
+  endpoint: http://langfuse-s3:9000
+  accessKeyId:
+    secretKeyRef:
+      name: langfuse-s3
+      key: root-user
+  secretAccessKey:
+    secretKeyRef:
+      name: langfuse-s3
+      key: root-password
