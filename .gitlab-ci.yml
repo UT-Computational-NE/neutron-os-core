@@ -86,6 +86,11 @@ variables:
     # Configure git to use GITHUB_TOKEN for axiom dependency clone
     - git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
     - pip install --quiet -e ".[all]"
+    # axiom-tests provides ExtensionStandardTests (the AEOS conformance suite
+    # every extension's tests/unit_tests/test_standard.py imports). It's a
+    # sibling package in the axiom repo that isn't yet on PyPI, so install
+    # it from git. Tracked: publish axiom-tests to PyPI as a follow-up.
+    - pip install --quiet "axiom-tests @ git+https://github.com/b-tree-labs/axiom-os.git#subdirectory=packages/axiom-tests"
 
 # Lightweight setup — reuses the venv artifact from preflight:dependencies.
 # Jobs extending this MUST declare `needs: [preflight:dependencies]`.
