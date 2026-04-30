@@ -4,7 +4,7 @@
 
 A modular digital platform for nuclear facilities that unifies model management, operations tracking, signal analysis, and knowledge retrieval — replacing fragmented workflows (paper logs, spreadsheets, phone calls) with integrated digital tools.
 
-Built on top of [Axiom](https://github.com/benjaminbooth/axiom) (domain-agnostic platform framework). NeutronOS adds nuclear-specific knowledge, agents, facility packs, and tools.
+Built on top of [Axiom](https://github.com/b-tree-labs/axiom-os) (domain-agnostic platform framework). NeutronOS adds nuclear-specific knowledge, agents, facility packs, and tools.
 
 [![PyPI](https://img.shields.io/pypi/v/neutron-os)](https://pypi.org/project/neutron-os/)
 [![Tests](https://img.shields.io/badge/tests-445%2B-brightgreen)]()
@@ -207,7 +207,7 @@ make build
 | Infrastructure | K3D (local), Docker Compose (fallback) |
 | CI/CD | GitLab CI |
 | Packaging | Hatchling (`pip install neutron-os`) |
-| Platform | [Axiom](https://github.com/benjaminbooth/axiom) (axi-platform) |
+| Platform | [Axiom](https://github.com/b-tree-labs/axiom-os) (axiom-os-lm) |
 
 ## Design Principles
 

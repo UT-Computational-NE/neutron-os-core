@@ -168,7 +168,7 @@ preflight:dependencies:
   extends: .python-full-setup
   script:
     - python -c 'import neutron_os; from importlib.metadata import version as v; print("neutron-os " + v("neutron-os") + " — all dependencies resolved")'
-    - python -c 'import axiom; from importlib.metadata import version as v; print("axiom " + v("axi-platform") + " — upstream dependency OK")'
+    - python -c 'import axiom; from importlib.metadata import version as v; print("axiom " + v("axiom-os-lm") + " — upstream dependency OK")'
     # Verify venv binaries are executable (catches broken symlinks)
     - test -x "$VENV_DIR/bin/python" || (echo "ERROR venv python not executable" && exit 1)
     - test -x "$VENV_DIR/bin/pip" || (echo "ERROR venv pip not executable" && exit 1)

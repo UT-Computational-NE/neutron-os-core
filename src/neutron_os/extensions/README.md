@@ -34,4 +34,4 @@ Do not modify `contracts.py` or `discovery.py` without understanding the
 full extension lifecycle. New extensions go in `builtins/` if domain-agnostic,
 or in an external repo if domain-specific. Every extension MUST have an
 `axiom-extension.toml` manifest conforming to AEOS 0.1
-(`spec-aeos-0.1.md` in the axi-platform repo).
+(`spec-aeos-0.1.md` in the axiom-os repo).
