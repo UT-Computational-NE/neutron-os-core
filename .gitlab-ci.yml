@@ -10,9 +10,12 @@
 #   Tag v* pushed       → all tests + build + publish stable release
 #
 # Required CI/CD Variables (Settings → CI/CD → Variables):
-#   GITLAB_TOKEN          — Personal access token for rsicc-gitlab.tacc.utexas.edu
-#   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
-#   ANTHROPIC_API_KEY     — Powers LLM sensitivity review gate (mirror:review job)
+#   GITLAB_TOKEN                — Personal access token for rsicc-gitlab.tacc.utexas.edu
+#   GITHUB_TOKEN_AXIOM_OS       — GitHub fine-grained PAT, read-only on b-tree-labs/axiom-os
+#                                  (clones axiom-tests sibling-package for AEOS conformance suite)
+#   GITHUB_TOKEN_NEUTRON_MIRROR — GitHub fine-grained PAT, read+write on
+#                                  UT-Computational-NE/neutron-os-core (mirror:github push target)
+#   ANTHROPIC_API_KEY           — Powers LLM sensitivity review gate (mirror:review job)
 #
 # Runner setup:
 #   If no shared runners are available on TACC GitLab, register your own:
@@ -83,18 +86,21 @@ variables:
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
-    # Configure git to use GITHUB_TOKEN for axiom dependency clone (only
-    # if a token is set; the .insteadOf rewrite is safe with an empty token,
-    # but better to skip the line entirely so curl/git failures are clearer).
-    - if [ -n "${GITHUB_TOKEN:-}" ]; then git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; fi
     - pip install --quiet -e ".[all]"
     # axiom-tests provides ExtensionStandardTests (AEOS conformance). Sibling
-    # package in the axiom repo, not on PyPI yet. Best-effort install: if
-    # GITHUB_TOKEN is missing or doesn't grant access to b-tree-labs/axiom-os,
-    # we proceed without axiom-tests and the standard tests deselect at
-    # collect time (see test:unit `--ignore-glob`). Track: publish
-    # axiom-tests to PyPI so this becomes a normal dep.
-    - pip install --quiet "axiom-tests @ git+https://github.com/b-tree-labs/axiom-os.git#subdirectory=packages/axiom-tests" || echo "WARN axiom-tests not installed; AEOS standard tests will be skipped"
+    # package in the axiom repo, not on PyPI yet. Embed the b-tree-labs-scoped
+    # token directly in the clone URL — cleaner than a global git insteadOf
+    # rewrite when there are multiple GitHub tokens with different per-org
+    # scopes. Best-effort: if the token is missing/unscoped, skip the install
+    # and let test:unit deselect the standard tests (see `--ignore-glob`).
+    # Track: publish axiom-tests to PyPI so this becomes a normal dep.
+    - |
+      if [ -n "${GITHUB_TOKEN_AXIOM_OS:-}" ]; then
+        pip install --quiet "axiom-tests @ git+https://x-access-token:${GITHUB_TOKEN_AXIOM_OS}@github.com/b-tree-labs/axiom-os.git#subdirectory=packages/axiom-tests" \
+          || echo "WARN axiom-tests install failed; AEOS standard tests will be skipped"
+      else
+        echo "WARN GITHUB_TOKEN_AXIOM_OS not set; axiom-tests skipped"
+      fi
 
 # Lightweight setup — reuses the venv artifact from preflight:dependencies.
 # Jobs extending this MUST declare `needs: [preflight:dependencies]`.
@@ -115,7 +121,8 @@ preflight:connections:
   image: python:3.12-slim
   variables:
     GITLAB_TOKEN: $GITLAB_TOKEN
-    GITHUB_TOKEN: $GITHUB_TOKEN
+    GITHUB_TOKEN_AXIOM_OS: $GITHUB_TOKEN_AXIOM_OS
+    GITHUB_TOKEN_NEUTRON_MIRROR: $GITHUB_TOKEN_NEUTRON_MIRROR
   before_script:
     - pip install --quiet --break-system-packages requests
   script:
@@ -125,6 +132,7 @@ preflight:connections:
 
       PASS = "\033[32m✓\033[0m"
       FAIL = "\033[31m✗\033[0m"
+      WARN = "\033[33m!\033[0m"
       errors = []
 
       # --- GitLab token (required) ---
@@ -143,23 +151,27 @@ preflight:connections:
               print(f"{FAIL} GitLab token invalid (HTTP {r.status_code})")
               errors.append(f"GITLAB_TOKEN rejected: HTTP {r.status_code}")
 
-      # --- GitHub token (optional — only required for mirror:github job) ---
-      # Don't fail preflight when missing or unscoped; the mirror job has its
-      # own rules and will surface the error there if it actually runs.
-      WARN = "\033[33m!\033[0m"
-      gh_token = os.environ.get("GITHUB_TOKEN", "")
-      if not gh_token:
-          print(f"{WARN} GITHUB_TOKEN not set (mirror:github will be skipped/fail)")
-      else:
+      # --- GitHub tokens (optional — best-effort) ---
+      # Two fine-grained PATs, one per org. Both gated to warn-not-fail
+      # because the consuming jobs (axiom-tests install + mirror:github)
+      # already degrade gracefully on missing/unscoped tokens.
+      def check_gh(varname, repo, purpose):
+          tok = os.environ.get(varname, "")
+          if not tok:
+              print(f"{WARN} {varname} not set ({purpose} will be skipped/fail)")
+              return
           r = requests.get(
-              "https://api.github.com/repos/UT-Computational-NE/neutron-os-core",
-              headers={"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"},
+              f"https://api.github.com/repos/{repo}",
+              headers={"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json"},
               timeout=10
           )
           if r.status_code == 200:
-              print(f"{PASS} GitHub token valid (repo: {r.json().get('full_name')})")
+              print(f"{PASS} {varname} valid (repo: {r.json().get('full_name')})")
           else:
-              print(f"{WARN} GitHub token doesn't grant access to UT-Computational-NE/neutron-os-core (HTTP {r.status_code}) — refresh PAT or mirror:github will fail")
+              print(f"{WARN} {varname} doesn't grant access to {repo} (HTTP {r.status_code}) — refresh PAT or {purpose} will fail")
+
+      check_gh("GITHUB_TOKEN_AXIOM_OS", "b-tree-labs/axiom-os", "axiom-tests clone")
+      check_gh("GITHUB_TOKEN_NEUTRON_MIRROR", "UT-Computational-NE/neutron-os-core", "mirror:github push")
 
       if errors:
           print(f"\nPreflight failed: {len(errors)} required credential(s) invalid")
@@ -341,7 +353,7 @@ mirror:github:
     - git config --global user.email "ci@neutron-os"
     - git config --global user.name "Neutron OS CI"
   script:
-    - GITHUB_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/UT-Computational-NE/neutron-os-core.git"
+    - GITHUB_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN_NEUTRON_MIRROR}@github.com/UT-Computational-NE/neutron-os-core.git"
     - git remote add github "$GITHUB_REMOTE_URL" || git remote set-url github "$GITHUB_REMOTE_URL"
     - bash scripts/push-public.sh --push --yes
   rules:
