@@ -120,7 +120,6 @@ preflight:connections:
   stage: preflight
   image: python:3.12-slim
   variables:
-    GITLAB_TOKEN: $GITLAB_TOKEN
     GITHUB_TOKEN_AXIOM_OS: $GITHUB_TOKEN_AXIOM_OS
     GITHUB_TOKEN_NEUTRON_MIRROR: $GITHUB_TOKEN_NEUTRON_MIRROR
   before_script:
@@ -128,35 +127,21 @@ preflight:connections:
   script:
     - |
       python3 << 'EOF'
-      import os, sys, requests
+      import os, requests
+
+      # Preflight only checks credentials this pipeline ACTIVELY consumes
+      # in non-cosmetic jobs:
+      #   - GITHUB_TOKEN_AXIOM_OS       → axiom-tests clone (preflight:dependencies)
+      #   - GITHUB_TOKEN_NEUTRON_MIRROR → mirror:github push
+      # GITLAB_TOKEN is consumed only by notify:failure-issue (cosmetic, runs
+      # on cascade-failure). It's deliberately NOT checked here — that job
+      # can yell about its own credential when/if it actually runs.
+      # Any auth GitLab itself needs in CI is via CI_JOB_TOKEN (built-in).
 
       PASS = "\033[32m✓\033[0m"
-      FAIL = "\033[31m✗\033[0m"
       WARN = "\033[33m!\033[0m"
-      errors = []
 
-      # --- GitLab token (best-effort — only needed for notify:failure-issue) ---
-      # notify:failure-issue uses GITLAB_TOKEN to file an issue when other
-      # jobs fail. If the token is missing/expired, the notify job fails on
-      # cascade — but the pipeline only reaches notify when something else
-      # already failed, so the cascade is informational. Don't fail preflight
-      # on it; let the operator refresh GITLAB_TOKEN at their leisure.
-      token = os.environ.get("GITLAB_TOKEN", "")
-      if not token:
-          print(f"{WARN} GITLAB_TOKEN not set (notify:failure-issue will fail if it runs)")
-      else:
-          r = requests.get(
-              "https://rsicc-gitlab.tacc.utexas.edu/api/v4/user",
-              headers={"PRIVATE-TOKEN": token}, timeout=10
-          )
-          if r.status_code == 200:
-              print(f"{PASS} GitLab token valid (user: {r.json().get('username')})")
-          else:
-              print(f"{WARN} GitLab token invalid (HTTP {r.status_code}) — refresh PAT or notify:failure-issue will fail")
-
-      # --- GitHub tokens (optional — best-effort) ---
-      # Two fine-grained PATs, one per org. Both gated to warn-not-fail
-      # because the consuming jobs (axiom-tests install + mirror:github)
+      # Both GitHub tokens are warn-not-fail because the consuming jobs
       # already degrade gracefully on missing/unscoped tokens.
       def check_gh(varname, repo, purpose):
           tok = os.environ.get(varname, "")
@@ -176,11 +161,7 @@ preflight:connections:
       check_gh("GITHUB_TOKEN_AXIOM_OS", "b-tree-labs/axiom-os", "axiom-tests clone")
       check_gh("GITHUB_TOKEN_NEUTRON_MIRROR", "UT-Computational-NE/neutron-os-core", "mirror:github push")
 
-      if errors:
-          print(f"\nPreflight failed: {len(errors)} required credential(s) invalid")
-          sys.exit(1)
-      else:
-          print(f"\nAll required credentials verified.")
+      print("\nPreflight complete (warn-only credential check).")
       EOF
   rules:
     - if: $CI_PIPELINE_SOURCE == "push"
