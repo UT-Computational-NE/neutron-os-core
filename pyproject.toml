@@ -20,7 +20,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "axiom-os-lm>=0.13.0",
+    "axiom-os-lm>=0.14.0",
 ]
 
 [project.optional-dependencies]
