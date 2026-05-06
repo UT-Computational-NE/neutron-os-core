@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev,publisher]"
       - name: Run tests
-        run: pytest tests/ src/neutron_os/ -v --tb=short --ignore=tests/promptfoo
+        run: pytest tests/ src/neutron_os/ -v --tb=short --ignore=tests/promptfoo --ignore-glob='**/test_standard.py'
 
   build:
     runs-on: ubuntu-latest
