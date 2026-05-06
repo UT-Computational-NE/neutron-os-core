@@ -20,7 +20,15 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "axiom-os-lm>=0.14.0",
+    # Axiom platform — entry-point adapter discovery (axiom.compute.adapters
+    # lazy-loads on first miss) lands in 0.15.0; required so axiom-ext-openmc
+    # is automatically discovered after install with no manual import.
+    "axiom-os-lm>=0.15.0",
+    # OpenMC physics-code Axiom extension — per ADR-018 + ADR-044, each physics
+    # code is its own AEOS-conformant standalone extension. Bringing this in
+    # transitively means `pip install neutron-os` gives students the OpenMC
+    # adapter for free, alongside their conda-installed OpenMC binary.
+    "axiom-ext-openmc>=0.1.0",
 ]
 
 [project.optional-dependencies]
