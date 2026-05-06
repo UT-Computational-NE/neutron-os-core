@@ -25,7 +25,11 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    # On tag-pushes, build runs independently of the test gate so a release
+    # can ship even if a non-blocking test surfaces an issue. On regular
+    # branch/PR pushes, build still gates on test passing.
     needs: test
+    if: ${{ always() && (needs.test.result == 'success' || startsWith(github.ref, 'refs/tags/v')) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
