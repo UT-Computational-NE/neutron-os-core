@@ -21,9 +21,11 @@ classifiers = [
 ]
 dependencies = [
     # Axiom platform — entry-point adapter discovery (axiom.compute.adapters
-    # lazy-loads on first miss) lands in 0.15.0; required so axiom-ext-openmc
-    # is automatically discovered after install with no manual import.
-    "axiom-os-lm>=0.15.0",
+    # lazy-loads on first miss) lands in 0.15.0; cross-tool memory MCP
+    # foundation in 0.15.x; codex CLI transcript ingest + git-subprocess
+    # env isolation hardening in 0.16.0. Verified against the NeutronOS
+    # test suite (484 passed) at the 0.16.0 source — see axiom PR #174.
+    "axiom-os-lm>=0.16.0",
     # OpenMC physics-code Axiom extension — per ADR-018 + ADR-044, each physics
     # code is its own AEOS-conformant standalone extension. Bringing this in
     # transitively means `pip install neutron-os` gives students the OpenMC
