@@ -23,9 +23,12 @@ dependencies = [
     # Axiom platform — entry-point adapter discovery (axiom.compute.adapters
     # lazy-loads on first miss) lands in 0.15.0; cross-tool memory MCP
     # foundation in 0.15.x; codex CLI transcript ingest + git-subprocess
-    # env isolation hardening in 0.16.0. Verified against the NeutronOS
-    # test suite (484 passed) at the 0.16.0 source — see axiom PR #174.
-    "axiom-os-lm>=0.16.0",
+    # env isolation hardening in 0.16.0; maturation lifecycle (dream cycle
+    # + importance scoring + reflection + summarize compaction) in 0.17.0;
+    # LongMemEval first-run harness + 77% baseline number in 0.17.1.
+    # Verified against the NeutronOS test suite (484 passed) at the 0.17.1
+    # source — see axiom PRs #175 + #176.
+    "axiom-os-lm>=0.17.1",
     # OpenMC physics-code Axiom extension — per ADR-018 + ADR-044, each physics
     # code is its own AEOS-conformant standalone extension. Bringing this in
     # transitively means `pip install neutron-os` gives students the OpenMC
